@@ -1,0 +1,156 @@
+@font-face {
+	font-family: "Segoe UI";
+	src:
+		url("@renderer/assets/fonts/SegoeUI-Light.woff2") format("woff2"),
+		url("@renderer/assets/fonts/SegoeUI-Light.woff") format("woff");
+	font-weight: 300;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Segoe UI";
+	src:
+		url("@renderer/assets/fonts/SegoeUI-Italic.woff2") format("woff2"),
+		url("@renderer/assets/fonts/SegoeUI-Italic.woff") format("woff");
+	font-weight: normal;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: "Segoe UI";
+	src:
+		url("@renderer/assets/fonts/SegoeUI-Bold.woff2") format("woff2"),
+		url("@renderer/assets/fonts/SegoeUI-Bold.woff") format("woff");
+	font-weight: bold;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Segoe UI";
+	src:
+		url("@renderer/assets/fonts/SegoeUI-BoldItalic.woff2") format("woff2"),
+		url("@renderer/assets/fonts/SegoeUI-BoldItalic.woff") format("woff");
+	font-weight: bold;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: "Segoe UI";
+	src:
+		url("@renderer/assets/fonts/SegoeUI-SemiBold.woff2") format("woff2"),
+		url("@renderer/assets/fonts/SegoeUI-SemiBold.woff") format("woff");
+	font-weight: 600;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Segoe UI";
+	src:
+		url("@renderer/assets/fonts/SegoeUI.woff2") format("woff2"),
+		url("@renderer/assets/fonts/SegoeUI.woff") format("woff");
+	font-weight: normal;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Microsoft Sans Serif";
+	src: url("@renderer/assets/fonts/micross.ttf");
+}
+
+/* maddie (nullptr)'s cool ass native stuff below :3 */
+
+body {
+	margin: 0;
+}
+
+* {
+	font-family: "Segoe UI", sans-serif;
+	font-size: 9pt;
+	user-select: none;
+}
+
+*::selection {
+	background-color: #3399ff;
+	color: white;
+}
+
+a {
+	color: #0066cc;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+button {
+	outline: none;
+	border: solid thin #707070;
+	border-radius: 4px;
+	min-width: 60px;
+	padding: 2px 12px;
+	box-shadow: inset 0px 0px 0px 1px var(--aero-white);
+	background: linear-gradient(
+		180deg,
+		rgba(242, 242, 242, 1) 0%,
+		rgba(235, 235, 235, 1) 40%,
+		rgba(221, 221, 221, 1) 40%,
+		rgba(207, 207, 207, 1) 100%
+	);
+	position: relative;
+	z-index: 1;
+	transition: opacity 0.35s linear;
+}
+
+button:hover {
+	border: solid thin #3c7fb1;
+}
+
+button::before {
+	position: absolute;
+	content: "";
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	background: linear-gradient(
+		180deg,
+		rgba(234, 246, 253, 1) 0%,
+		rgba(217, 240, 252, 1) 40%,
+		rgba(190, 230, 253, 1) 40%,
+		rgba(167, 217, 245, 1) 100%
+	);
+	z-index: -1;
+	transition: opacity 0.35s linear;
+	opacity: 0;
+	border-radius: 3px;
+}
+button:hover::before {
+	opacity: 1;
+}
+
+button::after {
+	box-shadow: inset 0px 0px 0px 1px #95ade474;
+	position: absolute;
+	content: "";
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	background: linear-gradient(
+		180deg,
+		rgba(229, 244, 252, 1) 0%,
+		rgba(196, 229, 246, 1) 40%,
+		rgba(152, 209, 239, 1) 40%,
+		rgba(104, 179, 219, 1) 100%
+	);
+	z-index: -1;
+	transition: opacity 0.1s linear;
+	opacity: 0;
+	border-radius: 3px;
+}
+
+button:active::after {
+	opacity: 1;
+}

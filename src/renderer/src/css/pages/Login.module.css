@@ -1,0 +1,117 @@
+.window {
+	/*
+    url("@renderer/assets/login/bg-top.png") with inherited height from image, stretch width, no-repeat, top center
+    */
+	background:
+		url("@renderer/assets/login/bg-top.png") no-repeat top center / 100% 80px,
+		linear-gradient(
+			180deg,
+			#3bb1e8 0px,
+			#e1eff5 80px,
+			#fff 160px,
+			#fff 80%,
+			#c9e7f3 100%
+		);
+	width: 100vw;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.heading {
+	color: #355ab1;
+	font-weight: normal;
+	font-size: 14pt;
+	margin-bottom: 6px;
+}
+
+.pfp {
+	--background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2P4DwQACfsD/Z8fLAAAAAAASUVORK5CYII=");
+	--data-url: url("@renderer/assets/login/sample-pfp.png");
+	margin-top: 12px;
+	width: 139px;
+	height: 139px;
+	background:
+		url("@renderer/assets/login/sample-border.png") no-repeat center / 100% 100%,
+		var(--data-url) no-repeat 24px 19px / 95px 94px,
+		var(--background) no-repeat 24px 19px / 95px 94px;
+}
+
+.content {
+	width: calc(100% - 72px);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.form {
+	max-width: 235px;
+	width: 100%;
+	border: solid thin #d8e8f0;
+	box-shadow: inset 0px 0px 2px 0px #d8e8f0;
+	border-radius: 2px;
+	margin-top: 25px;
+	box-sizing: border-box;
+	padding: 4px;
+}
+
+.window input {
+	border-bottom: solid thin #cbdaec;
+	border-right: solid thin #c0cfe2;
+	border-top: solid thin #abbbd0;
+	border-left: solid thin #c2d0e4;
+	border-radius: 3px;
+	outline: none;
+	font-family: "Segoe UI";
+	font-size: 12px;
+	font-style: italic;
+	padding: 2px 4px;
+}
+
+.window input:hover {
+	border-top: solid thin #5d98c2;
+	border-left: solid thin #b2d3e8;
+	border-right: solid thin #b2d3e8;
+	border-bottom: solid thin #c7e2f1;
+}
+
+.window input:focus {
+	border-top: solid thin #4380b0;
+	border-left: solid thin #9ac3de;
+	border-right: solid thin #9ac3de;
+	border-bottom: solid thin #b7d9ed;
+}
+
+.form input {
+	width: calc(100% - 10px);
+}
+
+.form > div {
+	box-sizing: border-box;
+	margin-top: 2px;
+	padding: 2px;
+}
+
+.signIn {
+	padding: 2px 16px;
+	margin-top: 20px;
+}
+
+.footer {
+	opacity: 0.5;
+	font-size: 10px;
+	margin-top: 8px;
+}
+
+.windowFooter {
+	opacity: 0.75;
+	position: absolute;
+	bottom: 8px;
+	text-align: center;
+}
+
+.windowFooter * {
+	font-size: 10px;
+	display: inline;
+}

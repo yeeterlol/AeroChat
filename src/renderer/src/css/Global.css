@@ -52,15 +52,11 @@
 	font-style: normal;
 }
 
-@font-face {
-	font-family: "Microsoft Sans Serif";
-	src: url("@renderer/assets/fonts/micross.ttf");
-}
-
 /* maddie (nullptr)'s cool ass native stuff below :3 */
 
 body {
 	margin: 0;
+	overflow: hidden;
 }
 
 * {
@@ -103,7 +99,7 @@ button {
 	transition: opacity 0.35s linear;
 }
 
-button:hover {
+button:not(:disabled):hover {
 	border: solid thin #3c7fb1;
 }
 
@@ -126,7 +122,7 @@ button::before {
 	opacity: 0;
 	border-radius: 3px;
 }
-button:hover::before {
+button:not(:disabled):hover::before {
 	opacity: 1;
 }
 
@@ -151,6 +147,19 @@ button::after {
 	border-radius: 3px;
 }
 
-button:active::after {
+button:not(:disabled):active::after {
 	opacity: 1;
+}
+
+button:disabled {
+	opacity: 0.8;
+	color: #444;
+	border: solid thin #999;
+	background: linear-gradient(
+		180deg,
+		rgba(242, 242, 242, 1) 0%,
+		rgba(235, 235, 235, 1) 40%,
+		rgb(231, 231, 231) 40%,
+		rgba(207, 220, 220, 1) 100%
+	);
 }

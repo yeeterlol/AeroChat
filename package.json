@@ -25,6 +25,8 @@
 		"@electron/remote": "^2.1.0",
 		"@types/uuid": "^9.0.7",
 		"bufferutil": "^4.0.8",
+		"deepmerge": "^4.3.1",
+		"deepmerge-ts": "^5.1.0",
 		"detritus-client": "^0.16.3",
 		"discord-api-types": "^0.37.63",
 		"discord.js-selfbot-v13": "^2.15.0",

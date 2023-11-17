@@ -11,7 +11,9 @@ function getStateFromPresence(presence: PresenceUpdateStatus) {
 			return "dnd";
 		case PresenceUpdateStatus.Idle:
 			return "idle";
-		case PresenceUpdateStatus.Invisible || PresenceUpdateStatus.Offline:
+		case PresenceUpdateStatus.Invisible:
+			return "invisible";
+		case PresenceUpdateStatus.Offline:
 			return "invisible";
 		default:
 			return "active";
@@ -44,31 +46,6 @@ export default function PfpBorder({
 
 	useEffect(() => {
 		state = getStateFromPresence(stateInitial);
-		(async () => {
-			setBorderDummy1(
-				(
-					await import(
-						`../assets/borders/${variant}/${
-							state || "active"
-						}-animated-from.png`
-					)
-				).default,
-			);
-			setBorderDummy2(
-				(
-					await import(
-						`../assets/borders/${variant}/${state || "active"}-animated-to.png`
-					)
-				).default,
-			);
-			setSrc(
-				(
-					await import(
-						`../assets/borders/${variant}/${state || "active"}-static.png`
-					)
-				).default,
-			);
-		})();
 		const [border, borderDummy1, borderDummy2] = [
 			borderRef.current!,
 			borderDummy1Ref.current!,

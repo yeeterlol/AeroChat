@@ -26,7 +26,6 @@ function hexToPixelImage(hexCode: string) {
 	ctx.globalAlpha = 0.25;
 	ctx.fillRect(0, 0, 1, 1);
 	const d = canvas.toDataURL();
-	console.log(d);
 	return d;
 }
 
@@ -249,7 +248,6 @@ function Login(): JSX.Element {
 				<button
 					disabled={userInfo?.id === undefined || clicked}
 					onClick={() => {
-						console.log(window.innerWidth, window.innerHeight);
 						startGateway(token);
 						setClicked(true);
 					}}

@@ -31,11 +31,6 @@ export interface Activity {
 	assets?: Assets;
 }
 
-export interface Assets {
-	large_text: string;
-	large_image: string;
-}
-
 export interface Emoji {
 	name: string;
 }
@@ -44,15 +39,103 @@ export interface Party {
 	id: string;
 }
 
-export interface Timestamps {
-	start: number;
-	end: number;
-}
-
 export interface ClientInfo {
 	version: number;
 	os: string;
 	client: string;
+}
+
+export interface MergedPresences {
+	guilds: Array<Guild[]>;
+	friends: Friend[];
+}
+
+export interface Friend {
+	user_id: string;
+	status: Status;
+	client_status: ClientStatus;
+	activities: FriendActivity[];
+}
+
+export interface FriendActivity {
+	url?: string;
+	type: number;
+	state?: string;
+	name: string;
+	id: string;
+	details?: string;
+	created_at: number;
+	assets?: Assets;
+	emoji?: Emoji;
+	timestamps?: Timestamps;
+	application_id?: string;
+	sync_id?: string;
+	session_id?: string;
+	party?: Party;
+	flags?: number;
+}
+
+export interface Assets {
+	large_image?: string;
+	large_text?: string;
+	small_text?: string;
+	small_image?: string;
+}
+
+export interface Emoji {
+	name: string;
+	id?: string;
+	animated?: boolean;
+}
+
+export interface Party {
+	id: string;
+	size?: number[];
+}
+
+export interface Timestamps {
+	start?: number;
+	end?: number;
+}
+
+export interface ClientStatus {
+	desktop?: Status;
+	mobile?: Status;
+	embedded?: Status;
+	web?: Status;
+}
+
+export enum Status {
+	DND = "dnd",
+	Idle = "idle",
+	Offline = "offline",
+	Online = "online",
+}
+
+export interface Guild {
+	user_id: string;
+	status: Status;
+	client_status: ClientStatus;
+	broadcast: null;
+	activities: GuildActivity[];
+}
+
+export interface GuildActivity {
+	type: number;
+	state?: string;
+	name: string;
+	id: string;
+	created_at: number;
+	emoji?: Emoji;
+	timestamps?: Timestamps;
+	party?: Party;
+	details?: string;
+	assets?: Assets;
+	application_id?: string;
+	sync_id?: string;
+	session_id?: string;
+	flags?: number;
+	buttons?: string[];
 }
 
 interface Ready {
@@ -68,6 +151,7 @@ interface Ready {
 	notes: Map<string, string>;
 	presences: Presence[];
 	merged_members: GuildMember[][];
+	merged_presences: MergedPresences;
 	users: PartialUser[];
 	session_id: string;
 	session_type: string;
@@ -127,3 +211,73 @@ export enum OpCodes {
 	CLIENT_SPEEDTEST_CREATE = 32,
 	CLIENT_SPEEDTEST_DELETE = 33,
 }
+
+export enum GatewayIntents {
+	UNKNOWN = 0,
+	GUILDS = 1 << 0,
+	GUILD_MEMBERS = 1 << 1,
+	GUILD_MODERATION = 1 << 2,
+	GUILD_EMOJIS_AND_STICKERS = 1 << 3,
+	GUILD_INTEGRATIONS = 1 << 4,
+	GUILD_WEBHOOKS = 1 << 5,
+	GUILD_INVITES = 1 << 6,
+	GUILD_VOICE_STATES = 1 << 7,
+	GUILD_PRESENCES = 1 << 8,
+	GUILD_MESSAGES = 1 << 9,
+	GUILD_MESSAGE_REACTIONS = 1 << 10,
+	GUILD_MESSAGE_TYPING = 1 << 11,
+	DIRECT_MESSAGES = 1 << 12,
+	DIRECT_MESSAGE_REACTIONS = 1 << 13,
+	DIRECT_MESSAGE_TYPING = 1 << 14,
+	MESSAGE_CONTENT = 1 << 15,
+	GUILD_SCHEDULED_EVENTS = 1 << 16,
+	AUTO_MODERATION_CONFIGURATION = 1 << 20,
+	AUTO_MODERATION_EXECUTION = 1 << 21,
+}
+
+enum GatewayCapabilities {
+	LAZY_USER_NOTES = 1 << 0,
+	NO_AFFINE_USER_IDS = 1 << 1,
+	VERSIONED_READ_STATES = 1 << 2,
+	VERSIONED_USER_GUILD_SETTINGS = 1 << 3,
+	DEDUPE_USER_OBJECTS = 1 << 4,
+	PRIORITIZED_READY_PAYLOAD = 1 << 5,
+	MULTIPLE_GUILD_EXPERIMENT_POPULATIONS = 1 << 6,
+	NON_CHANNEL_READ_STATES = 1 << 7,
+	AUTH_TOKEN_REFRESH = 1 << 8,
+	USER_SETTINGS_PROTO = 1 << 9,
+	CLIENT_STATE_V2 = 1 << 10,
+	PASSIVE_GUILD_UPDATE = 1 << 11,
+	UNKNOWN = 1 << 12,
+}
+
+export const allCapabilities =
+	GatewayCapabilities.LAZY_USER_NOTES |
+	GatewayCapabilities.NO_AFFINE_USER_IDS |
+	GatewayCapabilities.VERSIONED_READ_STATES |
+	GatewayCapabilities.VERSIONED_USER_GUILD_SETTINGS |
+	GatewayCapabilities.DEDUPE_USER_OBJECTS |
+	GatewayCapabilities.PRIORITIZED_READY_PAYLOAD |
+	GatewayCapabilities.MULTIPLE_GUILD_EXPERIMENT_POPULATIONS |
+	GatewayCapabilities.NON_CHANNEL_READ_STATES |
+	GatewayCapabilities.AUTH_TOKEN_REFRESH |
+	GatewayCapabilities.USER_SETTINGS_PROTO |
+	GatewayCapabilities.CLIENT_STATE_V2 |
+	GatewayCapabilities.PASSIVE_GUILD_UPDATE |
+	GatewayCapabilities.UNKNOWN;
+
+export type PopupWindowProps = Electron.BrowserWindowConstructorOptions & {
+	customProps: {
+		url: string;
+		checkForDupes?: boolean;
+		alwaysOnTopValue?:
+			| "normal"
+			| "floating"
+			| "torn-off-menu"
+			| "modal-panel"
+			| "main-menu"
+			| "status"
+			| "pop-up-menu"
+			| "screen-saver";
+	};
+};

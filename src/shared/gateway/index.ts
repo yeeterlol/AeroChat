@@ -6,6 +6,7 @@ import {
 	GatewaySendPayload,
 } from "discord-api-types/v9";
 import WebSocket from "ws";
+const { ipcRenderer } = require("electron/renderer");
 
 export type DispatchData<T extends GatewayDispatchEvents> =
 	(GatewayDispatchPayload & {
@@ -22,14 +23,18 @@ export type OpcodeReceiveData<T extends GatewayOpcodes> =
 	})["d"];
 
 export function sendOp<T extends GatewayOpcodes>(
-	socket: WebSocket,
 	opcode: T,
 	payload: OpcodeSendData<T>,
+	socket?: WebSocket,
 ): void {
-	const data = {
-		op: opcode,
-		d: payload,
-	};
-
-	socket.send(JSON.stringify(data));
+	try {
+		const data = {
+			op: opcode,
+			d: payload,
+		};
+		if (socket) socket.send(JSON.stringify(data));
+		else ipcRenderer.send("send-op", JSON.stringify(data));
+	} catch {
+		console.log("failed to send op", opcode, payload);
+	}
 }

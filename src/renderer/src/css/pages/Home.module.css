@@ -131,12 +131,38 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	margin-top: 8px;
+	margin-top: 2px;
+	transform: translateX(-2px);
 	background: none;
 	border: none;
 	outline: none;
-	padding: 0;
-	width: 100%;
+	padding-left: 2px;
+	max-width: 100%;
+	width: fit-content;
+	border-radius: 2px;
+	cursor: default;
+}
+
+.message:hover,
+.message:focus {
+	background: linear-gradient(
+		180deg,
+		rgba(236, 247, 255, 0.568) 0%,
+		rgba(255, 255, 255, 0.39220183486238536) 45%,
+		rgba(152, 183, 216, 0.747) 45%,
+		rgba(255, 255, 255, 0.322) 100%
+	);
+	box-shadow: inset 0px 0px 0px 1px #fff;
+	outline: solid thin #6092a9;
+}
+
+.message:focus {
+	text-overflow: clip;
+}
+
+.message:empty::before {
+	content: attr(data-placeholder);
+	color: #444;
 }
 
 .message::selection {
@@ -262,12 +288,12 @@
 	align-items: center;
 	flex-direction: column;
 	overflow: auto;
-	height: 100%;
+	height: calc(100% - 18px);
 	width: 100%;
-	padding: 1px 16px;
 	box-sizing: border-box;
-	margin-top: -8px;
+	padding: 0px 18px;
 	position: relative;
+	box-shadow: var(--aero-outline);
 }
 
 .contact {

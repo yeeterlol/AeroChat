@@ -1,0 +1,20 @@
+{
+    "user": {
+        "id": "678344927997853742"
+    },
+    "status": "online",
+    "guild_id": "1053116979545919518",
+    "client_status": {
+        "web": "online"
+    },
+    "broadcast": null,
+    "activities": [
+        {
+            "type": 4,
+            "state": "🔗 sapph.xyz",
+            "name": "sapph.xyz",
+            "id": "ec0b28a579ecb4bd",
+            "created_at": 1700244278478
+        }
+    ]
+}

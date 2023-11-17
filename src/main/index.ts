@@ -2,18 +2,50 @@ import { app, shell, BrowserWindow, ipcMain } from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import icon from "../../resources/icon.png?asset";
-import main from "@electron/remote/main";
+import main, { enable } from "@electron/remote/main";
 import Store from "electron-store";
-import { State } from "../shared/types";
+import { PopupWindowProps, State, allCapabilities } from "../shared/types";
 import { sendOp } from "../shared/gateway";
-import {
-	GatewayOpcodes,
-	GatewayReceivePayload,
-	PresenceUpdateStatus,
-} from "discord-api-types/v9";
+import { GatewayOpcodes, GatewayReceivePayload } from "discord-api-types/v9";
 import WebSocket from "ws";
+import { writeFileSync } from "fs";
 
-const debug = true;
+export const mergeObjects = <T extends object = object>(
+	target: T,
+	...sources: T[]
+): T => {
+	if (!sources.length) {
+		return target;
+	}
+	const source = sources.shift();
+	if (source === undefined) {
+		return target;
+	}
+
+	if (isMergebleObject(target) && isMergebleObject(source)) {
+		Object.keys(source).forEach(function (key: string) {
+			if (isMergebleObject(source[key])) {
+				if (!target[key]) {
+					target[key] = {};
+				}
+				mergeObjects(target[key], source[key]);
+			} else {
+				target[key] = source[key];
+			}
+		});
+	}
+
+	return mergeObjects(target, ...sources);
+};
+
+const isObject = (item: any): boolean => {
+	return item !== null && typeof item === "object";
+};
+
+const isMergebleObject = (item): boolean => {
+	return isObject(item) && !Array.isArray(item);
+};
+
 main.initialize();
 Store.initRenderer();
 
@@ -46,54 +78,40 @@ function findWindowFromPath(path: string): BrowserWindow | undefined {
 	return undefined;
 }
 
-function createPopupWindow(
-	url: string,
-	width?: number,
-	height?: number,
-	resizable: boolean = true,
-) {
+function createPopupWindow(props: PopupWindowProps) {
 	const newWindow = new BrowserWindow({
 		...defaultOptions,
-		width: width || defaultOptions.width,
-		height: height || defaultOptions.height,
-		resizable: debug ? true : resizable,
+		...props,
 	});
+	enable(newWindow.webContents);
+	props.customProps.alwaysOnTopValue &&
+		newWindow.setAlwaysOnTop(true, props.customProps.alwaysOnTopValue);
 	newWindow.webContents.setWindowOpenHandler(({ url }) => {
 		shell.openExternal(url);
 		return { action: "deny" };
 	});
 	if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
-		newWindow.loadURL(`${process.env["ELECTRON_RENDERER_URL"]}#${url}`);
+		newWindow.loadURL(
+			`${process.env["ELECTRON_RENDERER_URL"]}#${props.customProps.url}`,
+		);
 	} else {
 		const indexPath = join(__dirname, "../renderer/index.html");
-		newWindow.loadURL(`file://${indexPath}#${url}`);
+		newWindow.loadURL(`file://${indexPath}#${props.customProps.url}`);
 	}
-	newWindow.on("blur", () => {
-		newWindow?.webContents.executeJavaScript(
-			`document.querySelector('.titlebar').classList.add('inactive');`,
-		);
-	});
-
-	newWindow.on("focus", () => {
-		newWindow?.webContents.executeJavaScript(
-			`document.querySelector('.titlebar').classList.remove('inactive');`,
-		);
+	newWindow.on("ready-to-show", () => {
+		optimizer.watchWindowShortcuts(newWindow);
+		newWindow.show();
 	});
 	newWindow.removeMenu();
 }
 
-function createOrFocusWindow(
-	url: string,
-	width?: number,
-	height?: number,
-	resizable: boolean = true,
-) {
-	const existingWindow = findWindowFromPath(url);
+function createOrFocusWindow(props: PopupWindowProps) {
+	const existingWindow = findWindowFromPath(props.customProps.url);
 	if (existingWindow) {
 		existingWindow.show();
 		existingWindow.focus();
 	} else {
-		createPopupWindow(url, width, height, resizable);
+		createPopupWindow(props);
 	}
 }
 
@@ -126,6 +144,132 @@ function createWindow(): void {
 	} else {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
+	ipcMain.on("start-gateway", (_e, token: string) => {
+		socket = new WebSocket("wss://gateway.discord.gg/?v=9&encoding=json");
+		socket!.onopen = () => {
+			sendOp(
+				GatewayOpcodes.Identify,
+				{
+					token: token,
+					capabilities: allCapabilities,
+					properties: {
+						os: "Linux",
+						browser: "Chrome",
+						device: "",
+						system_locale: "en-GB",
+						browser_user_agent:
+							"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+						browser_version: "119.0.0.0",
+						os_version: "",
+						referrer: "",
+						referring_domain: "",
+						referrer_current: "",
+						referring_domain_current: "",
+						release_channel: "stable",
+						client_build_number: 245648,
+						client_event_source: null,
+					},
+					presence: {
+						status: "unknown",
+						since: 0,
+						activities: [],
+						afk: false,
+					},
+					compress: false,
+					client_state: {
+						guild_versions: {},
+						highest_last_message_id: "0",
+						read_state_version: 0,
+						user_guild_settings_version: -1,
+						user_settings_version: -1,
+						private_channels_version: "0",
+						api_code_version: 0,
+					},
+				} as any,
+				socket!,
+			);
+		};
+		socket!.onmessage = (event) => {
+			const data = JSON.parse(event.data.toString()) as GatewayReceivePayload;
+			BrowserWindow.getAllWindows().forEach((window) => {
+				listeners.forEach((id) => {
+					window.webContents.send(`${id}-data`, JSON.stringify(data));
+				});
+			});
+			console.log(data.t, data.op);
+			switch (data.op) {
+				case GatewayOpcodes.Hello: {
+					setInterval(() => {
+						sendOp(GatewayOpcodes.Heartbeat, null, socket!);
+					}, data.d.heartbeat_interval);
+					break;
+				}
+				case GatewayOpcodes.Dispatch: {
+					switch (data.t) {
+						case "READY": {
+							writeFileSync("ready.json", JSON.stringify(data.d, null, 4));
+							break;
+						}
+						case "READY_SUPPLEMENTAL" as any: {
+							const d = data.d as any;
+							setState({
+								...state,
+								ready: {
+									...state?.ready,
+									...d,
+								},
+							});
+							break;
+						}
+						case "PRESENCE_UPDATE": {
+							writeFileSync("presence.json", JSON.stringify(data.d, null, 4));
+							break;
+						}
+					}
+				}
+				default: {
+					// unimplemented
+				}
+			}
+		};
+	});
+	ipcMain.on("send-op", (_e, data: string) => {
+		console.log("sent");
+		console.log(data);
+		socket!.send(data);
+	});
+	ipcMain.on("close-gateway", () => {
+		socket!.close();
+	});
+
+	ipcMain.on("set-state", (_e, newState) => {
+		setState(newState);
+	});
+
+	ipcMain.on("get-state", (_e) => {
+		_e.returnValue = state;
+	});
+
+	ipcMain.on("add-gateway-listener", (_e, id: string) => {
+		listeners.push(id);
+	});
+
+	ipcMain.on("open-dev-tools", (e) => {
+		e.sender.openDevTools();
+	});
+
+	ipcMain.on("remove-gateway-listener", (_e, id: string) => {
+		listeners.splice(listeners.indexOf(id), 1);
+		BrowserWindow.getAllWindows().forEach((window) => {
+			window.webContents.send(`${id}-remove`);
+		});
+	});
+
+	ipcMain.on("create-window", (_e, props: PopupWindowProps) => {
+		props.customProps.checkForDupes
+			? createOrFocusWindow(props)
+			: createPopupWindow(props);
+	});
 }
 
 // This method will be called when Electron has finished
@@ -138,9 +282,6 @@ app.whenReady().then(() => {
 	// Default open or close DevTools by F12 in development
 	// and ignore CommandOrControl + R in production.
 	// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-	app.on("browser-window-created", (_, window) => {
-		optimizer.watchWindowShortcuts(window);
-	});
 
 	createWindow();
 
@@ -159,86 +300,6 @@ app.on("window-all-closed", () => {
 		app.quit();
 	}
 });
-
-ipcMain.on("start-gateway", (_e, token: string) => {
-	socket = new WebSocket("wss://gateway.discord.gg/?v=9&encoding=json");
-	socket!.onopen = () => {
-		sendOp(socket!, GatewayOpcodes.Identify, {
-			token: token,
-			properties: {
-				os: "Windows",
-				browser: "Firefox",
-				device: "",
-			},
-			presence: {
-				status: PresenceUpdateStatus.Online,
-				since: 0,
-				activities: [],
-				afk: false,
-			},
-			compress: false,
-			intents: null as any, // we don't care about intents, we're not a bot
-		});
-	};
-	socket!.onmessage = (event) => {
-		const data = JSON.parse(event.data.toString()) as GatewayReceivePayload;
-		BrowserWindow.getAllWindows().forEach((window) => {
-			listeners.forEach((id) => {
-				window.webContents.send(`${id}-data`, JSON.stringify(data));
-			});
-		});
-		switch (data.op) {
-			case GatewayOpcodes.Hello: {
-				setInterval(() => {
-					sendOp(socket!, GatewayOpcodes.Heartbeat, null);
-				}, data.d.heartbeat_interval);
-				break;
-			}
-			default: {
-				// unimplemented
-			}
-		}
-	};
-});
-
-ipcMain.on("close-gateway", () => {
-	socket!.close();
-});
-
-ipcMain.on("set-state", (_e, newState: string) => {
-	setState(newState);
-});
-
-ipcMain.on("get-state", (_e) => {
-	_e.returnValue = state;
-});
-
-ipcMain.on("add-gateway-listener", (_e, id: string) => {
-	listeners.push(id);
-});
-
-ipcMain.on("remove-gateway-listener", (_e, id: string) => {
-	listeners.splice(listeners.indexOf(id), 1);
-	BrowserWindow.getAllWindows().forEach((window) => {
-		window.webContents.send(`${id}-remove`);
-	});
-});
-
-ipcMain.on(
-	"create-window",
-	(
-		_e,
-		url: string,
-		width?: number,
-		height?: number,
-		resizable: boolean = true,
-		checkForDupes: boolean = true,
-	) => {
-		checkForDupes
-			? createOrFocusWindow(url, width, height, resizable)
-			: createPopupWindow(url, width, height, resizable);
-	},
-);
 
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.

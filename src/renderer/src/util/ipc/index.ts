@@ -5,7 +5,7 @@ import {
 	GatewayReceivePayload,
 } from "discord-api-types/v9";
 import { DispatchData, OpcodeReceiveData } from "src/shared/gateway";
-import { State } from "src/shared/types";
+import { PopupWindowProps, State } from "src/shared/types";
 import { v4 } from "uuid";
 
 export function startGateway(token: string) {
@@ -17,7 +17,7 @@ export function getState(): State {
 }
 
 export function setGatewayState(newState: State) {
-	ipcRenderer.send("set-state", JSON.stringify(newState));
+	ipcRenderer.send("set-state", newState);
 }
 
 // const eventListeners: {
@@ -48,7 +48,6 @@ export function addDispatchListener<T extends GatewayDispatchEvents>(
 	cb: (data: DispatchData<T>) => void,
 ): string {
 	const id = v4();
-	console.log(`added ${id}`);
 	ipcRenderer.send("add-gateway-listener", id);
 	ipcRenderer.on(`${id}-data`, (_: any, dataStr: string) => {
 		const data: GatewayReceivePayload = JSON.parse(dataStr);
@@ -62,25 +61,11 @@ export function addDispatchListener<T extends GatewayDispatchEvents>(
 	return id;
 }
 
-export function createWindow(
-	url: string,
-	width?: number,
-	height?: number,
-	resizable: boolean = true,
-	checkForDupes: boolean = true,
-) {
-	ipcRenderer.send(
-		"create-window",
-		url,
-		width,
-		height,
-		resizable,
-		checkForDupes,
-	);
+export function createWindow(props: PopupWindowProps) {
+	ipcRenderer.send("create-window", props);
 }
 
 export function removeGatewayListener(id: string): void {
-	console.log(`removed ${id}`);
 	ipcRenderer.send("remove-gateway-listener", id);
 	ipcRenderer.removeAllListeners(`${id}-data`);
 	ipcRenderer.removeAllListeners(`${id}-remove`);

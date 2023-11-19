@@ -1,14 +1,44 @@
-import { app, shell, BrowserWindow, ipcMain } from "electron";
+import {
+	app,
+	shell,
+	BrowserWindow,
+	ipcMain,
+	globalShortcut,
+	Rectangle,
+	safeStorage,
+} from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import icon from "../../resources/icon.png?asset";
 import main, { enable } from "@electron/remote/main";
 import Store from "electron-store";
-import { PopupWindowProps, State, allCapabilities } from "../shared/types";
+import {
+	ContextMenuItem,
+	PopupWindowProps,
+	State,
+	allCapabilities,
+} from "../shared/types";
 import { sendOp } from "../shared/gateway";
 import { GatewayOpcodes, GatewayReceivePayload } from "discord-api-types/v9";
 import WebSocket from "ws";
 import { writeFileSync } from "fs";
+
+function pathToHash(path: string) {
+	if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
+		return `${process.env["ELECTRON_RENDERER_URL"]}#${path}`;
+	} else {
+		const indexPath = join(__dirname, "../renderer/index.html");
+		return `file://${indexPath}#${path}`;
+	}
+}
+function isClickOutisde(bounds: Rectangle, mouseX: number, mouseY: number) {
+	return (
+		mouseX < bounds.x ||
+		mouseX > bounds.x + bounds.width ||
+		mouseY < bounds.y ||
+		mouseY > bounds.y + bounds.height
+	);
+}
 
 export const mergeObjects = <T extends object = object>(
 	target: T,
@@ -51,6 +81,49 @@ Store.initRenderer();
 
 let socket: WebSocket | null;
 let state: State | null;
+let win: BrowserWindow | null;
+let ctxMenu: BrowserWindow | null;
+let interval: NodeJS.Timeout | null;
+
+async function showContextMenu(
+	id: string,
+	menu: ContextMenuItem[],
+	x?: number,
+	y?: number,
+	offsetWidth?: number,
+) {
+	if (!ctxMenu) return;
+	if (interval) clearInterval(interval);
+	ctxMenu.webContents.setWindowOpenHandler(({ url }) => {
+		shell.openExternal(url);
+		return { action: "deny" };
+	});
+	ctxMenu.setOpacity(0);
+	const steps = 60;
+	const timeInMs = 150;
+	const time = timeInMs / steps;
+	const step = 1 / steps;
+	interval = setInterval(() => {
+		if (!ctxMenu) return;
+		const opacity = ctxMenu.getOpacity();
+		if (opacity < 1) {
+			ctxMenu.setOpacity(opacity + step);
+		}
+	}, time);
+	setTimeout(() => {
+		if (!ctxMenu) return;
+		if (interval) clearInterval(interval);
+		ctxMenu.setOpacity(1);
+	}, timeInMs);
+	ctxMenu.webContents.loadURL(
+		pathToHash(
+			`/context-menu?id=${id}&menu=${encodeURIComponent(
+				JSON.stringify(menu),
+			)}&x=${x || 0}&y=${y || 0}&offsetWidth=${offsetWidth || 0}`,
+		),
+	);
+	ctxMenu.setIgnoreMouseEvents(false);
+}
 
 const listeners: string[] = [];
 
@@ -59,6 +132,7 @@ const defaultOptions: Electron.BrowserWindowConstructorOptions = {
 	height: 477,
 	show: false,
 	autoHideMenuBar: true,
+	backgroundColor: "white",
 	...(process.platform === "linux" ? { icon } : {}),
 	webPreferences: {
 		preload: join(__dirname, "../preload/index.js"),
@@ -103,6 +177,7 @@ function createPopupWindow(props: PopupWindowProps) {
 		newWindow.show();
 	});
 	newWindow.removeMenu();
+	return newWindow;
 }
 
 function createOrFocusWindow(props: PopupWindowProps) {
@@ -145,6 +220,8 @@ function createWindow(): void {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
 	ipcMain.on("start-gateway", (_e, token: string) => {
+		const store = new Store();
+		store.set("token", safeStorage.encryptString(token));
 		socket = new WebSocket("wss://gateway.discord.gg/?v=9&encoding=json");
 		socket!.onopen = () => {
 			sendOp(
@@ -196,7 +273,7 @@ function createWindow(): void {
 					window.webContents.send(`${id}-data`, JSON.stringify(data));
 				});
 			});
-			console.log(data.t, data.op);
+			console.log(data.op, data.t);
 			switch (data.op) {
 				case GatewayOpcodes.Hello: {
 					setInterval(() => {
@@ -208,10 +285,24 @@ function createWindow(): void {
 					switch (data.t) {
 						case "READY": {
 							writeFileSync("ready.json", JSON.stringify(data.d, null, 4));
+							const d = data.d as any;
+							setState({
+								...state,
+								ready: {
+									...state?.ready,
+									...d,
+								},
+							});
+							// redirect the webcontents of win
+							win?.loadURL(pathToHash("/home"));
 							break;
 						}
 						case "READY_SUPPLEMENTAL" as any: {
 							const d = data.d as any;
+							writeFileSync(
+								"ready_supplemental.json",
+								JSON.stringify(d, null, 4),
+							);
 							setState({
 								...state,
 								ready: {
@@ -234,8 +325,6 @@ function createWindow(): void {
 		};
 	});
 	ipcMain.on("send-op", (_e, data: string) => {
-		console.log("sent");
-		console.log(data);
 		socket!.send(data);
 	});
 	ipcMain.on("close-gateway", () => {
@@ -258,6 +347,54 @@ function createWindow(): void {
 		e.sender.openDevTools();
 	});
 
+	ipcMain.on(
+		"context-menu",
+		(
+			e,
+			id: string,
+			menu: ContextMenuItem[],
+			x?: number,
+			y?: number,
+			offsetWidth?: number,
+		) => {
+			showContextMenu(id, menu, x, y, offsetWidth);
+			ipcMain.once(`${id}-close`, (_, selectedId) => {
+				e.sender.send(`${id}-close`, selectedId);
+			});
+			e.sender.once("blur", () => {
+				ctxMenu?.setIgnoreMouseEvents(true);
+				ctxMenu?.setOpacity(0);
+				e.sender.send(`${id}-close`);
+			});
+			ipcMain.once("close-ctx", (_, href: string) => {
+				if (href.includes("context-menu")) return;
+				ctxMenu?.setIgnoreMouseEvents(true);
+				ctxMenu?.setOpacity(0);
+				e.sender.send(`${id}-close`);
+			});
+			BrowserWindow.fromWebContents(e.sender)?.once("move", () => {
+				ctxMenu?.setIgnoreMouseEvents(true);
+				ctxMenu?.setOpacity(0);
+				e.sender.send(`${id}-close`);
+			});
+			BrowserWindow.fromWebContents(e.sender)?.once("resize", () => {
+				ctxMenu?.setIgnoreMouseEvents(true);
+				ctxMenu?.setOpacity(0);
+				e.sender.send(`${id}-close`);
+			});
+			BrowserWindow.fromWebContents(e.sender)?.once("minimize", () => {
+				ctxMenu?.setIgnoreMouseEvents(true);
+				ctxMenu?.setOpacity(0);
+				e.sender.send(`${id}-close`);
+			});
+			BrowserWindow.fromWebContents(e.sender)?.once("maximize", () => {
+				ctxMenu?.setIgnoreMouseEvents(true);
+				ctxMenu?.setOpacity(0);
+				e.sender.send(`${id}-close`);
+			});
+		},
+	);
+
 	ipcMain.on("remove-gateway-listener", (_e, id: string) => {
 		listeners.splice(listeners.indexOf(id), 1);
 		BrowserWindow.getAllWindows().forEach((window) => {
@@ -270,6 +407,7 @@ function createWindow(): void {
 			? createOrFocusWindow(props)
 			: createPopupWindow(props);
 	});
+	win = mainWindow;
 }
 
 // This method will be called when Electron has finished
@@ -283,8 +421,30 @@ app.whenReady().then(() => {
 	// and ignore CommandOrControl + R in production.
 	// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
 
+	ctxMenu = new BrowserWindow({
+		width: 200,
+		height: 115,
+		frame: false,
+		resizable: false,
+		transparent: true,
+		focusable: false,
+		skipTaskbar: false,
+		backgroundColor: undefined,
+		webPreferences: {
+			preload: join(__dirname, "../preload/index.js"),
+			sandbox: false,
+			nodeIntegration: true,
+			contextIsolation: false,
+		},
+	});
+	enable(ctxMenu.webContents);
+	ctxMenu.setAlwaysOnTop(true, "status");
+	ctxMenu.setOpacity(0);
+	ctxMenu.show();
 	createWindow();
-
+	win?.on("close", () => {
+		app.quit();
+	});
 	app.on("activate", function () {
 		// On macOS it's common to re-create a window in the app when the
 		// dock icon is clicked and there are no other windows open.

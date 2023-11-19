@@ -122,7 +122,6 @@ function Login(): JSX.Element {
 			? safeStorage.decryptString(Buffer.from((store.get("token") as any).data))
 			: "",
 	);
-	const { state, setState } = useContext(Context);
 	const [userInfo, setUserInfo] = useState<IUser>();
 	const pfpRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
@@ -175,16 +174,6 @@ function Login(): JSX.Element {
 			}
 		}
 	}, [token]);
-	const navigate = useNavigate();
-	useEffect(() => {
-		const id = addDispatchListener(GatewayDispatchEvents.Ready, (data) => {
-			setState({ ...state, ready: data as any });
-			navigate("/home");
-		});
-		return () => {
-			removeGatewayListener(id);
-		};
-	}, [state]);
 	return (
 		<div className={styles.window}>
 			<div className={styles.pfp} ref={pfpRef} />

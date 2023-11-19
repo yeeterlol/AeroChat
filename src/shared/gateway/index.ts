@@ -6,7 +6,7 @@ import {
 	GatewaySendPayload,
 } from "discord-api-types/v9";
 import WebSocket from "ws";
-const { ipcRenderer } = require("electron/renderer");
+const { ipcRenderer } = require("electron");
 
 export type DispatchData<T extends GatewayDispatchEvents> =
 	(GatewayDispatchPayload & {

@@ -5,7 +5,11 @@ import {
 	GatewayReceivePayload,
 } from "discord-api-types/v9";
 import { DispatchData, OpcodeReceiveData } from "src/shared/gateway";
-import { PopupWindowProps, State } from "src/shared/types";
+import {
+	ContextMenuItem,
+	PopupWindowProps,
+	State,
+} from "../../../../shared/types";
 import { v4 } from "uuid";
 
 export function startGateway(token: string) {
@@ -73,4 +77,28 @@ export function removeGatewayListener(id: string): void {
 
 export function closeGateway() {
 	ipcRenderer.send("close-gateway");
+}
+
+export async function contextMenu(
+	items: ContextMenuItem[],
+	x?: number,
+	y?: number,
+	offsetWidth?: number,
+): Promise<void> {
+	const id = v4();
+	const idItems = items.map((i) => ({ ...i, id: v4() }));
+	ipcRenderer.send(
+		"context-menu",
+		id,
+		idItems.map(({ click, ...rest }) => rest),
+		x,
+		y,
+		offsetWidth,
+	);
+	return new Promise((resolve) => {
+		ipcRenderer.once(`${id}-close`, (_, id: string) => {
+			idItems.find((i) => i.id === id)?.click();
+			resolve();
+		});
+	});
 }

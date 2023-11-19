@@ -9,12 +9,83 @@ import {
 } from "discord-api-types/v9";
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import { sendOp } from "../../../shared/gateway";
-const { Menu, getCurrentWindow, nativeImage } =
-	require("@electron/remote") as typeof import("@electron/remote");
+// const { Menu, getCurrentWindow, nativeImage } =
+// 	require("@electron/remote") as typeof import("@electron/remote");
 import active from "@renderer/assets/home/context-menu/active.png";
 import idle from "@renderer/assets/home/context-menu/idle.png";
 import invisible from "@renderer/assets/home/context-menu/invisible.png";
 import dnd from "@renderer/assets/home/context-menu/dnd.png";
+import { Friend, FriendActivity, Guild, Status } from "../../../shared/types";
+import { contextMenu } from "@renderer/util/ipc";
+const remote = window.require(
+	"@electron/remote",
+) as typeof import("@electron/remote");
+import hasEmoji from "has-emoji";
+import gameIcon from "@renderer/assets/home/statuses/game.png";
+import musicIcon from "@renderer/assets/home/statuses/music.png";
+
+function getActivityText(activities: FriendActivity[]) {
+	const music = activities.find((a) => a.type === 2);
+	if (music) {
+		return (
+			<span className={styles.customStatus}>
+				<span>
+					<img src={musicIcon} width="14" />
+				</span>
+				<span className={styles.customStatusText}>
+					<i>
+						{music.state} - {music.details}
+					</i>
+				</span>
+			</span>
+		);
+	}
+	const game = activities.find((a) => a.type === 0);
+	if (game) {
+		return (
+			<span className={styles.customStatus}>
+				<span>
+					<img src={gameIcon} width="14" />
+				</span>
+				<span className={styles.customStatusText}>
+					<b>{game.name}</b>{" "}
+					{game.details && (
+						<span>
+							(<i>{game.details}</i>)
+						</span>
+					)}
+				</span>
+			</span>
+		);
+	}
+	const custom = activities.find((a) => a.type === 4);
+	if (custom) {
+		return (
+			<span className={styles.customStatus}>
+				{custom.emoji ? (
+					hasEmoji(custom.emoji.name) ? (
+						<span>{custom.emoji.name}</span>
+					) : (
+						<span>
+							<img
+								src={`https://cdn.discordapp.com/emojis/${custom.emoji.id}.webp?quality=lossless&size=128`}
+								width="14"
+							/>
+						</span>
+					)
+				) : (
+					<></>
+				)}
+				{custom.state ? (
+					<span className={styles.customStatusText}>{custom.state}</span>
+				) : (
+					<></>
+				)}
+			</span>
+		);
+	}
+	return "";
+}
 
 function calcWidth(text: string, offset: number = 1): number {
 	const body = document.querySelector("body");
@@ -25,6 +96,12 @@ function calcWidth(text: string, offset: number = 1): number {
 	const width = el.offsetWidth;
 	el.remove();
 	return offset ? width + offset : width;
+}
+
+function generateRandBetween(min: number, max: number, prev: number) {
+	let rand = Math.floor(Math.random() * (max - min + 1) + min);
+	if (rand === prev) rand = generateRandBetween(min, max, prev);
+	return rand;
 }
 
 function calculateCaretPosition(
@@ -53,16 +130,87 @@ function calculateCaretPosition(
 	return caretPos + 1;
 }
 
+function Dropdown({
+	header,
+	children,
+	info,
+}: {
+	header: string;
+	children: JSX.Element[];
+	info?: string;
+}) {
+	const [open, setOpen] = useState(false);
+	return (
+		<div className={styles.dropdown}>
+			<div className={styles.dropdownHeader} onClick={() => setOpen(!open)}>
+				<div className={styles.dropdownArrow} data-toggled={open} />
+				<h1>{header}</h1>
+				<div className={styles.dropdownInfo}>{info}</div>
+			</div>
+			<div className={styles.dropdownContent} data-toggled={open}>
+				{children}
+			</div>
+		</div>
+	);
+}
+
+function Contact(
+	props: React.DetailedHTMLProps<
+		React.HTMLAttributes<HTMLDivElement>,
+		HTMLDivElement
+	> & { user: APIUser; status: Friend; guild?: boolean },
+) {
+	const p = { ...props, user: undefined, status: undefined, guild: undefined };
+	return (
+		<div {...p} className={styles.contact}>
+			<PfpBorder
+				pfp={
+					props?.user?.avatar
+						? `https://cdn.discordapp.com/avatars/${props?.user?.id}/${props?.user?.avatar}.png`
+						: defaultPfp
+				}
+				variant="small"
+				stateInitial={props?.status?.status as unknown as PresenceUpdateStatus}
+				guild={props.guild}
+			/>
+			<div className={styles.contactInfo}>
+				<div className={styles.contactUsername}>
+					{props.user.global_name || props.user.username}
+				</div>
+				<div className={styles.contactStatus}>
+					{getActivityText(props.status.activities)}
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function Home() {
+	const adRef = useRef<HTMLImageElement>(null);
 	const { state, setState } = useContext(Context);
+	function contactContextMenu() {
+		const cursor = remote.screen.getCursorScreenPoint();
+		contextMenu(
+			[
+				{
+					label: "Remove friend",
+					click() {},
+				},
+			],
+			cursor.x,
+			cursor.y,
+		);
+	}
 	const inputRef = useRef<HTMLInputElement>(null);
-	const [editingStatus] = useState(false);
 	const [paperSrc] = useState("");
 	function setStatus(status: PresenceUpdateStatus) {
 		let mutState = { ...state };
 		mutState.ready.sessions.find((s) => s.active)!.status = status;
 		sendOp(GatewayOpcodes.PresenceUpdate, {
-			status,
+			status:
+				status === PresenceUpdateStatus.Offline
+					? PresenceUpdateStatus.Invisible
+					: status,
 			since: 0,
 			activities: [
 				localStorage.getItem("statusMessage")
@@ -78,10 +226,45 @@ function Home() {
 		});
 		setState(mutState);
 	}
+	let lastAd = -1;
+
 	useEffect(() => {
-		if (!editingStatus) return;
-		inputRef.current?.focus();
-	}, [editingStatus]);
+		if (!adRef.current) return;
+		let interval: NodeJS.Timeout;
+		(async () => {
+			const ads = (
+				await Promise.all(
+					Object.values(import.meta.glob("@renderer/assets/home/ads/*")).map(
+						(v) => v(),
+					),
+				)
+			).map((v) => (v as any).default) as string[];
+			adRef.current!.style.backgroundImage = `url(${
+				ads[generateRandBetween(0, ads.length - 1, lastAd)]
+			}`;
+			interval = setInterval(() => {
+				adRef.current!.style.backgroundImage = `url(${
+					ads[generateRandBetween(0, ads.length - 1, lastAd)]
+				})`;
+			}, 20000);
+		})();
+		return () => {
+			if (interval) clearInterval(interval);
+		};
+	}, []);
+	// useEffect(() => {
+	// 	if (!editingStatus) return;
+	// 	inputRef.current?.focus();
+	// }, [editingStatus]);
+	useEffect(() => {
+		if (!inputRef.current) return;
+		inputRef.current.placeholder = inputRef.current.value
+			? ""
+			: "Share a quick message";
+		inputRef.current.style.width = `${calcWidth(
+			inputRef.current.value || inputRef.current.placeholder,
+		)}px`;
+	}, []);
 	const [_, setSearch] = useState("");
 	const [contextMenuOpacity, setContextMenuOpacity] = useState("0");
 	useEffect(() => {
@@ -97,69 +280,27 @@ function Home() {
 			document.removeEventListener("mousedown", mouseDown);
 		};
 	}, []);
-	useEffect(() => {
-		if (contextMenuOpacity !== "1") return;
-		const menu = Menu.buildFromTemplate([
-			{
-				label: "Available",
-				id: "available",
-				click() {
-					setStatus(PresenceUpdateStatus.Online);
-				},
-				icon: nativeImage.createFromPath(active),
-			},
-			{
-				label: "Busy",
-				id: "busy",
-				click() {
-					setStatus(PresenceUpdateStatus.DoNotDisturb);
-				},
-				icon: nativeImage.createFromPath(dnd),
-			},
-			{
-				label: "Away",
-				id: "away",
-				click() {
-					setStatus(PresenceUpdateStatus.Idle);
-				},
-				icon: nativeImage.createFromPath(idle),
-			},
-			{
-				label: "Appear offline",
-				id: "invisible",
-				click() {
-					setStatus(PresenceUpdateStatus.Offline);
-				},
-				icon: nativeImage.createFromPath(invisible),
-			},
-		]);
-		function mouseDown() {
-			setContextMenuOpacity("0");
-			menu.closePopup();
-		}
-		const username = document.getElementsByClassName(
-			styles.usernameContainer,
-		)[0] as HTMLDivElement;
-		if (!username) return;
-		const bounds = username.getBoundingClientRect();
-		menu.popup({
-			window: getCurrentWindow(),
-			x: bounds.left,
-			y: bounds.top + bounds.height,
-		});
-		menu.on("menu-will-close", () => {
-			setContextMenuOpacity("0");
-			menu.closePopup();
-		});
-		document.addEventListener("mousedown", mouseDown);
-		return () => {
-			document.removeEventListener("mousedown", mouseDown);
-		};
-	}, [contextMenuOpacity]);
-	const userStatus = state.ready.sessions?.find((s) => s.active);
+	const userStatus = state.ready?.sessions?.find((s) => s.active);
 	const status = state.ready?.sessions
 		?.find((s) => s.active)
 		?.activities?.find((a) => a.type === 4);
+	const friends = state?.ready?.relationships
+		?.filter((r) => r.type === 1)
+		.map((u) => ({
+			user: state?.ready?.users?.find(
+				(v) => v.id === u.id,
+			) as unknown as APIUser,
+			status: state?.ready?.merged_presences?.friends?.find(
+				(v) => v.user_id === u.id,
+			) || {
+				activities: [],
+				client_status: {},
+				status: "offline" as Status,
+				user_id: u.id,
+			},
+		}));
+	const online = friends?.filter((f) => f.status.status !== Status.Offline);
+	const offline = friends?.filter((f) => f.status.status === Status.Offline);
 	return !state.ready?.user?.id ? (
 		<></>
 	) : (
@@ -190,9 +331,50 @@ function Home() {
 					/>
 					<div className={styles.userInfo}>
 						<div
-							onClick={() =>
-								setContextMenuOpacity((o) => (o === "0" ? "1" : "0"))
-							}
+							onClick={() => {
+								setContextMenuOpacity("1");
+								const window = remote.getCurrentWindow();
+								const windowPos = window.getContentBounds();
+								const usernameContainer = document.querySelector(
+									`.${styles.usernameContainer}`,
+								) as HTMLDivElement;
+								const bounds = usernameContainer.getBoundingClientRect();
+								contextMenu(
+									[
+										{
+											click() {
+												setStatus(PresenceUpdateStatus.Online);
+											},
+											label: "Available",
+											icon: active,
+										},
+										{
+											click() {
+												setStatus(PresenceUpdateStatus.DoNotDisturb);
+											},
+											label: "Busy",
+											icon: dnd,
+										},
+										{
+											click() {
+												setStatus(PresenceUpdateStatus.Idle);
+											},
+											label: "Away",
+											icon: idle,
+										},
+										{
+											click() {
+												setStatus(PresenceUpdateStatus.Invisible);
+											},
+											label: "Appear offline",
+											icon: invisible,
+										},
+									],
+									windowPos.x + bounds.left,
+									windowPos.y + bounds.top + bounds.height,
+									1000,
+								).then(() => setContextMenuOpacity("0"));
+							}}
 							className={styles.usernameContainer}
 							data-toggled={`${contextMenuOpacity === "1"}`}
 						>
@@ -202,7 +384,7 @@ function Home() {
 							{/* <img src={dropdown} /> */}
 						</div>
 						<input
-							placeholder=""
+							ref={inputRef}
 							className={styles.message}
 							defaultValue={status?.state}
 							contentEditable={true}
@@ -252,7 +434,6 @@ function Home() {
 								const target = e.currentTarget;
 								if (document.activeElement === target) return;
 
-								console.log("focus!!!");
 								e.preventDefault();
 								target.focus();
 
@@ -270,24 +451,6 @@ function Home() {
 			</div>
 			<div className={styles.divider} />
 			<div className={styles.content}>
-				{/* <h1>Connection details</h1>
-				<div>Currently online users (according to our state?):</div>
-				{liveState.connections.map((c) => (
-					<div
-						key={c.id}
-						style={{
-							backgroundColor: "#57b9e7",
-							marginBottom: "10px",
-							padding: 8,
-						}}
-					>
-						<h1>{c.username}</h1>
-						<div>{c.id}</div>
-						<PfpBorder pfp={pfp} state={c.status} />
-					</div>
-				))}
-				<h1>Window info (state debugging??)</h1>
-				Window ID: {win?.id} */}
 				<div className={styles.padded}>
 					<div className={styles.searchContainer}>
 						<input
@@ -297,137 +460,33 @@ function Home() {
 							placeholder="Search contacts or the Web..."
 						/>
 					</div>
-					<h1>Users Online</h1>
+				</div>
+				<div className={styles.contactsContainer}>
 					<div className={styles.contacts}>
-						{/* {(() => {
-							// const connections = search
-							// 	? new Fuse(liveState.connections, { keys: ["username"] })
-							// 			.search(search)
-							// 			.map((c) => c.item)
-							// 			.filter((c) => c)
-							// 	: liveState.connections;
-							const connections = state.ready.relationships;
-							return search.trim() === "" && connections.length === 0 ? (
-								<div className={styles.searchInfo}>
-									<div
-										style={{
-											marginTop: 4,
-										}}
-									>
-										No users are online right now.
-									</div>
-								</div>
-							) : connections.length !== 0 ? (
-								connections.map((c) => (
-									<div
-										className={styles.contact}
-										key={c.id}
-										onDoubleClick={() => {
-											// const process = ProcessManager.getProcessByWindowId(
-											// 	winState?.id || "",
-											// );
-											// process?.addWindow({
-											// 	component: Live,
-											// 	initialPath: `/message?user=${
-											// 		c.id
-											// 	}&initialState=${JSON.stringify(liveState)}`,
-											// 	title: c.username,
-											// 	icon: "msn.png",
-											// 	defaultWidth: 483,
-											// 	defaultHeight: 419,
-											// 	minWidth: 483,
-											// 	minHeight: 419,
-											// });
-										}}
-									>
-										<PfpBorder
-											pfp={`https://cdn.discordapp.com/avatars/${c.user.id}/${c.user.avatar}.png`}
-											stateInitial={
-												c.user.presence?.status as PresenceUpdateStatus
-											}
-											variant="small"
-										/>
-										<div className={styles.contactInfo}>
-											<div className={styles.contactUsername}>
-												{c.user.username}
-											</div>
-											<div className={styles.contactStatus}>
-												{c.user.presence?.status}
-											</div>
-										</div>
-									</div>
-								))
-							) : (
-								<div className={styles.searchInfo}>
-									<div
-										style={{
-											marginBottom: 4,
-										}}
-									>
-										No results found for "{search}"
-									</div>
-									<a
-										href={`https://www.google.com/search?q=${search}`}
-										target="_blank"
-										rel="noreferrer"
-									>
-										Search the web for "{search}"
-									</a>
-								</div>
-							);
-						})()} */}
-						{state.ready?.relationships
-							?.map((r) => state.ready.users?.find((u) => u.id === r.id))
-							.map((c) => {
-								const status = state.ready?.merged_presences?.friends?.find(
-									(p) => p.user_id === c?.id,
-								);
-								return (
-									<div
-										className={styles.contact}
-										key={c?.id}
-										onDoubleClick={() => {
-											// const process = ProcessManager.getProcessByWindowId(
-											// 	winState?.id || "",
-											// );
-											// process?.addWindow({
-											// 	component: Live,
-											// 	initialPath: `/message?user=${
-											// 		c.id
-											// 	}&initialState=${JSON.stringify(liveState)}`,
-											// 	title: c.username,
-											// 	icon: "msn.png",
-											// 	defaultWidth: 483,
-											// 	defaultHeight: 419,
-											// 	minWidth: 483,
-											// 	minHeight: 419,
-											// });
-										}}
-									>
-										<PfpBorder
-											pfp={
-												c?.avatar
-													? `https://cdn.discordapp.com/avatars/${c?.id}/${c?.avatar}.png`
-													: defaultPfp
-											}
-											variant="small"
-											stateInitial={
-												(status?.status as unknown as PresenceUpdateStatus) ||
-												PresenceUpdateStatus.Offline
-											}
-										/>
-										<div className={styles.contactInfo}>
-											<div className={styles.contactUsername}>
-												{(c as unknown as APIUser)?.global_name || c?.username}
-											</div>
-											<div className={styles.contactStatus}>
-												{status?.activities?.find((a) => a.type === 4)?.state}
-											</div>
-										</div>
-									</div>
-								);
-							})}
+						<Dropdown
+							header="Online"
+							info={`(${online.length}/${friends.length})`}
+						>
+							{online?.map((c) => (
+								<Contact
+									onContextMenu={contactContextMenu}
+									key={c.user.id}
+									{...c}
+								/>
+							))}
+						</Dropdown>
+						<Dropdown header="Offline" info={`(${offline.length})`}>
+							{offline?.map((c) => (
+								<Contact
+									onContextMenu={contactContextMenu}
+									key={c.user.id}
+									{...c}
+								/>
+							))}
+						</Dropdown>
 					</div>
+					<div className={styles.dividerAlt} />
+					<div ref={adRef} className={styles.ad} />
 				</div>
 			</div>
 		</div>

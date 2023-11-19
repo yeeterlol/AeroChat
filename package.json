@@ -33,9 +33,12 @@
 		"electron-store": "^8.1.0",
 		"electron-updater": "^6.1.1",
 		"fuse.js": "^7.0.0",
+		"has-emoji": "^3.0.0",
 		"jsonwebtoken": "^9.0.2",
+		"node-gyp": "^10.0.1",
 		"node-vibrant": "^3.1.6",
 		"react-router-dom": "^6.18.0",
+		"uiohook-napi": "^1.5.2",
 		"utf-8-validate": "^5.0.10",
 		"uuid": "^9.0.1"
 	},

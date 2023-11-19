@@ -1,9 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import styles from "@renderer/css/components/PfpBorder.module.css";
 import { PresenceUpdateStatus } from "discord-api-types/v9";
-import defaultBorderStatic from "@renderer/assets/borders/default/active-static.png";
-import defaultBorderAnimatedFrom from "@renderer/assets/borders/default/active-animated-from.png";
-import defaultBorderAnimatedTo from "@renderer/assets/borders/default/active-animated-to.png";
 
 function getStateFromPresence(presence: PresenceUpdateStatus) {
 	switch (presence) {
@@ -25,19 +22,20 @@ export default function PfpBorder({
 	win,
 	stateInitial = PresenceUpdateStatus.Online,
 	variant = "default",
+	guild,
 }: {
 	pfp: string;
 	win?: Window;
 	stateInitial?: PresenceUpdateStatus;
 	variant?: "default" | "small" | "large";
+	guild?: boolean;
 }) {
 	let state = getStateFromPresence(stateInitial);
 	const containerRef = useRef<HTMLDivElement>(null);
-	const [src, setSrc] = useState(defaultBorderStatic);
+	const [src, setSrc] = useState("");
 	const [prevActivity, setPrevActivity] = useState("active");
-	const [borderDummy1, setBorderDummy1] = useState(defaultBorderAnimatedFrom);
-	const [borderDummy2, setBorderDummy2] = useState(defaultBorderAnimatedTo);
-
+	const [borderDummy1, setBorderDummy1] = useState("");
+	const [borderDummy2, setBorderDummy2] = useState("");
 	const [borderRef, borderDummy1Ref, borderDummy2Ref] = [
 		useRef<HTMLImageElement>(null),
 		useRef<HTMLImageElement>(null),
@@ -45,6 +43,26 @@ export default function PfpBorder({
 	];
 
 	useEffect(() => {
+		if (guild) return;
+		import(`@renderer/assets/borders/${variant}/active-static.png`).then(
+			(m) => {
+				if (src === "") setSrc(m.default);
+			},
+		);
+		import(`@renderer/assets/borders/${variant}/active-animated-from.png`).then(
+			(m) => {
+				if (borderDummy1 === "") setBorderDummy1(m.default);
+			},
+		);
+		import(`@renderer/assets/borders/${variant}/active-animated-to.png`).then(
+			(m) => {
+				if (borderDummy2 === "") setBorderDummy2(m.default);
+			},
+		);
+	}, [src, borderDummy1, borderDummy2, variant]);
+
+	useEffect(() => {
+		if (guild) return;
 		state = getStateFromPresence(stateInitial);
 		const [border, borderDummy1, borderDummy2] = [
 			borderRef.current!,
@@ -168,6 +186,7 @@ export default function PfpBorder({
 		}
 	}, [borderDummy1Ref, borderDummy2Ref, borderRef, prevActivity, win, state]);
 	useEffect(() => {
+		if (guild) return;
 		// preload images
 		const cache = document.createElement("CACHE");
 		cache.style.position = "absolute";
@@ -208,6 +227,15 @@ export default function PfpBorder({
 			document.body.removeChild(cache);
 		};
 	}, [variant]);
+	useEffect(() => {
+		if (guild) {
+			import(`@renderer/assets/borders/${variant}/invisible-static.png`).then(
+				(m) => {
+					setSrc(m.default);
+				},
+			);
+		}
+	}, [guild]);
 	function getImageStyle(): React.CSSProperties {
 		switch (variant) {
 			case "default":
@@ -217,6 +245,7 @@ export default function PfpBorder({
 					width: 22,
 					top: 11,
 					left: 12,
+					borderRadius: 0,
 				};
 			case "large":
 				return {
@@ -226,26 +255,38 @@ export default function PfpBorder({
 				};
 		}
 	}
-	return (
-		<div
-			data-state={stateInitial}
-			ref={containerRef}
-			className={styles.pfpBorder}
-		>
-			<img ref={borderRef} src={src.replace("/@fs", "")} id="border" />
-			<img
-				ref={borderDummy2Ref}
-				src={borderDummy2.replace("/@fs", "")}
-				id="borderDummy2"
-				className={styles.borderDummy2}
-			/>
-			<img
-				ref={borderDummy1Ref}
-				src={borderDummy1.replace("/@fs", "")}
-				id="borderDummy1"
-				className={styles.borderDummy1}
-			/>
-			<img style={getImageStyle()} src={pfp} className={styles.pfp} />
-		</div>
-	);
+	if (guild)
+		return (
+			<div
+				data-state={stateInitial}
+				ref={containerRef}
+				className={styles.pfpBorder}
+			>
+				<img ref={borderRef} src={src.replace("/@fs", "")} id="border" />
+				<img style={getImageStyle()} src={pfp} className={styles.pfp} />
+			</div>
+		);
+	else
+		return (
+			<div
+				data-state={stateInitial}
+				ref={containerRef}
+				className={styles.pfpBorder}
+			>
+				<img ref={borderRef} src={src.replace("/@fs", "")} id="border" />
+				<img
+					ref={borderDummy2Ref}
+					src={borderDummy2.replace("/@fs", "")}
+					id="borderDummy2"
+					className={styles.borderDummy2}
+				/>
+				<img
+					ref={borderDummy1Ref}
+					src={borderDummy1.replace("/@fs", "")}
+					id="borderDummy1"
+					className={styles.borderDummy1}
+				/>
+				<img style={getImageStyle()} src={pfp} className={styles.pfp} />
+			</div>
+		);
 }

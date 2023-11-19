@@ -281,3 +281,9 @@ export type PopupWindowProps = Electron.BrowserWindowConstructorOptions & {
 			| "screen-saver";
 	};
 };
+
+export interface ContextMenuItem {
+	label: string;
+	click: () => void;
+	icon?: string;
+}

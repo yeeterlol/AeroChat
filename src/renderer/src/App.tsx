@@ -15,6 +15,7 @@ import { GatewayDispatchEvents } from "discord-api-types/v9";
 import Notification from "./pages/Notification";
 const { ipcRenderer }: { ipcRenderer: any } = window.require("electron");
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
+import ContextMenu from "./pages/ContextMenu";
 const { screen } = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -27,8 +28,15 @@ function App(): JSX.Element {
 				ipcRenderer.send("open-dev-tools");
 			}
 		}
+		function mouseDown() {
+			ipcRenderer.send("close-ctx", window.location.hash);
+		}
 		window.addEventListener("keydown", keyDown);
-		return () => window.removeEventListener("keydown", keyDown);
+		window.addEventListener("mousedown", mouseDown);
+		return () => {
+			window.removeEventListener("keydown", keyDown);
+			window.removeEventListener("mousedown", mouseDown);
+		};
 	}, []);
 	const initialState = getState();
 	const [reactState, setReactState] = useState<State>(initialState as State);
@@ -36,9 +44,14 @@ function App(): JSX.Element {
 		setGatewayState(newState);
 		setReactState(newState);
 	}
-	ipcRenderer.on("set-state", (_, state) => {
-		setReactState(state);
-	});
+	useEffect(() => {
+		ipcRenderer.on("set-state", (_, state) => {
+			setReactState(state);
+		});
+		return () => {
+			ipcRenderer.removeAllListeners("set-state");
+		};
+	}, []);
 	useEffect(() => {
 		const id = addDispatchListener(
 			GatewayDispatchEvents.PresenceUpdate,
@@ -46,7 +59,7 @@ function App(): JSX.Element {
 				const friendsUser = reactState?.ready?.merged_presences?.friends?.find(
 					(f) => f.user_id === d.user.id,
 				);
-				const a = reactState.ready?.relationships?.map((r) =>
+				const a = reactState?.ready?.relationships?.map((r) =>
 					reactState.ready.users.find((u) => u.id === r.id),
 				);
 				const user = a?.find((u) => u?.id === d.user.id);
@@ -84,6 +97,7 @@ function App(): JSX.Element {
 							resizable: false,
 							transparent: true,
 							focusable: false,
+							backgroundColor: undefined,
 						});
 					}
 					mutState.ready.merged_presences.friends =
@@ -97,7 +111,6 @@ function App(): JSX.Element {
 						user_id: d.user.id,
 					});
 				} else {
-					console.log("1");
 					const guildMember =
 						reactState?.ready?.merged_presences?.guilds
 							?.flatMap((g) => g)
@@ -108,9 +121,7 @@ function App(): JSX.Element {
 					const user = mutState?.ready?.relationships?.find(
 						(r) => r.id === d.user.id,
 					)?.user;
-					console.log(guildMember, d);
 					if (guildMember?.status === "offline" && d.status !== "offline") {
-						console.log("!!!");
 						const cursor = screen.getCursorScreenPoint();
 						const primary = screen.getDisplayNearestPoint(cursor);
 						// use work area size to get bottom right
@@ -155,6 +166,7 @@ function App(): JSX.Element {
 					<Route path="/" element={<Login />} />
 					<Route path="/home" element={<Home />} />
 					<Route path="/notification" element={<Notification />} />
+					<Route path="/context-menu" element={<ContextMenu />} />
 				</Routes>
 			</HashRouter>
 		</Context.Provider>

@@ -13,17 +13,29 @@ function parseInts(...args: (string | undefined | null)[]) {
 		.filter(Boolean) as number[];
 }
 
+function calcWidth(text: string, offset: number = 1): number {
+	const body = document.querySelector("body");
+	const el = document.createElement("div");
+	el.style.width = "fit-content";
+	el.innerText = text;
+	body?.appendChild(el);
+	const width = el.offsetWidth;
+	el.remove();
+	return offset ? width + offset : width;
+}
+
 function ContextMenu() {
 	const [params] = useSearchParams();
 	const id = params.get("id");
 	const x = parseInt(params.get("x") || "0");
 	const y = parseInt(params.get("y") || "0");
+	const offsetWidth = parseInt(params.get("offsetWidth") || "0");
 	const items = JSON.parse(params.get("menu") || "[]") as (Omit<
 		ContextMenuItem,
 		"click"
 	> & { id: string })[];
 	const contextMenuContainerRef = useRef<HTMLDivElement>(null);
-	const [ready, setReady] = useState(false);
+	const [width, setWidth] = useState(0);
 	useEffect(() => {
 		const win = getCurrentWindow();
 		win.setIgnoreMouseEvents(false);
@@ -31,26 +43,44 @@ function ContextMenu() {
 			console.warn("contextMenuContainerRef is null");
 			return;
 		}
-		const contextMenuContainer = contextMenuContainerRef.current!;
-		const el = contextMenuContainer.cloneNode(true) as HTMLDivElement;
-		el.style.visibility = "visible";
-		el.style.position = "absolute";
-		el.style.left = "0";
-		el.style.top = "0";
-		el.style.width = "fit-content";
-		el.style.height = "fit-content";
-		document.body.appendChild(el);
+		const el = document.getElementsByClassName(
+			styles.contextMenuContainer,
+		)[0] as HTMLDivElement;
 		const rect = el.children[0].getBoundingClientRect();
-		el.remove();
-		win.setPosition(x, y);
-		win.setSize(rect.width + 8, rect.height);
+		console.log(rect);
+		win.setBounds({
+			x,
+			y,
+			width: rect.width + 8,
+			height: rect.height + 8,
+		});
 		win.setIgnoreMouseEvents(false);
 		win.show();
-		setReady(true);
-	}, [ready, x, y, id, items]);
+	}, [x, y, id, items, offsetWidth, params]);
+	useEffect(() => {
+		// get the item with the highest label width
+		const maxWidth = Math.max(
+			...items.map((item) => calcWidth(item.label, 128)),
+		);
+		setWidth(maxWidth + offsetWidth);
+	}, [items, offsetWidth, params]);
 	return (
-		<div className={styles.contextMenuContainer} ref={contextMenuContainerRef}>
-			<div className={styles.contextMenu}>
+		<div
+			onMouseUp={() => {
+				ipcRenderer.send(`${id}-close`);
+				const win = getCurrentWindow();
+				win.setIgnoreMouseEvents(true, { forward: true });
+				win.setOpacity(0);
+			}}
+			className={styles.contextMenuContainer}
+			ref={contextMenuContainerRef}
+		>
+			<div
+				className={styles.contextMenu}
+				style={{
+					width,
+				}}
+			>
 				{items?.map((item) => {
 					return (
 						<div

@@ -8,4 +8,6 @@ export function joinClasses(...classes: string[]) {
 	return classes.join(" ");
 }
 
+export const RelationshipRemove = "RELATIONSHIP_REMOVE";
+
 export { ipc };

@@ -124,6 +124,7 @@ function Login(): JSX.Element {
 	);
 	const [userInfo, setUserInfo] = useState<IUser>();
 	const pfpRef = useRef<HTMLDivElement>(null);
+	const { state, setState } = useContext(Context);
 	useEffect(() => {
 		if (isTokenPotentiallyValid(token)) {
 			setUserInfo({
@@ -138,13 +139,11 @@ function Login(): JSX.Element {
 				const res = (await req.json()) as IUser;
 				if (res.id) {
 					if (pfpRef.current) {
-						pfpRef.current.style.setProperty(
-							"--data-url",
-							`url(https://cdn.discordapp.com/avatars/${res.id}/${res.avatar}.png?size=256)`,
-						);
-						const vibrant = Vibrant.from(
-							`https://cdn.discordapp.com/avatars/${res.id}/${res.avatar}.png?size=256`,
-						);
+						let url = res?.avatar
+							? `https://cdn.discordapp.com/avatars/${res.id}/${res.avatar}.png?size=256`
+							: pfp;
+						pfpRef.current.style.setProperty("--data-url", `url(${url})`);
+						const vibrant = Vibrant.from(url);
 						const color = await vibrant.getPalette();
 						pfpRef.current.style.setProperty(
 							"--background",
@@ -238,6 +237,7 @@ function Login(): JSX.Element {
 					disabled={userInfo?.id === undefined || clicked}
 					onClick={() => {
 						startGateway(token);
+						setState({ ...state, token });
 						setClicked(true);
 					}}
 					className={styles.signIn}

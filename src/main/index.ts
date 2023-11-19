@@ -122,6 +122,10 @@ async function showContextMenu(
 			)}&x=${x || 0}&y=${y || 0}&offsetWidth=${offsetWidth || 0}`,
 		),
 	);
+	ctxMenu.reload();
+	// ctxMenu.webContents.openDevTools({
+	// 	mode: "detach",
+	// });
 	ctxMenu.setIgnoreMouseEvents(false);
 }
 
@@ -295,6 +299,13 @@ function createWindow(): void {
 							});
 							// redirect the webcontents of win
 							win?.loadURL(pathToHash("/home"));
+							const token = (
+								state?.ready.connected_accounts.find(
+									(a) => a.type === "spotify",
+								) as any
+							)?.access_token;
+							if (!token) break;
+
 							break;
 						}
 						case "READY_SUPPLEMENTAL" as any: {

@@ -1,3 +1,4 @@
+import { RelationshipTypes } from "detritus-client/lib/constants";
 import {
 	GatewayDispatchEvents,
 	GatewayDispatchPayload,
@@ -8,10 +9,27 @@ import {
 import WebSocket from "ws";
 const { ipcRenderer } = require("electron");
 
-export type DispatchData<T extends GatewayDispatchEvents> =
-	(GatewayDispatchPayload & {
-		t: T;
-	})["d"];
+export enum DispatchEventsCustom {
+	RelationshipRemove = "RELATIONSHIP_REMOVE",
+}
+
+export type DispatchPayloadsCustom =
+	| GatewayDispatchPayload
+	| {
+			t: DispatchEventsCustom.RelationshipRemove;
+			op: GatewayOpcodes.Dispatch;
+			d: {
+				id: string;
+				type: RelationshipTypes;
+				nickname: string;
+			};
+	  };
+
+export type DispatchData<
+	T extends GatewayDispatchEvents | DispatchEventsCustom,
+> = (DispatchPayloadsCustom & {
+	t: T;
+})["d"];
 
 export type OpcodeSendData<T extends GatewayOpcodes> = (GatewaySendPayload & {
 	op: T;

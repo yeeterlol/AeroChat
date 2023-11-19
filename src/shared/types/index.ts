@@ -51,7 +51,8 @@ export interface MergedPresences {
 }
 
 export interface Friend {
-	user_id: string;
+	user: Partial<APIUser> & { id: string };
+	user_id?: string;
 	status: Status;
 	client_status: ClientStatus;
 	activities: FriendActivity[];
@@ -210,6 +211,15 @@ export enum OpCodes {
 	REQUEST_SOUNDBOARD_SOUNDS = 31,
 	CLIENT_SPEEDTEST_CREATE = 32,
 	CLIENT_SPEEDTEST_DELETE = 33,
+}
+
+export enum RelationshipTypes {
+	NONE = 0,
+	FRIEND = 1,
+	BLOCKED = 2,
+	PENDING_INCOMING = 3,
+	PENDING_OUTGOING = 4,
+	IMPLICIT = 5,
 }
 
 export enum GatewayIntents {

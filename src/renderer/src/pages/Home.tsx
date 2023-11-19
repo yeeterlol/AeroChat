@@ -23,6 +23,7 @@ const remote = window.require(
 import hasEmoji from "has-emoji";
 import gameIcon from "@renderer/assets/home/statuses/game.png";
 import musicIcon from "@renderer/assets/home/statuses/music.png";
+import { RelationshipTypes } from "../../../shared/types";
 
 function getActivityText(activities: FriendActivity[]) {
 	const music = activities.find((a) => a.type === 2);
@@ -69,7 +70,6 @@ function getActivityText(activities: FriendActivity[]) {
 						<span>
 							<img
 								src={`https://cdn.discordapp.com/emojis/${custom.emoji.id}.webp?quality=lossless&size=128`}
-								width="14"
 							/>
 						</span>
 					)
@@ -186,26 +186,49 @@ function Contact(
 }
 
 function Home() {
-	const adRef = useRef<HTMLImageElement>(null);
+	const adRef = useRef<HTMLDivElement>(null);
 	const { state, setState } = useContext(Context);
-	function contactContextMenu() {
+	function contactContextMenu(user: APIUser) {
 		const cursor = remote.screen.getCursorScreenPoint();
 		contextMenu(
 			[
 				{
 					label: "Remove friend",
-					click() {},
+					async click() {
+						const res = await fetch(
+							"https://ptb.discord.com/api/v9/users/@me/relationships/1053012491006910504",
+							{
+								method: "DELETE",
+								headers: {
+									Authorization: state.token,
+								},
+							},
+						);
+						if (res.status !== 204) return;
+						console.log("woo");
+						const mutState = { ...state };
+						mutState.ready.relationships = mutState.ready.relationships.filter(
+							(r) => r.id !== user.id,
+						);
+						mutState.ready.merged_presences.friends =
+							mutState.ready.merged_presences.friends.filter(
+								(r) => (r.user_id || r.user?.id) !== user.id,
+							);
+						setState(mutState);
+					},
 				},
 			],
 			cursor.x,
 			cursor.y,
+			0,
 		);
 	}
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [paperSrc] = useState("");
 	function setStatus(status: PresenceUpdateStatus) {
 		let mutState = { ...state };
-		mutState.ready.sessions.find((s) => s.active)!.status = status;
+		console.log(mutState.ready.sessions);
+		mutState.ready.sessions[0].status = status;
 		sendOp(GatewayOpcodes.PresenceUpdate, {
 			status:
 				status === PresenceUpdateStatus.Offline
@@ -280,12 +303,12 @@ function Home() {
 			document.removeEventListener("mousedown", mouseDown);
 		};
 	}, []);
-	const userStatus = state.ready?.sessions?.find((s) => s.active);
-	const status = state.ready?.sessions
-		?.find((s) => s.active)
-		?.activities?.find((a) => a.type === 4);
+	const userStatus = state.ready?.sessions[0];
+	const status = state.ready?.sessions[0]?.activities?.find(
+		(a) => a.type === 4,
+	);
 	const friends = state?.ready?.relationships
-		?.filter((r) => r.type === 1)
+		?.filter((r) => r.type === RelationshipTypes.FRIEND)
 		.map((u) => ({
 			user: state?.ready?.users?.find(
 				(v) => v.id === u.id,
@@ -297,6 +320,9 @@ function Home() {
 				client_status: {},
 				status: "offline" as Status,
 				user_id: u.id,
+				user: {
+					id: u.id,
+				},
 			},
 		}));
 	const online = friends?.filter((f) => f.status.status !== Status.Offline);
@@ -327,7 +353,11 @@ function Home() {
 				<div className={styles.topInfo}>
 					<PfpBorder
 						stateInitial={userStatus?.status as PresenceUpdateStatus}
-						pfp={`https://cdn.discordapp.com/avatars/${state.ready.user.id}/${state.ready.user.avatar}.png`}
+						pfp={
+							state?.ready?.user?.avatar
+								? `https://cdn.discordapp.com/avatars/${state?.ready?.user?.id}/${state?.ready?.user?.avatar}.png?size=256`
+								: defaultPfp
+						}
 					/>
 					<div className={styles.userInfo}>
 						<div
@@ -372,7 +402,7 @@ function Home() {
 									],
 									windowPos.x + bounds.left,
 									windowPos.y + bounds.top + bounds.height,
-									1000,
+									50,
 								).then(() => setContextMenuOpacity("0"));
 							}}
 							className={styles.usernameContainer}
@@ -437,7 +467,7 @@ function Home() {
 								e.preventDefault();
 								target.focus();
 
-								const mouseX = e.clientX; // Replace with e.pageX if needed
+								const mouseX = e.clientX;
 								const text = target.value;
 								const caretPos = calculateCaretPosition(target, mouseX, text);
 
@@ -469,7 +499,7 @@ function Home() {
 						>
 							{online?.map((c) => (
 								<Contact
-									onContextMenu={contactContextMenu}
+									onContextMenu={() => contactContextMenu(c.user)}
 									key={c.user.id}
 									{...c}
 								/>
@@ -478,7 +508,7 @@ function Home() {
 						<Dropdown header="Offline" info={`(${offline.length})`}>
 							{offline?.map((c) => (
 								<Contact
-									onContextMenu={contactContextMenu}
+									onContextMenu={() => contactContextMenu(c.user)}
 									key={c.user.id}
 									{...c}
 								/>

@@ -4,7 +4,11 @@ import {
 	GatewayOpcodes,
 	GatewayReceivePayload,
 } from "discord-api-types/v9";
-import { DispatchData, OpcodeReceiveData } from "src/shared/gateway";
+import {
+	DispatchData,
+	DispatchEventsCustom,
+	OpcodeReceiveData,
+} from "src/shared/gateway";
 import {
 	ContextMenuItem,
 	PopupWindowProps,
@@ -47,15 +51,14 @@ export function addGatewayListener<T extends GatewayOpcodes>(
 	return id;
 }
 
-export function addDispatchListener<T extends GatewayDispatchEvents>(
-	event: T,
-	cb: (data: DispatchData<T>) => void,
-): string {
+export function addDispatchListener<
+	T extends GatewayDispatchEvents | DispatchEventsCustom,
+>(event: T, cb: (data: DispatchData<T>) => void): string {
 	const id = v4();
 	ipcRenderer.send("add-gateway-listener", id);
 	ipcRenderer.on(`${id}-data`, (_: any, dataStr: string) => {
 		const data: GatewayReceivePayload = JSON.parse(dataStr);
-		if (data.op === GatewayOpcodes.Dispatch && data.t === event)
+		if (data.op === GatewayOpcodes.Dispatch && data.t == event)
 			cb(data.d as any);
 	});
 	ipcRenderer.on(`${id}-remove`, (_: any) => {

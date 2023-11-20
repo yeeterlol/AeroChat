@@ -11,10 +11,13 @@ import {
 } from "src/shared/gateway";
 import {
 	ContextMenuItem,
+	ContextMenuItemType,
+	ContextMenuStyle,
 	PopupWindowProps,
 	State,
 } from "../../../../shared/types";
 import { v4 } from "uuid";
+import reactElementToJSXString from "react-element-to-jsx-string";
 
 export function startGateway(token: string) {
 	ipcRenderer.send("start-gateway", token);
@@ -87,20 +90,28 @@ export async function contextMenu(
 	x?: number,
 	y?: number,
 	offsetWidth?: number,
+	style?: ContextMenuStyle,
 ): Promise<void> {
 	const id = v4();
 	const idItems = items.map((i) => ({ ...i, id: v4() }));
 	ipcRenderer.send(
 		"context-menu",
 		id,
-		idItems.map(({ click, ...rest }) => rest),
+		idItems.map((i) =>
+			i.type === ContextMenuItemType.Item ? { ...i, click: undefined } : i,
+		),
 		x,
 		y,
 		offsetWidth,
+		style,
 	);
 	return new Promise((resolve) => {
 		ipcRenderer.once(`${id}-close`, (_, id: string) => {
-			idItems.find((i) => i.id === id)?.click();
+			const item = idItems.find((i) => i.id === id);
+			if (!item) return;
+			if (item.type === ContextMenuItemType.Item) {
+				item.click?.();
+			}
 			resolve();
 		});
 	});

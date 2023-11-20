@@ -10,4 +10,12 @@ export function joinClasses(...classes: string[]) {
 
 export const RelationshipRemove = "RELATIONSHIP_REMOVE";
 
+export function hasParentWithClass(el: HTMLElement, className: string) {
+	if (el.classList.contains(className)) return true;
+	if (el.parentElement) {
+		return hasParentWithClass(el.parentElement, className);
+	}
+	return false;
+}
+
 export { ipc };

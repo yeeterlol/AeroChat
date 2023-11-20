@@ -32,6 +32,7 @@ export default function PfpBorder({
 }) {
 	let state = getStateFromPresence(stateInitial);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const [firstRender, setFirstRender] = useState(true);
 	const [src, setSrc] = useState("");
 	const [prevActivity, setPrevActivity] = useState("active");
 	const [borderDummy1, setBorderDummy1] = useState("");
@@ -72,119 +73,144 @@ export default function PfpBorder({
 
 		if (!containerRef.current) return;
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		if (state !== prevActivity) {
+		if (state !== prevActivity || firstRender) {
 			setPrevActivity(state);
 			(async () => {
-				if (!containerRef.current) return;
-				const sleep = (ms: number) =>
-					new Promise((resolve) => setTimeout(resolve, ms));
-				if (state === "invisible") {
-					containerRef.current.style.opacity = "0.5";
-					// setSrc(
-					// 	await importDefault(
-					// 		`../assets/borders/${variant}/invisible-static.png`,
-					// 	),
-					// );
-					setSrc(
-						(await import(`../assets/borders/${variant}/invisible-static.png`))
-							.default,
-					);
-					return;
-				} else {
-					containerRef.current.style.opacity = "1";
-					border.style.opacity = "0";
-					borderDummy1.style.opacity = "1";
-					borderDummy2.style.opacity = "0";
-					if (prevActivity === "invisible") {
-						// setBorderDummy1(
-						// 	await importDefault(
-						// 		`../assets/borders/${variant}/${
-						// 			state || "active"
-						// 		}-animated-from.png`,
-						// 	),
-						// );
-						// setBorderDummy2(
-						// 	await importDefault(
-						// 		`../assets/borders/${variant}/${
-						// 			state || "active"
-						// 		}-animated-to.png`,
-						// 	),
-						// );
-						setBorderDummy1(
-							(
-								await import(
-									`../assets/borders/${variant}/${
-										state || "active"
-									}-animated-from.png`
-								)
-							).default,
-						);
-						setBorderDummy2(
-							(
-								await import(
-									`../assets/borders/${variant}/${
-										state || "active"
-									}-animated-to.png`
-								)
-							).default,
-						);
-					} else {
-						setBorderDummy1(
-							(
-								await import(
-									`../assets/borders/${variant}/${
-										prevActivity || "active"
-									}-animated-from.png`
-								)
-							).default,
-						);
-					}
-					await sleep(550);
-					borderDummy1.animate(
-						[
-							{
-								opacity: "1",
-							},
-							{
-								opacity: "0",
-							},
-						],
-						{
-							easing: "linear",
-							duration: 250,
-						},
-					);
-					setTimeout(() => (borderDummy1.style.opacity = "0"), 250);
-					borderDummy2.style.opacity = "1";
-					// setBorderDummy2(
-					// 	await importDefault(
-					// 		`../assets/borders/${variant}/${state}-animated-to.png`,
-					// 	),
-					// );
-					setBorderDummy2(
-						(
-							await import(
-								`../assets/borders/${variant}/${state}-animated-to.png`
-							)
-						).default,
-					);
-					await sleep(730);
-					borderDummy1.style.opacity = "0";
-					borderDummy2.style.opacity = "0";
-					border.style.opacity = "1";
-					// setSrc(
-					// 	await importDefault(
-					// 		`../assets/borders/${variant}/${state}-static.png`,
-					// 	),
-					// );
+				if (firstRender) {
 					setSrc(
 						(await import(`../assets/borders/${variant}/${state}-static.png`))
 							.default,
 					);
+					if (state === "invisible") {
+						containerRef.current?.animate([{ opacity: "0.5" }], {
+							duration: 0,
+							fill: "forwards",
+						});
+					}
+					setFirstRender(false);
+				} else {
+					if (!containerRef.current) return;
+					const sleep = (ms: number) =>
+						new Promise((resolve) => setTimeout(resolve, ms));
+					if (state === "invisible") {
+						containerRef.current.style.opacity = "0.5";
+						// setSrc(
+						// 	await importDefault(
+						// 		`../assets/borders/${variant}/invisible-static.png`,
+						// 	),
+						// );
+						setSrc(
+							(
+								await import(
+									`../assets/borders/${variant}/invisible-static.png`
+								)
+							).default,
+						);
+						return;
+					} else {
+						containerRef.current.style.opacity = "1";
+						border.style.opacity = "0";
+						borderDummy1.style.opacity = "1";
+						borderDummy2.style.opacity = "0";
+						if (prevActivity === "invisible") {
+							// setBorderDummy1(
+							// 	await importDefault(
+							// 		`../assets/borders/${variant}/${
+							// 			state || "active"
+							// 		}-animated-from.png`,
+							// 	),
+							// );
+							// setBorderDummy2(
+							// 	await importDefault(
+							// 		`../assets/borders/${variant}/${
+							// 			state || "active"
+							// 		}-animated-to.png`,
+							// 	),
+							// );
+							setBorderDummy1(
+								(
+									await import(
+										`../assets/borders/${variant}/${
+											state || "active"
+										}-animated-from.png`
+									)
+								).default,
+							);
+							setBorderDummy2(
+								(
+									await import(
+										`../assets/borders/${variant}/${
+											state || "active"
+										}-animated-to.png`
+									)
+								).default,
+							);
+						} else {
+							setBorderDummy1(
+								(
+									await import(
+										`../assets/borders/${variant}/${
+											prevActivity || "active"
+										}-animated-from.png`
+									)
+								).default,
+							);
+						}
+						await sleep(550);
+						borderDummy1.animate(
+							[
+								{
+									opacity: "1",
+								},
+								{
+									opacity: "0",
+								},
+							],
+							{
+								easing: "linear",
+								duration: 250,
+							},
+						);
+						setTimeout(() => (borderDummy1.style.opacity = "0"), 250);
+						borderDummy2.style.opacity = "1";
+						// setBorderDummy2(
+						// 	await importDefault(
+						// 		`../assets/borders/${variant}/${state}-animated-to.png`,
+						// 	),
+						// );
+						setBorderDummy2(
+							(
+								await import(
+									`../assets/borders/${variant}/${state}-animated-to.png`
+								)
+							).default,
+						);
+						await sleep(730);
+						borderDummy1.style.opacity = "0";
+						borderDummy2.style.opacity = "0";
+						border.style.opacity = "1";
+						// setSrc(
+						// 	await importDefault(
+						// 		`../assets/borders/${variant}/${state}-static.png`,
+						// 	),
+						// );
+						setSrc(
+							(await import(`../assets/borders/${variant}/${state}-static.png`))
+								.default,
+						);
+					}
 				}
 			})();
 		}
-	}, [borderDummy1Ref, borderDummy2Ref, borderRef, prevActivity, win, state]);
+	}, [
+		borderDummy1Ref,
+		borderDummy2Ref,
+		borderRef,
+		prevActivity,
+		win,
+		state,
+		firstRender,
+	]);
 	useEffect(() => {
 		if (guild) return;
 		// preload images

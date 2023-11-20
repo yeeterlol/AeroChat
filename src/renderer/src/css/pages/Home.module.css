@@ -180,11 +180,70 @@
 	text-shadow: none;
 }
 
+.contextMenuDivider {
+	padding: 0px 2px;
+	height: 2px;
+	background: linear-gradient(to bottom, #a0a0a0 50%, #ffffff 50%);
+	width: calc(100% - 4px);
+	margin-top: 2px;
+	margin-bottom: 1px;
+}
+
 .contextMenuContainer {
 	box-sizing: border-box;
 	padding: 2px;
 	width: 100vw;
 	height: 100vh;
+}
+
+.modernOutline {
+	display: none;
+}
+
+.contextMenuContainer.MODERN > .contextMenu > .modernOutline {
+	display: block;
+	background: linear-gradient(to right, #e2e3e3 50%, #ffffff 50%);
+	width: 2px;
+	height: 100%;
+	position: absolute;
+	top: 0;
+	left: 28px;
+}
+
+.contextMenuContainer.MODERN > .contextMenu > .contextMenuDivider {
+	background: linear-gradient(to bottom, #e2e3e3 50%, #ffffff 50%);
+	width: calc(100% - 26px);
+	height: 2px;
+	margin-top: 2px;
+	margin-left: 25px;
+}
+
+.contextMenuContainer.MODERN > .contextMenu > .contextMenuItem {
+	border-radius: 2px;
+	height: 20px;
+}
+
+.contextMenuContainer.MODERN
+	> .contextMenu
+	> .contextMenuItem:not(:first-child) {
+	margin-top: 2px;
+}
+
+.contextMenuContainer.MODERN > .contextMenu > .contextMenuItem:hover {
+	outline: solid thin #aecff7;
+	box-shadow: inset 0px 0px 0px 1px #ffffff80;
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.25) 0%,
+		rgba(204, 225, 255, 0.25) 100%
+	);
+	color: black;
+}
+
+.contextMenuContainer.MODERN > .contextMenu {
+	--padding: 3px;
+	padding: calc(var(--padding) - 2px) var(--padding) calc(var(--padding) - 1px)
+		var(--padding);
 }
 
 .contextMenu {
@@ -223,6 +282,13 @@
 .contextMenuText {
 	position: absolute;
 	left: 24px;
+}
+
+.contextMenuContainer.MODERN
+	> .contextMenu
+	> .contextMenuItem
+	> .contextMenuText {
+	left: 32px;
 }
 
 .contextMenuIconContainer {
@@ -341,9 +407,12 @@
 	height: 44px;
 	display: flex;
 	align-items: center;
-	width: calc(100% + 16px);
+	width: calc(100% + 40px);
+	margin-left: -12px;
 	border-radius: 4px;
-	margin-top: 2px;
+	margin-top: 4px;
+	box-sizing: border-box;
+	padding: 0px 8px;
 }
 
 .contactInfo {
@@ -368,10 +437,23 @@
 	outline: solid thin #b7e7fc;
 	background: linear-gradient(
 		180deg,
-		rgba(245, 245, 245, 0.554) 0%,
-		#c5e7fb 100%
+		rgba(255, 255, 255, 0) 0%,
+		rgba(182, 228, 255, 0.5) 100%
 	);
 	box-shadow: inset 0px 0px 0px 1px var(--aero-white);
+}
+
+.contact.selected {
+	background: linear-gradient(
+		180deg,
+		rgba(228, 244, 255, 0.5) 0%,
+		#d6f0fd 100%
+	);
+	outline: solid thin #9adffe;
+}
+
+.contact.selected:hover {
+	background: linear-gradient(180deg, #e9f7fe 0%, #c5e9fb 100%);
 }
 
 .contactUsername {

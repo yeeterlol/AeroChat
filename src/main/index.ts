@@ -14,6 +14,7 @@ import main, { enable } from "@electron/remote/main";
 import Store from "electron-store";
 import {
 	ContextMenuItem,
+	ContextMenuStyle,
 	PopupWindowProps,
 	State,
 	allCapabilities,
@@ -91,6 +92,7 @@ async function showContextMenu(
 	x?: number,
 	y?: number,
 	offsetWidth?: number,
+	style?: ContextMenuStyle,
 ) {
 	if (!ctxMenu) return;
 	if (interval) clearInterval(interval);
@@ -119,7 +121,9 @@ async function showContextMenu(
 		pathToHash(
 			`/context-menu?id=${id}&menu=${encodeURIComponent(
 				JSON.stringify(menu),
-			)}&x=${x || 0}&y=${y || 0}&offsetWidth=${offsetWidth || 0}`,
+			)}&x=${x || 0}&y=${y || 0}&offsetWidth=${offsetWidth || 0}&style=${
+				style || ContextMenuStyle.Modern
+			}`,
 		),
 	);
 	ctxMenu.reload();
@@ -367,8 +371,9 @@ function createWindow(): void {
 			x?: number,
 			y?: number,
 			offsetWidth?: number,
+			style?: ContextMenuStyle,
 		) => {
-			showContextMenu(id, menu, x, y, offsetWidth);
+			showContextMenu(id, menu, x, y, offsetWidth, style);
 			ipcMain.once(`${id}-close`, (_, selectedId) => {
 				e.sender.send(`${id}-close`, selectedId);
 			});
@@ -433,8 +438,10 @@ app.whenReady().then(() => {
 	// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
 
 	ctxMenu = new BrowserWindow({
-		width: 200,
-		height: 115,
+		minWidth: 0,
+		minHeight: 0,
+		width: 0,
+		height: 0,
 		frame: false,
 		resizable: false,
 		transparent: true,

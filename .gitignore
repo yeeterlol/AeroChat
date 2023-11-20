@@ -3,5 +3,5 @@ dist
 out
 *.log*
 presence.json
-ready_supp.json
+ready_supplemental.json
 ready.json

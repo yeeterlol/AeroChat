@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import styles from "@renderer/css/pages/Home.module.css";
-import { Context } from "@renderer/util";
+import { Context, hasParentWithClass } from "@renderer/util";
 import PfpBorder from "@renderer/components/PfpBorder";
 import {
 	APIUser,
@@ -15,7 +15,14 @@ import active from "@renderer/assets/home/context-menu/active.png";
 import idle from "@renderer/assets/home/context-menu/idle.png";
 import invisible from "@renderer/assets/home/context-menu/invisible.png";
 import dnd from "@renderer/assets/home/context-menu/dnd.png";
-import { Friend, FriendActivity, Guild, Status } from "../../../shared/types";
+import {
+	ContextMenuItemType,
+	ContextMenuStyle,
+	Friend,
+	FriendActivity,
+	Guild,
+	Status,
+} from "../../../shared/types";
 import { contextMenu } from "@renderer/util/ipc";
 const remote = window.require(
 	"@electron/remote",
@@ -24,6 +31,7 @@ import hasEmoji from "has-emoji";
 import gameIcon from "@renderer/assets/home/statuses/game.png";
 import musicIcon from "@renderer/assets/home/statuses/music.png";
 import { RelationshipTypes } from "../../../shared/types";
+import Fuse from "fuse.js";
 
 function getActivityText(activities: FriendActivity[]) {
 	const music = activities.find((a) => a.type === 2);
@@ -162,7 +170,20 @@ function Contact(
 ) {
 	const p = { ...props, user: undefined, status: undefined, guild: undefined };
 	return (
-		<div {...p} className={styles.contact}>
+		<div
+			{...p}
+			onMouseDown={(e) => {
+				const contact = e.currentTarget.closest(
+					`.${styles.contact}`,
+				) as HTMLDivElement;
+				document.querySelectorAll(`.${styles.contact}`).forEach((c) => {
+					c.classList.remove(styles.selected);
+				});
+				contact.classList.add(styles.selected);
+				props.onClick?.(e);
+			}}
+			className={styles.contact}
+		>
 			<PfpBorder
 				pfp={
 					props?.user?.avatar
@@ -186,41 +207,43 @@ function Contact(
 }
 
 function Home() {
-	const adRef = useRef<HTMLDivElement>(null);
+	const [ad, setAd] = useState<HTMLDivElement | null>(null);
 	const { state, setState } = useContext(Context);
 	function contactContextMenu(user: APIUser) {
 		const cursor = remote.screen.getCursorScreenPoint();
 		contextMenu(
 			[
 				{
-					label: "Remove friend",
-					async click() {
-						const res = await fetch(
-							"https://ptb.discord.com/api/v9/users/@me/relationships/1053012491006910504",
-							{
-								method: "DELETE",
-								headers: {
-									Authorization: state.token,
-								},
-							},
-						);
-						if (res.status !== 204) return;
-						console.log("woo");
-						const mutState = { ...state };
-						mutState.ready.relationships = mutState.ready.relationships.filter(
-							(r) => r.id !== user.id,
-						);
-						mutState.ready.merged_presences.friends =
-							mutState.ready.merged_presences.friends.filter(
-								(r) => (r.user_id || r.user?.id) !== user.id,
-							);
-						setState(mutState);
-					},
+					type: ContextMenuItemType.Item,
+					label: `[b]Send message (${user.username})[/b]`,
+				},
+				{
+					type: ContextMenuItemType.Item,
+					label: `Lazily pad out the context menu with a long label`,
+				},
+				{
+					type: ContextMenuItemType.Item,
+					label: `Apologies, by the way; the divider looks bad with just one item`,
+				},
+				{
+					type: ContextMenuItemType.Divider,
+				},
+				{
+					type: ContextMenuItemType.Item,
+					label: `View contact card`,
+				},
+				{
+					type: ContextMenuItemType.Item,
+					label: `Call this person a dummy`,
+				},
+				{
+					type: ContextMenuItemType.Item,
+					label: `Blehhh :p :p :p :p :p :p :p :p :p :p :p :p :p :p :p :p`,
 				},
 			],
 			cursor.x,
 			cursor.y,
-			0,
+			-50,
 		);
 	}
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -250,9 +273,22 @@ function Home() {
 		setState(mutState);
 	}
 	let lastAd = -1;
-
 	useEffect(() => {
-		if (!adRef.current) return;
+		function mouseDown(e: MouseEvent) {
+			if (e.button !== 0) return;
+			if (hasParentWithClass(e.target as HTMLElement, styles.contact)) return;
+			document.querySelectorAll(`.${styles.contact}`).forEach((c) => {
+				c.classList.remove(styles.selected);
+			});
+		}
+		document.addEventListener("mousedown", mouseDown);
+		return () => {
+			document.removeEventListener("mousedown", mouseDown);
+		};
+	});
+	useEffect(() => {
+		console.log(ad);
+		if (!ad) return;
 		let interval: NodeJS.Timeout;
 		(async () => {
 			const ads = (
@@ -262,11 +298,12 @@ function Home() {
 					),
 				)
 			).map((v) => (v as any).default) as string[];
-			adRef.current!.style.backgroundImage = `url(${
+			console.log(ads);
+			ad!.style.backgroundImage = `url(${
 				ads[generateRandBetween(0, ads.length - 1, lastAd)]
 			}`;
 			interval = setInterval(() => {
-				adRef.current!.style.backgroundImage = `url(${
+				ad.style.backgroundImage = `url(${
 					ads[generateRandBetween(0, ads.length - 1, lastAd)]
 				})`;
 			}, 20000);
@@ -274,7 +311,7 @@ function Home() {
 		return () => {
 			if (interval) clearInterval(interval);
 		};
-	}, []);
+	}, [ad]);
 	// useEffect(() => {
 	// 	if (!editingStatus) return;
 	// 	inputRef.current?.focus();
@@ -288,7 +325,7 @@ function Home() {
 			inputRef.current.value || inputRef.current.placeholder,
 		)}px`;
 	}, []);
-	const [_, setSearch] = useState("");
+	const [search, setSearch] = useState("");
 	const [contextMenuOpacity, setContextMenuOpacity] = useState("0");
 	useEffect(() => {
 		function mouseDown(e: MouseEvent) {
@@ -307,7 +344,7 @@ function Home() {
 	const status = state.ready?.sessions[0]?.activities?.find(
 		(a) => a.type === 4,
 	);
-	const friends = state?.ready?.relationships
+	const unfilteredFriends = state?.ready?.relationships
 		?.filter((r) => r.type === RelationshipTypes.FRIEND)
 		.map((u) => ({
 			user: state?.ready?.users?.find(
@@ -325,6 +362,19 @@ function Home() {
 				},
 			},
 		}));
+	const friends = search
+		? new Fuse(unfilteredFriends, {
+				keys: [
+					{
+						name: "username",
+						weight: 1,
+						getFn: (obj) => obj.user.global_name || obj.user.username,
+					},
+				],
+		  })
+				.search(search)
+				.map((s) => s.item)
+		: unfilteredFriends;
 	const online = friends?.filter((f) => f.status.status !== Status.Offline);
 	const offline = friends?.filter((f) => f.status.status === Status.Offline);
 	return !state.ready?.user?.id ? (
@@ -377,6 +427,7 @@ function Home() {
 											},
 											label: "Available",
 											icon: active,
+											type: ContextMenuItemType.Item,
 										},
 										{
 											click() {
@@ -384,6 +435,7 @@ function Home() {
 											},
 											label: "Busy",
 											icon: dnd,
+											type: ContextMenuItemType.Item,
 										},
 										{
 											click() {
@@ -391,6 +443,7 @@ function Home() {
 											},
 											label: "Away",
 											icon: idle,
+											type: ContextMenuItemType.Item,
 										},
 										{
 											click() {
@@ -398,11 +451,44 @@ function Home() {
 											},
 											label: "Appear offline",
 											icon: invisible,
+											type: ContextMenuItemType.Item,
+										},
+										{
+											type: ContextMenuItemType.Divider,
+										},
+										{
+											label: `Sign out from here (${remote
+												.require("os")
+												.hostname()})`,
+											type: ContextMenuItemType.Item,
+										},
+										{
+											type: ContextMenuItemType.Divider,
+										},
+										{
+											type: ContextMenuItemType.Item,
+											label: "Change display picture...",
+										},
+										{
+											type: ContextMenuItemType.Item,
+											label: "Change scene...",
+										},
+										{
+											type: ContextMenuItemType.Item,
+											label: "Change display name...",
+										},
+										{
+											type: ContextMenuItemType.Divider,
+										},
+										{
+											type: ContextMenuItemType.Item,
+											label: "Options...",
 										},
 									],
 									windowPos.x + bounds.left,
 									windowPos.y + bounds.top + bounds.height,
 									50,
+									ContextMenuStyle.Classic,
 								).then(() => setContextMenuOpacity("0"));
 							}}
 							className={styles.usernameContainer}
@@ -516,7 +602,7 @@ function Home() {
 						</Dropdown>
 					</div>
 					<div className={styles.dividerAlt} />
-					<div ref={adRef} className={styles.ad} />
+					<div ref={setAd} className={styles.ad} />
 				</div>
 			</div>
 		</div>

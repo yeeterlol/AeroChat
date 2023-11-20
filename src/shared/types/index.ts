@@ -292,8 +292,25 @@ export type PopupWindowProps = Electron.BrowserWindowConstructorOptions & {
 	};
 };
 
-export interface ContextMenuItem {
+export enum ContextMenuItemType {
+	Item = "item",
+	Divider = "divider",
+}
+
+interface CtxBaseItem {
+	type: ContextMenuItemType.Item;
 	label: string;
-	click: () => void;
+	click?: () => void;
 	icon?: string;
+}
+
+interface CtxDivider {
+	type: ContextMenuItemType.Divider;
+}
+
+export type ContextMenuItem = CtxBaseItem | CtxDivider;
+
+export enum ContextMenuStyle {
+	Classic = "CLASSIC",
+	Modern = "MODERN",
 }

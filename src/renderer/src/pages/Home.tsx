@@ -159,8 +159,9 @@ function Dropdown({
 		<div className={styles.dropdown}>
 			<div className={styles.dropdownHeader} onClick={() => setOpen(!open)}>
 				<div className={styles.dropdownArrow} data-toggled={open} />
-				<h1 style={{ color }}>{header}</h1>
-				<div className={styles.dropdownInfo}>{info}</div>
+				<h1 style={{ color }}>
+					{header} <span className={styles.dropdownInfo}>{info}</span>
+				</h1>
 			</div>
 			<div className={styles.dropdownContent} data-toggled={open}>
 				{open ? children : <></>}
@@ -460,8 +461,9 @@ function Home() {
 	// const guilds = state?.ready?.guilds.sort((a, b) =>
 	// 	a.properties.name.localeCompare(b.properties.name),
 	// );
-	const guilds =
+	const noFolders =
 		state?.userSettings?.guildFolders?.folders
+			?.filter((f) => f.guildIds.length === 1)
 			?.map((f) => ({
 				properties: f,
 				guilds: f.guildIds.map(
@@ -473,6 +475,15 @@ function Home() {
 					b.properties.name?.value || b.guilds[0].properties.name,
 				),
 			) || [];
+	const folders = state?.userSettings?.guildFolders?.folders
+		?.filter((f) => f.guildIds.length > 1)
+		?.map((f) => ({
+			properties: f,
+			guilds: f.guildIds.map(
+				(g) => state.ready.guilds.find((h) => h.id === g.toString()) as Guild,
+			),
+		}))!;
+	const guilds = [...folders, ...noFolders];
 	return !state.ready?.user?.id ? (
 		<></>
 	) : (
@@ -691,9 +702,13 @@ function Home() {
 						<Dropdown header="Servers" info={`(${guilds?.length})`}>
 							{guilds.map((c) => (
 								<Dropdown
-									color={`#${c.properties.color?.value
-										.toString(16)
-										.padStart(6, "0")}`}
+									color={`#${
+										c.guilds.length > 1
+											? c.properties.color?.value
+													.toString(16)
+													.padStart(6, "0") || "0099ff"
+											: ""
+									}`}
 									header={
 										c.guilds.length === 1
 											? c.guilds[0].properties.name
@@ -722,9 +737,13 @@ function Home() {
 												))
 										: c.guilds.map((g) => (
 												<Dropdown
-													color={`#${c.properties.color?.value
-														.toString(16)
-														.padStart(6, "0")}`}
+													color={`#${
+														c.guilds.length > 1
+															? c.properties.color?.value
+																	.toString(16)
+																	.padStart(6, "0") || "0099ff"
+															: ""
+													}`}
 													header={g.properties.name}
 													key={g.id}
 												>

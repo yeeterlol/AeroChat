@@ -715,7 +715,13 @@ function Home() {
 													/>
 												))
 										: c.guilds.map((g) => (
-												<Dropdown header={g.properties.name} key={g.id}>
+												<Dropdown
+													color={`#${c.properties.color?.value
+														.toString(16)
+														.padStart(6, "0")}`}
+													header={g.properties.name}
+													key={g.id}
+												>
 													{g.channels
 														.filter((c) => c.type === ChannelType.GuildText)
 														.map((d) => (

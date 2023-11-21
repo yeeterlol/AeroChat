@@ -461,12 +461,18 @@ function Home() {
 	// 	a.properties.name.localeCompare(b.properties.name),
 	// );
 	const guilds =
-		state?.userSettings?.guildFolders?.folders?.map((f) => ({
-			properties: f,
-			guilds: f.guildIds.map(
-				(g) => state.ready.guilds.find((h) => h.id === g.toString()) as Guild,
-			),
-		})) || [];
+		state?.userSettings?.guildFolders?.folders
+			?.map((f) => ({
+				properties: f,
+				guilds: f.guildIds.map(
+					(g) => state.ready.guilds.find((h) => h.id === g.toString()) as Guild,
+				),
+			}))
+			?.sort((a, b) =>
+				(a.properties.name?.value || a.guilds[0].properties.name).localeCompare(
+					b.properties.name?.value || b.guilds[0].properties.name,
+				),
+			) || [];
 	return !state.ready?.user?.id ? (
 		<></>
 	) : (

@@ -1,0 +1,330 @@
+.window {
+	position: relative;
+	width: 100vw;
+	height: 100vh;
+}
+
+.backgroundContainer {
+	position: absolute;
+	z-index: 0;
+	top: 0;
+	width: 100%;
+	height: calc(100% - 82px);
+	box-sizing: border-box;
+	padding-top: 32px;
+}
+
+.backgroundImage {
+	height: 82px;
+	background: url("@renderer/assets/login/bg-top.png"), #3dafe4;
+	background-position: top left;
+	background-size:
+		100% 100%,
+		100% 100%;
+	box-shadow: inset 0px 22px 5px -20px rgba(0, 0, 0, 0.438);
+}
+
+.background {
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(180deg, #e0eff5 0%, #ffffff 50%, #cae7f3 100%);
+}
+
+.toolbar {
+	width: 100%;
+	height: 32px;
+	box-shadow:
+		inset 0px 0px 0px 1px var(--aero-white),
+		0px 0px 0px 0px rgba(0, 0, 0, 0.264);
+	background: linear-gradient(
+		180deg,
+		rgba(141, 210, 243, 1) 0%,
+		rgba(67, 181, 235, 1) 50%,
+		rgba(57, 171, 225, 1) 50%,
+		rgba(60, 178, 234, 1) 100%
+	);
+	border-bottom: solid thin #2c85af;
+}
+
+.toolbarContainer {
+	overflow: hidden;
+	padding-bottom: 8px;
+}
+
+.content {
+	z-index: 1;
+	position: relative;
+	height: 100%;
+}
+
+.pfpContainer {
+	display: flex;
+	flex-direction: row;
+	height: 100%;
+}
+
+.ownPfp {
+	position: absolute;
+	bottom: 24px;
+	left: 24px;
+}
+
+.recepientPfp {
+	position: absolute;
+	left: 24px;
+}
+
+.contentContainer {
+	width: calc(100% + 28px);
+	height: calc(100% - 41px);
+	display: flex;
+}
+
+.messagingContainer {
+	height: 100%;
+	width: 100%;
+	margin-left: 140px;
+	box-sizing: border-box;
+	padding: 12px 28px;
+	position: relative;
+	overflow: hidden;
+}
+
+.username {
+	font-size: 18px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	width: 100%;
+	text-shadow:
+		0px 0px 3px rgb(255, 255, 255),
+		0px 0px 4px rgb(255, 255, 255),
+		0px 0px 5px rgb(255, 255, 255);
+}
+
+.divider {
+	background: linear-gradient(
+		90deg,
+		rgba(255, 255, 255, 0) 0%,
+		rgba(255, 255, 255, 0.9) 25%,
+		rgba(255, 255, 255, 1) 50%,
+		rgba(255, 255, 255, 0.9) 75%,
+		rgba(255, 255, 255, 0) 100%
+	);
+	height: 1px;
+	width: 100%;
+	filter: drop-shadow(0px 2px 1px rgba(37, 91, 116, 0.459));
+	margin-bottom: 6px;
+}
+
+.messagesContainer {
+	box-sizing: border-box;
+	width: 100%;
+	height: calc(100% - 31px - 94px);
+	padding-bottom: 8px;
+	position: relative;
+	overflow: auto;
+	padding-right: 16px;
+}
+
+.messagesContainer * {
+	font-size: 10pt;
+	user-select: text;
+	outline: none;
+}
+
+.messageUsername {
+	color: #545454;
+	margin-top: 4px;
+}
+
+.messageContainer {
+	margin-left: 24px;
+}
+
+.messageContainer::before {
+	content: "▪";
+	color: #999999;
+	display: inline-block;
+	width: 1em;
+	margin-left: calc(-1em - 4px);
+}
+
+.message {
+	margin-left: 3px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	box-sizing: border-box;
+}
+
+.message * {
+	user-select: text;
+	cursor: text;
+}
+
+.message > img {
+	width: 16px;
+	margin-top: 2px;
+	margin-bottom: -2px;
+}
+
+.inputWidgets {
+	position: absolute;
+	bottom: 32px;
+	width: calc(100% - 77px);
+	left: 32px;
+}
+
+.messageBox {
+	border-radius: 4px 4px 0px 0px;
+	border: solid thin #bdd5df;
+	outline: none;
+	width: 100%;
+	height: 28px;
+	font-size: 10pt;
+	background-color: #f6fcff;
+	box-shadow: 0px 0px 0px 1px var(--aero-white);
+	resize: none;
+	box-sizing: border-box;
+	padding: 4px 4px;
+}
+
+.error {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	margin: 6px 0px 0px 0px;
+}
+
+.errorText {
+	color: #c25252;
+	margin-left: 6px;
+	margin-bottom: 3px;
+}
+
+.inputToolbar {
+	width: 100%;
+	height: 28px;
+	margin-top: -3px;
+	border: solid thin #bdd5df;
+	border-top: none;
+	border-radius: 0px 0px 4px 4px;
+	box-shadow:
+		0px 0px 0px 1px var(--aero-white),
+		inset 0px 0px 0px 1px var(--aero-white);
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 1) 0%,
+		rgba(226, 244, 251, 1) 40%,
+		rgba(216, 234, 241, 1) 60%,
+		rgba(219, 237, 244, 1) 100%
+	);
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 4px;
+	box-sizing: border-box;
+	padding: 4px 4px 4px 4px;
+}
+
+.nudgeDivider {
+	content: " ";
+	width: 40px;
+	height: 1px;
+	margin-top: 8px;
+	margin-bottom: 8px;
+	background-color: rgb(100, 100, 100);
+}
+
+.emoticons {
+	position: absolute;
+	background:
+		url("../assets/window/glass.png") center center / cover no-repeat fixed,
+		#71a7e693;
+	outline: solid thin var(--aero-black);
+	border: solid thin #dedede;
+	margin-left: 1px;
+	width: calc(100% - 206px);
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(20px, 1fr));
+	gap: 4px;
+	padding: 8px;
+	backdrop-filter: blur(4px);
+	transition: 0.5s opacity steps(5, end);
+}
+
+.emoticons > * {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.canvasContainer {
+	position: relative;
+}
+
+.canvas {
+	border-radius: 4px 4px 0px 0px;
+	box-shadow:
+		0px 0px 0px 1px var(--aero-white),
+		inset 0px 0px 0px 1px var(--aero-white);
+	border: solid thin #bdd5df;
+	border-bottom: none;
+}
+
+.canvasContainer > button {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	height: calc(100% - 22px);
+}
+
+.imageContainer > img {
+	margin-top: 4px;
+	border: solid thin #dedede;
+	box-shadow:
+		0px 0px 0px 1px var(--aero-white),
+		inset 0px 0px 0px 1px var(--aero-white);
+	margin-left: 1px;
+	border-radius: 4px;
+}
+.typing {
+	display: flex;
+	align-items: center;
+	margin-top: 4px;
+	width: calc(100% - 16px);
+}
+
+.typing > div {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-left: 4px;
+	margin-top: -1px;
+}
+
+.gameManager {
+	position: absolute;
+	top: -2px;
+	right: -406px;
+	width: 400px;
+	height: calc(100% + 4px);
+	background-color: rgba(60, 178, 234, 1);
+	box-shadow: inset 0px 0px 0px 1px #0000009b;
+	border: solid thin #cadfed;
+	padding: 2px;
+	box-sizing: border-box;
+	border-radius: 0px 2px 2px 0px;
+}
+
+.toolbarGameManager {
+	background: linear-gradient(
+		180deg,
+		rgba(141, 210, 243, 1) 0%,
+		rgba(67, 181, 235, 1) 50%,
+		rgba(57, 171, 225, 1) 50%,
+		rgba(60, 178, 234, 1) 100%
+	);
+	width: 100%;
+	height: 32px;
+}

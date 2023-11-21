@@ -5,6 +5,7 @@ import {
 	APIGuild,
 	APIUser,
 } from "discord-api-types/v9";
+import { PreloadedUserSettings } from "discord-protos";
 import { GuildMember, PartialUser, Presence } from "discord.js-selfbot-v13";
 
 export interface Session {
@@ -114,29 +115,232 @@ export enum Status {
 }
 
 export interface Guild {
-	user_id: string;
-	status: Status;
-	client_status: ClientStatus;
-	broadcast: null;
-	activities: GuildActivity[];
+	version: number;
+	threads: Thread[];
+	stickers: Sticker[];
+	stage_instances: any[];
+	roles: Role[];
+	properties: Properties;
+	premium_subscription_count: number;
+	member_count: number;
+	lazy: boolean;
+	large: boolean;
+	joined_at: Date;
+	id: string;
+	guild_scheduled_events: GuildScheduledEvent[];
+	emojis: Emoji[];
+	data_mode: DataMode;
+	channels: Channel[];
+	application_command_counts: { [key: string]: number };
 }
 
-export interface GuildActivity {
+export interface Channel {
 	type: number;
-	state?: string;
+	topic?: null | string;
+	rate_limit_per_user?: number;
+	position: number;
+	permission_overwrites: PermissionOverwrite[];
+	parent_id?: null | string;
+	name: string;
+	last_message_id?: null | string;
+	id: string;
+	icon_emoji?: IconEmoji | null;
+	flags: number;
+	last_pin_timestamp?: Date;
+	user_limit?: number;
+	status?: null;
+	rtc_region?: null | string;
+	bitrate?: number;
+	default_thread_rate_limit_per_user?: number;
+	template?: string;
+	default_reaction_emoji?: DefaultReactionEmoji | null;
+	available_tags?: AvailableTag[];
+	nsfw?: boolean;
+	theme_color?: number | null;
+	default_auto_archive_duration?: number;
+	default_forum_layout?: number;
+	video_quality_mode?: number;
+	default_sort_order?: number | null;
+}
+
+export interface AvailableTag {
+	name: string;
+	moderated: boolean;
+	id: string;
+	emoji_name: null | string;
+	emoji_id: null | string;
+}
+
+export interface DefaultReactionEmoji {
+	emoji_name: null | string;
+	emoji_id: null | string;
+}
+
+export interface IconEmoji {
+	name: string;
+	id: null | string;
+}
+
+export interface PermissionOverwrite {
+	type: number;
+	id: string;
+	deny: string;
+	allow: string;
+}
+
+export enum DataMode {
+	Full = "full",
+}
+
+export interface GuildScheduledEvent {
+	test: null;
+	status: number;
+	sku_ids: any[];
+	scheduled_start_time: Date;
+	scheduled_end_time: Date | null;
+	recurrence_rule: null;
+	privacy_level: number;
+	name: string;
+	image: null | string;
+	id: string;
+	guild_scheduled_event_exceptions: any[];
+	guild_id: string;
+	entity_type: number;
+	entity_metadata: EntityMetadata;
+	entity_id: null;
+	description: string;
+	channel_id: null | string;
+	auto_start: boolean;
+}
+
+export interface EntityMetadata {
+	speaker_ids?: any[];
+	location?: string;
+}
+
+export interface Properties {
+	home_header: null | string;
+	system_channel_flags: number;
+	nsfw: boolean;
+	application_id: null;
+	hub_type: null;
+	premium_tier: number;
+	default_message_notifications: number;
+	safety_alerts_channel_id: null | string;
+	public_updates_channel_id: null | string;
+	verification_level: number;
+	id: string;
+	banner: null | string;
+	splash: null | string;
+	name: string;
+	premium_progress_bar_enabled: boolean;
+	max_stage_video_channel_users: number;
+	owner_id: string;
+	inventory_settings: InventorySettings | null;
+	max_members: number;
+	latest_onboarding_question_id: null | string;
+	incidents_data: IncidentsData | null;
+	description: null | string;
+	system_channel_id: null | string;
+	nsfw_level: number;
+	features: string[];
+	icon: null | string;
+	rules_channel_id: null | string;
+	mfa_level: number;
+	afk_channel_id: null | string;
+	explicit_content_filter: number;
+	preferred_locale: PreferredLocale;
+	discovery_splash: null | string;
+	vanity_url_code: null | string;
+	afk_timeout: number;
+	max_video_channel_users: number;
+}
+
+export interface IncidentsData {
+	raid_detected_at: Date | null;
+	invites_disabled_until: Date | null;
+	dms_disabled_until: Date | null;
+	dm_spam_detected_at: null;
+}
+
+export interface InventorySettings {
+	is_emoji_pack_collectible: boolean;
+}
+
+export enum PreferredLocale {
+	EnUS = "en-US",
+}
+
+export interface Role {
+	unicode_emoji: null | string;
+	tags: Tags;
+	position: number;
+	permissions: string;
+	name: string;
+	mentionable: boolean;
+	managed: boolean;
+	id: string;
+	icon: null | string;
+	hoist: boolean;
+	flags: number;
+	color: number;
+}
+
+export interface Tags {
+	premium_subscriber?: null;
+	bot_id?: string;
+	integration_id?: string;
+	guild_connections?: null;
+	subscription_listing_id?: string;
+	is_guild_product_role?: boolean;
+	available_for_purchase?: null;
+}
+
+export interface Sticker {
+	type: number;
+	tags: string;
 	name: string;
 	id: string;
-	created_at: number;
-	emoji?: Emoji;
-	timestamps?: Timestamps;
-	party?: Party;
-	details?: string;
-	assets?: Assets;
-	application_id?: string;
-	sync_id?: string;
-	session_id?: string;
-	flags?: number;
-	buttons?: string[];
+	guild_id: string;
+	format_type: number;
+	description: null | string;
+	available: boolean;
+	asset?: string;
+}
+
+export interface Thread {
+	type: number;
+	total_message_sent: number;
+	thread_metadata: ThreadMetadata;
+	rate_limit_per_user: number;
+	parent_id: string;
+	owner_id: string;
+	name: string;
+	message_count: number;
+	member_ids_preview: string[];
+	member_count: number;
+	member: Member;
+	last_message_id: string;
+	id: string;
+	guild_id: string;
+	flags: number;
+	last_pin_timestamp?: Date;
+}
+
+export interface Member {
+	muted: boolean;
+	mute_config: null;
+	join_timestamp: Date;
+	flags: number;
+}
+
+export interface ThreadMetadata {
+	locked: boolean;
+	invitable?: boolean;
+	create_timestamp: Date;
+	auto_archive_duration: number;
+	archived: boolean;
+	archive_timestamp: Date;
 }
 
 interface Ready {
@@ -144,7 +348,7 @@ interface Ready {
 	v: number;
 	user: APIUser;
 	user_settings_proto?: string;
-	guilds: APIGuild[];
+	guilds: Guild[];
 	relationships: Relationship[];
 	friend_suggestion_count?: number;
 	private_channels: APIChannel[];
@@ -153,7 +357,7 @@ interface Ready {
 	presences: Presence[];
 	merged_members: GuildMember[][];
 	merged_presences: MergedPresences;
-	users: PartialUser[];
+	users: APIUser[];
 	session_id: string;
 	session_type: string;
 	auth_session_id_hash: string;
@@ -172,6 +376,7 @@ export interface State {
 	token: string;
 	title: string;
 	ready: Ready;
+	userSettings: PreloadedUserSettings;
 }
 
 export interface IContext {

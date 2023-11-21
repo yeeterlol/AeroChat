@@ -20,6 +20,7 @@ const { ipcRenderer }: { ipcRenderer: any } = window.require("electron");
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import ContextMenu from "./pages/ContextMenu";
 import { DispatchEventsCustom } from "../../shared/gateway";
+import Message from "./pages/Message";
 const { screen } = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -97,7 +98,7 @@ function App(): JSX.Element {
 					createWindow({
 						customProps: {
 							url: `/notification?title=${encodeURIComponent(
-								`${user?.globalName || user?.username} is online!`,
+								`${user?.global_name || user?.username} is online!`,
 							)}&img=${encodeURIComponent(
 								user?.avatar
 									? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
@@ -135,6 +136,7 @@ function App(): JSX.Element {
 					<Route path="/home" element={<Home />} />
 					<Route path="/notification" element={<Notification />} />
 					<Route path="/context-menu" element={<ContextMenu />} />
+					<Route path="/message" element={<Message />} />
 				</Routes>
 			</HashRouter>
 		</Context.Provider>

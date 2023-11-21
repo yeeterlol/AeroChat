@@ -1,9 +1,13 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import styles from "@renderer/css/pages/Home.module.css";
-import { Context, hasParentWithClass } from "@renderer/util";
+import { Context, apiReq, hasParentWithClass } from "@renderer/util";
 import PfpBorder from "@renderer/components/PfpBorder";
 import {
+	APIChannel,
+	APIDMChannel,
+	APIGuild,
 	APIUser,
+	ChannelType,
 	GatewayOpcodes,
 	PresenceUpdateStatus,
 } from "discord-api-types/v9";
@@ -23,7 +27,7 @@ import {
 	Guild,
 	Status,
 } from "../../../shared/types";
-import { contextMenu } from "@renderer/util/ipc";
+import { contextMenu, createWindow } from "@renderer/util/ipc";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -32,9 +36,10 @@ import gameIcon from "@renderer/assets/home/statuses/game.png";
 import musicIcon from "@renderer/assets/home/statuses/music.png";
 import { RelationshipTypes } from "../../../shared/types";
 import Fuse from "fuse.js";
+import { PreloadedUserSettings } from "discord-protos";
 
-function getActivityText(activities: FriendActivity[]) {
-	const music = activities.find((a) => a.type === 2);
+function getActivityText(activities?: FriendActivity[]) {
+	const music = activities?.find((a) => a.type === 2);
 	if (music) {
 		return (
 			<span className={styles.customStatus}>
@@ -49,7 +54,7 @@ function getActivityText(activities: FriendActivity[]) {
 			</span>
 		);
 	}
-	const game = activities.find((a) => a.type === 0);
+	const game = activities?.find((a) => a.type === 0);
 	if (game) {
 		return (
 			<span className={styles.customStatus}>
@@ -67,7 +72,7 @@ function getActivityText(activities: FriendActivity[]) {
 			</span>
 		);
 	}
-	const custom = activities.find((a) => a.type === 4);
+	const custom = activities?.find((a) => a.type === 4);
 	if (custom) {
 		return (
 			<span className={styles.customStatus}>
@@ -139,10 +144,12 @@ function calculateCaretPosition(
 }
 
 function Dropdown({
+	color,
 	header,
 	children,
 	info,
 }: {
+	color?: string;
 	header: string;
 	children: JSX.Element[];
 	info?: string;
@@ -152,11 +159,11 @@ function Dropdown({
 		<div className={styles.dropdown}>
 			<div className={styles.dropdownHeader} onClick={() => setOpen(!open)}>
 				<div className={styles.dropdownArrow} data-toggled={open} />
-				<h1>{header}</h1>
+				<h1 style={{ color }}>{header}</h1>
 				<div className={styles.dropdownInfo}>{info}</div>
 			</div>
 			<div className={styles.dropdownContent} data-toggled={open}>
-				{children}
+				{open ? children : <></>}
 			</div>
 		</div>
 	);
@@ -166,7 +173,7 @@ function Contact(
 	props: React.DetailedHTMLProps<
 		React.HTMLAttributes<HTMLDivElement>,
 		HTMLDivElement
-	> & { user: APIUser; status: Friend; guild?: boolean },
+	> & { format?: string; user: APIUser; status: Friend; guild?: boolean },
 ) {
 	const p = { ...props, user: undefined, status: undefined, guild: undefined };
 	return (
@@ -187,7 +194,11 @@ function Contact(
 			<PfpBorder
 				pfp={
 					props?.user?.avatar
-						? `https://cdn.discordapp.com/avatars/${props?.user?.id}/${props?.user?.avatar}.png`
+						? `https://cdn.discordapp.com/${
+								props.guild ? "icons" : "avatars"
+						  }/${props?.user?.id}/${props?.user?.avatar}${
+								props.format || ".png"
+						  }`
 						: defaultPfp
 				}
 				variant="small"
@@ -216,6 +227,9 @@ function Home() {
 				{
 					type: ContextMenuItemType.Item,
 					label: `[b]Send message (${user.username})[/b]`,
+					click() {
+						doubleClick(user);
+					},
 				},
 				{
 					type: ContextMenuItemType.Item,
@@ -246,11 +260,59 @@ function Home() {
 			-50,
 		);
 	}
+	async function doubleClick(data: APIUser | APIChannel) {
+		if ("type" in data) {
+			if (data.type !== ChannelType.GuildText) return;
+			createWindow({
+				customProps: {
+					url: `/message?channelId=${data.id}`,
+				},
+				width: 550,
+				height: 400,
+			});
+			return;
+		}
+		if ("global_name" in data) {
+			const dmChannels = state?.ready?.private_channels?.filter(
+				(c) => c.type === ChannelType.DM,
+			) as (APIDMChannel & {
+				recipient_ids: string[];
+			})[];
+			const channel = dmChannels.find(
+				(c) => c.recipient_ids?.length === 1 && c.recipient_ids[0] === data.id,
+			);
+			if (channel) {
+				createWindow({
+					customProps: {
+						url: `/message?channelId=${channel.id}`,
+					},
+					width: 550,
+					height: 400,
+				});
+				return;
+			}
+			const channels = (
+				await apiReq("/users/@me/channels", "POST", state?.token || "", {
+					recipients: [data.id],
+				})
+			).body;
+			if (!channels.id) return;
+			createWindow({
+				customProps: {
+					url: `/message?channelId=${channels.id}`,
+				},
+				width: 550,
+				height: 400,
+			});
+		}
+	}
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [paperSrc] = useState("");
+	useEffect(() => {
+		console.log(state.userSettings);
+	}, []);
 	function setStatus(status: PresenceUpdateStatus) {
 		let mutState = { ...state };
-		console.log(mutState.ready.sessions);
 		mutState.ready.sessions[0].status = status;
 		sendOp(GatewayOpcodes.PresenceUpdate, {
 			status:
@@ -287,7 +349,6 @@ function Home() {
 		};
 	});
 	useEffect(() => {
-		console.log(ad);
 		if (!ad) return;
 		let interval: NodeJS.Timeout;
 		(async () => {
@@ -298,7 +359,6 @@ function Home() {
 					),
 				)
 			).map((v) => (v as any).default) as string[];
-			console.log(ads);
 			ad!.style.backgroundImage = `url(${
 				ads[generateRandBetween(0, ads.length - 1, lastAd)]
 			}`;
@@ -375,8 +435,38 @@ function Home() {
 				.search(search)
 				.map((s) => s.item)
 		: unfilteredFriends;
-	const online = friends?.filter((f) => f.status.status !== Status.Offline);
-	const offline = friends?.filter((f) => f.status.status === Status.Offline);
+	const online = friends
+		?.filter((f) => f.status.status !== Status.Offline)
+		.sort((a, b) =>
+			(a.user.global_name || a.user.username).localeCompare(
+				b.user.global_name || b.user.username,
+			),
+		);
+	const offline = friends
+		?.filter((f) => f.status.status === Status.Offline)
+		.sort((a, b) =>
+			(a.user.global_name || a.user.username).localeCompare(
+				b.user.global_name || b.user.username,
+			),
+		);
+	// const channels = state?.ready?.guilds
+	// 	?.map((g) =>
+	// 		g.channels.map((c) => ({
+	// 			guild: g,
+	// 			channel: c,
+	// 		})),
+	// 	)
+	// 	.flat();
+	// const guilds = state?.ready?.guilds.sort((a, b) =>
+	// 	a.properties.name.localeCompare(b.properties.name),
+	// );
+	const guilds =
+		state?.userSettings?.guildFolders?.folders?.map((f) => ({
+			properties: f,
+			guilds: f.guildIds.map(
+				(g) => state.ready.guilds.find((h) => h.id === g.toString()) as Guild,
+			),
+		})) || [];
 	return !state.ready?.user?.id ? (
 		<></>
 	) : (
@@ -585,15 +675,74 @@ function Home() {
 						>
 							{online?.map((c) => (
 								<Contact
+									onDoubleClick={() => doubleClick(c.user)}
 									onContextMenu={() => contactContextMenu(c.user)}
 									key={c.user.id}
 									{...c}
 								/>
 							))}
 						</Dropdown>
+						<Dropdown header="Servers" info={`(${guilds?.length})`}>
+							{guilds.map((c) => (
+								<Dropdown
+									color={`#${c.properties.color?.value
+										.toString(16)
+										.padStart(6, "0")}`}
+									header={
+										c.guilds.length === 1
+											? c.guilds[0].properties.name
+											: c.properties.name?.value || "Unknown Folder"
+									}
+									key={c.guilds.map((g) => g.properties.id).join()}
+								>
+									{c.guilds.length === 1
+										? c.guilds[0].channels
+												.filter((c) => c.type === ChannelType.GuildText)
+												.map((d) => (
+													<Contact
+														format=".webp?size=256"
+														onDoubleClick={() => doubleClick(d)}
+														key={d.id}
+														user={
+															{
+																id: c.guilds[0].properties.id,
+																avatar: c.guilds[0].properties.icon,
+																global_name: `#${d.name}`,
+															} as any
+														}
+														status={PresenceUpdateStatus.Online as any}
+														guild
+													/>
+												))
+										: c.guilds.map((g) => (
+												<Dropdown header={g.properties.name} key={g.id}>
+													{g.channels
+														.filter((c) => c.type === ChannelType.GuildText)
+														.map((d) => (
+															<Contact
+																format=".webp?size=256"
+																onDoubleClick={() => doubleClick(d)}
+																key={d.id}
+																user={
+																	{
+																		id: g.id,
+																		avatar: g.properties.icon,
+																		global_name: `#${d.name}`,
+																	} as any
+																}
+																status={PresenceUpdateStatus.Online as any}
+																guild
+															/>
+														))}
+												</Dropdown>
+										  ))}
+								</Dropdown>
+							))}
+						</Dropdown>
 						<Dropdown header="Offline" info={`(${offline.length})`}>
 							{offline?.map((c) => (
 								<Contact
+									onDoubleClick={() => doubleClick(c.user)}
 									onContextMenu={() => contactContextMenu(c.user)}
 									key={c.user.id}
 									{...c}

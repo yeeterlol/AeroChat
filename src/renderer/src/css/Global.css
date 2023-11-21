@@ -57,6 +57,8 @@
 body {
 	margin: 0;
 	overflow: hidden;
+	--aero-white: #ffffff7a;
+	--aero-black: #000000bd;
 }
 
 * {

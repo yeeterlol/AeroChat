@@ -23,6 +23,7 @@ import { sendOp } from "../shared/gateway";
 import { GatewayOpcodes, GatewayReceivePayload } from "discord-api-types/v9";
 import WebSocket from "ws";
 import { writeFileSync } from "fs";
+import { PreloadedUserSettings } from "discord-protos";
 
 function pathToHash(path: string) {
 	if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
@@ -81,7 +82,7 @@ main.initialize();
 Store.initRenderer();
 
 let socket: WebSocket | null;
-let state: State | null;
+let state: State;
 let win: BrowserWindow | null;
 let ctxMenu: BrowserWindow | null;
 let interval: NodeJS.Timeout | null;
@@ -198,7 +199,23 @@ function createOrFocusWindow(props: PopupWindowProps) {
 	}
 }
 
-function setState(newState: any) {
+function setState(newState: State) {
+	if (
+		state?.userSettings &&
+		newState?.userSettings &&
+		state.userSettings !== newState.userSettings
+	) {
+		fetch("https://discord.com/api/v9/users/@me/settings-proto/1", {
+			headers: {
+				Authorization: state?.token,
+				"Content-Type": "application/json",
+			},
+			method: "PATCH",
+			body: JSON.stringify({
+				settings: PreloadedUserSettings.toBase64(newState.userSettings),
+			}),
+		});
+	}
 	state = newState;
 	BrowserWindow.getAllWindows().forEach((window) => {
 		window.webContents.send("set-state", newState);
@@ -231,7 +248,7 @@ function createWindow(): void {
 		const store = new Store();
 		store.set("token", safeStorage.encryptString(token));
 		socket = new WebSocket("wss://gateway.discord.gg/?v=9&encoding=json");
-		socket!.onopen = () => {
+		socket!.onopen = async () => {
 			sendOp(
 				GatewayOpcodes.Identify,
 				{
@@ -273,6 +290,19 @@ function createWindow(): void {
 				} as any,
 				socket!,
 			);
+			const res = (
+				await (
+					await fetch("https://discord.com/api/v9/users/@me/settings-proto/1", {
+						headers: {
+							Authorization: token,
+						},
+					})
+				).json()
+			).settings;
+			setState({
+				...state,
+				userSettings: PreloadedUserSettings.fromBase64(res),
+			});
 		};
 		socket!.onmessage = (event) => {
 			const data = JSON.parse(event.data.toString()) as GatewayReceivePayload;
@@ -321,8 +351,8 @@ function createWindow(): void {
 							setState({
 								...state,
 								ready: {
-									...state?.ready,
 									...d,
+									...state?.ready,
 								},
 							});
 							break;
@@ -446,7 +476,7 @@ app.whenReady().then(() => {
 		resizable: false,
 		transparent: true,
 		focusable: false,
-		skipTaskbar: false,
+		skipTaskbar: true,
 		backgroundColor: undefined,
 		webPreferences: {
 			preload: join(__dirname, "../preload/index.js"),

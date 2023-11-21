@@ -260,6 +260,10 @@ export default function PfpBorder({
 					setSrc(m.default);
 				},
 			);
+			containerRef.current?.animate([{ opacity: "1" }], {
+				duration: 0,
+				fill: "forwards",
+			});
 		}
 	}, [guild]);
 	function getImageStyle(): React.CSSProperties {

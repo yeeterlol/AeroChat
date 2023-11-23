@@ -366,8 +366,8 @@ function Home() {
 		(async () => {
 			const ads = (
 				await Promise.all(
-					Object.values(import.meta.glob("@renderer/assets/home/ads/*")).map(
-						(v) => v(),
+					Object.values(import.meta.glob("../assets/home/ads/*.png")).map((v) =>
+						v(),
 					),
 				)
 			).map((v) => (v as any).default) as string[];

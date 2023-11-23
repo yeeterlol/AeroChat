@@ -374,9 +374,17 @@
 	background: linear-gradient(180deg, #e9f7fe 0%, #c5e9fb 100%);
 }
 
+.channel:last-child {
+	margin-bottom: 4px;
+}
+
 .topic {
 	margin-top: 4px;
 	height: 28px;
+	width: calc(100% - 32px);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .channels {

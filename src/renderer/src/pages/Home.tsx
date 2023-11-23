@@ -365,12 +365,14 @@ function Home() {
 		let interval: NodeJS.Timeout;
 		(async () => {
 			const ads = (
-				await Promise.all(
-					Object.values(import.meta.glob("../assets/home/ads/*.png")).map((v) =>
-						v(),
-					),
-				)
-			).map((v) => (v as any).default) as string[];
+				(
+					await Promise.all(
+						Object.values(import.meta.glob("../assets/home/ads/*.png")).map(
+							(v) => v(),
+						),
+					)
+				).map((v) => (v as any).default) as string[]
+			).map((v) => v.replace("/@fs", ""));
 			ad!.style.backgroundImage = `url(${
 				ads[generateRandBetween(0, ads.length - 1, lastAd)]
 			}`;

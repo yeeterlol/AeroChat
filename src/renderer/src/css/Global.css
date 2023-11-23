@@ -61,6 +61,12 @@ body {
 	--aero-black: #000000bd;
 }
 
+h1 {
+	color: #003399;
+	font-weight: normal;
+	font-size: 12pt;
+}
+
 * {
 	font-family: "Segoe UI", sans-serif;
 	font-size: 9pt;
@@ -75,7 +81,7 @@ body {
 a {
 	color: #0066cc;
 	text-decoration: none;
-	cursor: pointer;
+	cursor: pointer !important;
 }
 
 a:hover {

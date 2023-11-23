@@ -47,7 +47,7 @@ export interface ClientInfo {
 }
 
 export interface MergedPresences {
-	guilds: Array<Guild[]>;
+	guilds: Array<IGuild[]>;
 	friends: Friend[];
 }
 
@@ -114,12 +114,12 @@ export enum Status {
 	Online = "online",
 }
 
-export interface Guild {
+export interface IGuild {
 	version: number;
 	threads: Thread[];
 	stickers: Sticker[];
 	stage_instances: any[];
-	roles: Role[];
+	roles: IRole[];
 	properties: Properties;
 	premium_subscription_count: number;
 	member_count: number;
@@ -271,7 +271,7 @@ export enum PreferredLocale {
 	EnUS = "en-US",
 }
 
-export interface Role {
+export interface IRole {
 	unicode_emoji: null | string;
 	tags: Tags;
 	position: number;
@@ -343,19 +343,33 @@ export interface ThreadMetadata {
 	archive_timestamp: Date;
 }
 
-interface Ready {
+export interface MergedMember {
+	user_id: string;
+	roles: string[];
+	premium_since: null;
+	pending: boolean;
+	nick: null | string;
+	mute: boolean;
+	joined_at: Date;
+	flags: number;
+	deaf: boolean;
+	communication_disabled_until: Date | null;
+	avatar: null;
+}
+
+export interface Ready {
 	_trace: string[];
 	v: number;
 	user: APIUser;
 	user_settings_proto?: string;
-	guilds: Guild[];
+	guilds: IGuild[];
 	relationships: Relationship[];
 	friend_suggestion_count?: number;
 	private_channels: APIChannel[];
 	connected_accounts: APIConnection[];
 	notes: Map<string, string>;
 	presences: Presence[];
-	merged_members: GuildMember[][];
+	merged_members: Array<MergedMember[]>;
 	merged_presences: MergedPresences;
 	users: APIUser[];
 	session_id: string;

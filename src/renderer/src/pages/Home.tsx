@@ -6,9 +6,11 @@ import {
 	APIChannel,
 	APIDMChannel,
 	APIGuild,
+	APITextChannel,
 	APIUser,
 	ChannelType,
 	GatewayOpcodes,
+	PermissionFlagsBits,
 	PresenceUpdateStatus,
 } from "discord-api-types/v9";
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
@@ -24,7 +26,8 @@ import {
 	ContextMenuStyle,
 	Friend,
 	FriendActivity,
-	Guild,
+	IGuild,
+	State,
 	Status,
 } from "../../../shared/types";
 import { contextMenu, createWindow } from "@renderer/util/ipc";
@@ -36,7 +39,15 @@ import gameIcon from "@renderer/assets/home/statuses/game.png";
 import musicIcon from "@renderer/assets/home/statuses/music.png";
 import { RelationshipTypes } from "../../../shared/types";
 import Fuse from "fuse.js";
-import { PreloadedUserSettings } from "discord-protos";
+import {
+	Channel,
+	DiscordUtil,
+	Guild,
+	Member,
+	computePermissions,
+	convertPermsToArray,
+	hasPermission,
+} from "@renderer/classes/DiscordUtil";
 
 function getActivityText(activities?: FriendActivity[]) {
 	const music = activities?.find((a) => a.type === 2);
@@ -143,7 +154,7 @@ function calculateCaretPosition(
 	return caretPos + 1;
 }
 
-function Dropdown({
+export function Dropdown({
 	color,
 	header,
 	children,
@@ -151,7 +162,7 @@ function Dropdown({
 }: {
 	color?: string;
 	header: string;
-	children: JSX.Element[];
+	children: React.ReactNode;
 	info?: string;
 }) {
 	const [open, setOpen] = useState(false);
@@ -459,31 +470,65 @@ function Home() {
 	// 	)
 	// 	.flat();
 	// const guilds = state?.ready?.guilds.sort((a, b) =>
-	// 	a.properties.name.localeCompare(b.properties.name),
+	// 	a.properties?.name.localeCompare(b.properties?.name),
 	// );
-	const noFolders =
-		state?.userSettings?.guildFolders?.folders
-			?.filter((f) => f.guildIds.length === 1)
-			?.map((f) => ({
-				properties: f,
-				guilds: f.guildIds.map(
-					(g) => state.ready.guilds.find((h) => h.id === g.toString()) as Guild,
-				),
-			}))
-			?.sort((a, b) =>
-				(a.properties.name?.value || a.guilds[0].properties.name).localeCompare(
-					b.properties.name?.value || b.guilds[0].properties.name,
-				),
-			) || [];
-	const folders = state?.userSettings?.guildFolders?.folders
-		?.filter((f) => f.guildIds.length > 1)
-		?.map((f) => ({
-			properties: f,
-			guilds: f.guildIds.map(
-				(g) => state.ready.guilds.find((h) => h.id === g.toString()) as Guild,
-			),
-		}))!;
-	const guilds = [...folders, ...noFolders];
+	// const noFolders =
+	// 	state?.userSettings?.guildFolders?.folders
+	// 		?.filter((f) => f.guildIds.length === 1)
+	// 		?.map((f) => ({
+	// 			properties: f,
+	// 			guilds: f.guildIds.map(
+	// 				(g) => state.ready.guilds.find((h) => h.id === g.toString()) as Guild,
+	// 			),
+	// 		}))
+	// 		?.sort((a, b) =>
+	// 			(
+	// 				a.properties?.name?.value || a.guilds[0].properties?.name
+	// 			).localeCompare(
+	// 				b.properties?.name?.value || b.guilds[0].properties?.name,
+	// 			),
+	// 		) || [];
+	// const folders =
+	// 	state?.userSettings?.guildFolders?.folders
+	// 		?.filter((f) => f.guildIds.length > 1)
+	// 		?.map((f) => ({
+	// 			properties: f,
+	// 			guilds: f.guildIds.map(
+	// 				(g) => state.ready.guilds.find((h) => h.id === g.toString()) as Guild,
+	// 			),
+	// 		})) || [];
+	// const guilds = search
+	// 	? new Fuse([...folders, ...noFolders], {
+	// 			keys: [
+	// 				{
+	// 					name: "name",
+	// 					weight: 1,
+	// 					getFn: (obj) =>
+	// 						obj.properties?.name?.value +
+	// 						" " +
+	// 						obj.guilds.map((g) => g.properties?.name).join(" "),
+	// 				},
+	// 			],
+	// 	  })
+	// 			.search(search)
+	// 			.map((s) => s.item)
+	// 	: [...folders, ...noFolders];
+	const guildsUnsearched = state.ready?.guilds.sort(
+		(a, b) => a.properties?.name.localeCompare(b.properties?.name),
+	);
+	const guilds = search
+		? new Fuse(guildsUnsearched, {
+				keys: [
+					{
+						name: "name",
+						weight: 1,
+						getFn: (obj) => obj.properties?.name,
+					},
+				],
+		  })
+				.search(search)
+				.map((s) => s.item)
+		: guildsUnsearched;
 	return !state.ready?.user?.id ? (
 		<></>
 	) : (
@@ -700,25 +745,26 @@ function Home() {
 							))}
 						</Dropdown>
 						<Dropdown header="Servers" info={`(${guilds?.length})`}>
-							{guilds.map((c) => (
+							{/* {guilds.map((c) => (
 								<Dropdown
 									color={`#${
 										c.guilds.length > 1
-											? c.properties.color?.value
+											? c.properties?.color?.value
 													.toString(16)
 													.padStart(6, "0") || "0099ff"
 											: ""
 									}`}
 									header={
 										c.guilds.length === 1
-											? c.guilds[0].properties.name
-											: c.properties.name?.value || "Unknown Folder"
+											? c.guilds[0].properties?.name
+											: c.properties?.name?.value || "Unknown Folder"
 									}
-									key={c.guilds.map((g) => g.properties.id).join()}
+									key={c.guilds.map((g) => g.properties?.id).join()}
 								>
 									{c.guilds.length === 1
 										? c.guilds[0].channels
 												.filter((c) => c.type === ChannelType.GuildText)
+												.sort((a, b) => a.position - b.position)
 												.map((d) => (
 													<Contact
 														format=".webp?size=256"
@@ -726,8 +772,8 @@ function Home() {
 														key={d.id}
 														user={
 															{
-																id: c.guilds[0].properties.id,
-																avatar: c.guilds[0].properties.icon,
+																id: c.guilds[0].properties?.id,
+																avatar: c.guilds[0].properties?.icon,
 																global_name: `#${d.name}`,
 															} as any
 														}
@@ -739,12 +785,12 @@ function Home() {
 												<Dropdown
 													color={`#${
 														c.guilds.length > 1
-															? c.properties.color?.value
+															? c.properties?.color?.value
 																	.toString(16)
 																	.padStart(6, "0") || "0099ff"
 															: ""
 													}`}
-													header={g.properties.name}
+													header={g.properties?.name}
 													key={g.id}
 												>
 													{g.channels
@@ -757,7 +803,7 @@ function Home() {
 																user={
 																	{
 																		id: g.id,
-																		avatar: g.properties.icon,
+																		avatar: g.properties?.icon,
 																		global_name: `#${d.name}`,
 																	} as any
 																}
@@ -768,6 +814,39 @@ function Home() {
 												</Dropdown>
 										  ))}
 								</Dropdown>
+							))} */}
+							{guilds.map((c) => (
+								<Contact
+									format=".webp?size=256"
+									onDoubleClick={() => {
+										const memberReady = DiscordUtil.getMembership(c);
+										if (!memberReady) throw new Error("member not found??");
+										const member = new Member(memberReady);
+										const channels = c.channels
+											.filter((c) => c.type === ChannelType.GuildText)
+											.sort((a, b) => a.position - b.position)
+											.map((c) => new Channel(c as any));
+										const channel = channels.find((c) =>
+											hasPermission(
+												computePermissions(member, c),
+												PermissionFlagsBits.ViewChannel,
+											),
+										);
+										// console.log(channel);
+										if (!channel) return;
+										doubleClick(channel.properties);
+									}}
+									key={c.id}
+									user={
+										{
+											id: c.id,
+											avatar: c.properties?.icon,
+											global_name: c.properties?.name,
+										} as any
+									}
+									status={PresenceUpdateStatus.Online as any}
+									guild
+								/>
 							))}
 						</Dropdown>
 						<Dropdown header="Offline" info={`(${offline.length})`}>

@@ -82,12 +82,14 @@
 
 .messagingContainer {
 	height: 100%;
-	width: 100%;
-	margin-left: 140px;
+	width: calc(100% - 176px);
+	margin-left: 148px;
 	box-sizing: border-box;
-	padding: 12px 28px;
+	padding: 12px 0px 12px 28px;
 	position: relative;
 	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 }
 
 .username {
@@ -118,10 +120,11 @@
 }
 
 .messagesContainer {
+	flex-grow: 1;
 	box-sizing: border-box;
 	width: 100%;
 	height: calc(100% - 31px - 94px);
-	padding-bottom: 8px;
+	padding-bottom: 4px;
 	position: relative;
 	overflow: auto;
 	padding-right: 16px;
@@ -169,10 +172,8 @@
 }
 
 .inputWidgets {
-	position: absolute;
-	bottom: 32px;
-	width: calc(100% - 77px);
-	left: 32px;
+	width: calc(100% - 32px);
+	margin-bottom: 24px;
 }
 
 .messageBox {
@@ -288,11 +289,20 @@
 	margin-left: 1px;
 	border-radius: 4px;
 }
+
 .typing {
 	display: flex;
 	align-items: center;
-	margin-top: 4px;
 	width: calc(100% - 16px);
+	margin-bottom: 4px;
+}
+
+.typingInfoText {
+	opacity: 0.75;
+}
+
+.typing * {
+	font-size: 9pt;
 }
 
 .typing > div {
@@ -327,4 +337,49 @@
 	);
 	width: 100%;
 	height: 32px;
+}
+
+.channelsContainer {
+	width: 170px;
+	height: calc(100% - 32px);
+	position: absolute;
+	box-sizing: border-box;
+	padding: 0px 8px;
+}
+
+.lilGuy {
+	margin-left: 28px;
+}
+
+.channel {
+	width: 100%;
+	padding: 4px;
+	padding-left: 16px;
+	margin-left: -8px;
+}
+
+.channel:hover {
+	outline: solid thin #b7e7fc;
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0) 0%,
+		rgba(182, 228, 255, 0.5) 100%
+	);
+	box-shadow: inset 0px 0px 0px 1px var(--aero-white);
+}
+
+.channel:active {
+	box-shadow: inset 0px 0px 0px 1px var(--aero-white);
+	outline: solid thin #9adffe;
+	background: linear-gradient(180deg, #e9f7fe 0%, #c5e9fb 100%);
+}
+
+.topic {
+	margin-top: 4px;
+	height: 28px;
+}
+
+.channels {
+	overflow-y: auto;
+	height: calc(100% - 88px);
 }

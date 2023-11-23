@@ -21,6 +21,7 @@ import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import ContextMenu from "./pages/ContextMenu";
 import { DispatchEventsCustom } from "../../shared/gateway";
 import Message from "./pages/Message";
+import { DiscordUtil } from "./classes/DiscordUtil";
 const { screen } = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -57,6 +58,9 @@ function App(): JSX.Element {
 			ipcRenderer.removeAllListeners("set-state");
 		};
 	}, []);
+	useEffect(() => {
+		DiscordUtil.updateState(reactState);
+	}, [reactState]);
 	useEffect(() => {
 		const ids = [
 			addDispatchListener(GatewayDispatchEvents.PresenceUpdate, (d) => {

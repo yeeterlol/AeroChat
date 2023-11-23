@@ -1,24 +1,39 @@
 import PfpBorder from "@renderer/components/PfpBorder";
 import styles from "@renderer/css/pages/Message.module.css";
 import { Context, apiReq } from "@renderer/util";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import {
 	APIUser,
 	APIMessage,
 	GatewayDispatchEvents,
-	APIChannel,
 	APITextChannel,
 	APIDMChannel,
 	ChannelType,
 	APIGuild,
 	PresenceUpdateStatus,
+	APIGuildCategoryChannel,
+	APINewsChannel,
+	MessageType,
 } from "discord-api-types/v9";
 import { useSearchParams } from "react-router-dom";
-import ScrollToBottom from "react-scroll-to-bottom";
-import { v4 } from "uuid";
 import { addDispatchListener, removeGatewayListener } from "@renderer/util/ipc";
-import { Guild } from "../../../shared/types";
+import { IGuild } from "../../../shared/types";
+import typingIcon from "@renderer/assets/message/typing.png";
+import { sendOp } from "../../../shared/gateway";
+import { APIChannel, PermissionFlagsBits } from "discord-api-types/v10";
+import {
+	DiscordUtil,
+	hasPermission,
+	computePermissions,
+	Member,
+	Channel,
+} from "@renderer/classes/DiscordUtil";
+import { Dropdown } from "./Home";
+import lilGuy from "@renderer/assets/message/buddies.png";
+const remote = window.require(
+	"@electron/remote",
+) as typeof import("@electron/remote");
 
 function generateNonce() {
 	let result = "";
@@ -32,11 +47,9 @@ function generateNonce() {
 	return result;
 }
 
-function getPfp(user: APIUser | APIGuild | Guild | undefined) {
+function getPfp(user: APIUser | APIGuild | IGuild | undefined) {
 	if (!user) return defaultPfp;
-	console.log(user);
 	if ("icon" in user) {
-		console.log(user);
 		return `https://cdn.discordapp.com/icons/${user.id}/${user.icon}.webp?size=256`;
 	}
 	if ("properties" in user) {
@@ -56,7 +69,8 @@ function parseEmoji(emoji: string): { name: string; url: string } {
 	return { name, url };
 }
 
-function parseMessage(msg: string): React.ReactNode {
+function parseMessage(message: APIMessage): React.ReactNode {
+	const msg = message.content;
 	const tokens: (string | React.ReactNode)[] = [];
 	// split the message into tokens, wherever we match /<:.+?:\d+>/gm
 	let match;
@@ -70,15 +84,83 @@ function parseMessage(msg: string): React.ReactNode {
 		lastIndex = match.index + fullMatch.length;
 	}
 	tokens.push(msg.slice(lastIndex));
+	message.attachments.forEach((a) => {
+		let shouldBreak = false;
+		if (tokens.filter((t) => t).length > 0) shouldBreak = true;
+		tokens.unshift(
+			<a
+				href="#"
+				onClick={(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					if (!a.url.startsWith("https://")) return;
+					remote.require("electron").shell.openExternal(a.url);
+				}}
+				target="_blank"
+			>
+				View image
+			</a>,
+			shouldBreak ? <br /> : null,
+		);
+	});
 	return tokens;
+}
+
+function generateTyping(...usernames: string[]): React.JSX.Element {
+	// if none, return ""
+	// if 1, return "user is typing..."
+	// if 2, return "user1 and user2 are typing..."
+	// if 3+, return "user1, user2, and user3 are typing..."
+	/* <span style={{ fontWeight: "bold" }}>user</span> is typing... */
+	if (usernames.length === 0) return <></>;
+	if (usernames.length === 1)
+		return (
+			<div>
+				<span style={{ fontWeight: "bold" }}>{usernames[0]}</span>{" "}
+				<span className={styles.typingInfoText}>is writing...</span>
+			</div>
+		);
+	if (usernames.length === 2)
+		return (
+			<div>
+				<span style={{ fontWeight: "bold" }}>{usernames[0]}</span>{" "}
+				<span className={styles.typingInfoText}>and</span>{" "}
+				<span style={{ fontWeight: "bold" }}>{usernames[1]}</span>{" "}
+				<span className={styles.typingInfoText}>are writing...</span>
+			</div>
+		);
+	if (usernames.length > 2)
+		// make sure the commas and "and" aren't bold
+		return (
+			<div>
+				{usernames.slice(0, -1).map((u, i) => (
+					<span>
+						<span style={{ fontWeight: "bold" }}>{u}</span>
+						<span className={styles.typingInfoText}>
+							{i === usernames.length - 2 ? " " : ", "}
+						</span>
+					</span>
+				))}
+				<span className={styles.typingInfoText}>and</span>{" "}
+				<span style={{ fontWeight: "bold" }}>{usernames.at(-1)}</span>{" "}
+				<span className={styles.typingInfoText}> are writing...</span>
+			</div>
+		);
+	return <></>;
 }
 
 function MessagePage() {
 	const [messageContainer, setMessageContainer] =
 		useState<HTMLDivElement | null>();
 	const [params] = useSearchParams();
-	const channelId = params.get("channelId");
-	const [channel, setChannel] = useState<APITextChannel | APIDMChannel>();
+	const channelParam = params.get("channelId");
+	const [channelId, setChannelId] = useState(channelParam);
+	const [channel, setChannel] = useState<
+		APITextChannel | APIDMChannel | APINewsChannel
+	>();
+	const [channels, setChannels] = useState<
+		Channel<APITextChannel | APIGuildCategoryChannel | APINewsChannel>[]
+	>([]);
 	const { state } = useContext(Context);
 	const [messages, setMessages] = useState<APIMessage[]>([]);
 	async function fetchMessages() {
@@ -88,8 +170,64 @@ function MessagePage() {
 		).body as APIMessage[];
 		setMessages(messages.reverse());
 		if (!messageContainer) return;
-		console.log(messageContainer.scrollHeight, messageContainer.scrollTop);
 	}
+	const [typing, setTyping] = useState<
+		{
+			name: string;
+			id: string;
+			timeout: NodeJS.Timeout;
+		}[]
+	>([]);
+	useEffect(() => {
+		if (!channel) return;
+		let data: any = {};
+		if (channel.type === ChannelType.DM) {
+			data.channel_id = channel.id;
+		} else if ("guild_id" in channel) {
+			data.guild_id = channel.guild_id;
+			data.typing = true;
+			data.threads = true;
+			data.activities = true;
+			data.members = [];
+			data.thread_member_lists = [];
+			data.channels = {
+				[channel.id]: [[0, 99]],
+			};
+		}
+		sendOp("guild_id" in channel ? (14 as any) : (13 as any), data as any);
+	}, [channel]);
+	useEffect(() => {
+		const id = addDispatchListener(GatewayDispatchEvents.TypingStart, (d) => {
+			if (d.channel_id !== channelId) return;
+			let typingMut = [...typing];
+			const typingUser = typingMut.find((t) => t.id === d.user_id);
+			const user = state?.ready?.users?.find((u) => u.id === d.user_id);
+			if (typingUser) {
+				clearTimeout(typingUser.timeout);
+				typingMut = typingMut.filter((t) => t.id !== d.user_id);
+			}
+			typingMut = [
+				...typingMut,
+				{
+					name:
+						d.member?.nick ||
+						d.member?.user?.global_name ||
+						d.member?.user?.username ||
+						user?.global_name ||
+						user?.username ||
+						"Unknown user",
+					id: d.user_id,
+					timeout: setTimeout(() => {
+						setTyping((t) => t.filter((t) => t.id !== d.user_id));
+					}, 10000),
+				},
+			];
+			setTyping(typingMut);
+		});
+		return () => {
+			removeGatewayListener(id);
+		};
+	}, [channel, typing]);
 	async function fetchChannel() {
 		if (!channelId) return;
 		const channel = (
@@ -103,10 +241,28 @@ function MessagePage() {
 	// 		(f) => f.user_id === userId,
 	// 	),
 	// };
+	const [guild, setGuild] = useState<APIGuild | IGuild | undefined>();
 	useEffect(() => {
 		fetchMessages();
 		fetchChannel();
-	}, []);
+	}, [channelId]);
+	useEffect(() => {
+		if (!guild || !("properties" in guild)) return;
+		const memberReady = DiscordUtil.getMembership(guild);
+		if (!memberReady) throw new Error("member not found??");
+		const member = new Member(memberReady);
+		const channels = guild.channels
+			.map((c) => new Channel(c as any))
+			.filter((c) =>
+				hasPermission(
+					computePermissions(member, c),
+					PermissionFlagsBits.ViewChannel,
+				),
+			)
+			.sort((a, b) => a.properties.position - b.properties.position);
+		setChannels(channels);
+		console.log(channels);
+	}, [guild]);
 	useEffect(() => {
 		// observe the element for child changes
 		if (!messageContainer) return;
@@ -118,6 +274,10 @@ function MessagePage() {
 			observer.disconnect();
 		};
 	}, [messageContainer]);
+	useEffect(() => {
+		if (!messageContainer) return;
+		messageContainer.scrollTop = messageContainer.scrollHeight;
+	}, [messages, typing, messageContainer]);
 	async function sendMessage(message: string) {
 		if (!channelId) return;
 		const tempId = generateNonce() + generateNonce();
@@ -163,20 +323,23 @@ function MessagePage() {
 		}
 	}
 	useEffect(() => {
-		console.log(messages);
-	}, [messages]);
-	useEffect(() => {
 		const id = addDispatchListener(GatewayDispatchEvents.MessageCreate, (d) => {
 			if (d.channel_id !== channelId || d.author.id === state?.ready?.user?.id)
 				return;
+			let typingMut = [...typing];
+			const typingUser = typingMut.find((t) => t.id === d.author.id);
+			if (typingUser) {
+				clearTimeout(typingUser.timeout);
+				typingMut = typingMut.filter((t) => t.id !== d.author.id);
+			}
+			setTyping(typingMut);
 			setMessages([...messages, d]);
 		});
 		return () => {
 			removeGatewayListener(id);
 		};
-	}, [channelId, messages]);
+	}, [channelId, messages, typing]);
 	// if (!userId || !recepient.user || !recepient.presence) return <></>;
-	const [guild, setGuild] = useState<APIGuild | Guild | undefined>();
 	useEffect(() => {
 		setGuild(
 			channel?.type === ChannelType.GuildText
@@ -184,9 +347,9 @@ function MessagePage() {
 				: undefined,
 		);
 		const guild =
-			channel?.type === ChannelType.GuildText
-				? state?.ready?.guilds.find((g) => g.id === channel.guild_id)
-				: undefined;
+			channel?.type === ChannelType.DM
+				? undefined
+				: state?.ready?.guilds.find((g) => g.id === channel?.guild_id);
 		(async () => {
 			if (!guild) return;
 			const req = await apiReq(
@@ -218,28 +381,71 @@ function MessagePage() {
 					<div className={styles.toolbar} />
 				</div>
 				<div className={styles.contentContainer}>
-					<div className={styles.pfpContainer}>
-						<div className={styles.recepientPfp}>
-							<PfpBorder
-								pfp={getPfp(recepient?.user || guild)}
-								variant="large"
-								stateInitial={
-									recepient?.user
-										? (recepient?.presence?.status as any) ||
-										  PresenceUpdateStatus.Offline
-										: PresenceUpdateStatus.Idle
-								}
-								guild
-							/>
+					{!guild ? (
+						<div className={styles.pfpContainer}>
+							<div className={styles.recepientPfp}>
+								<PfpBorder
+									pfp={getPfp(recepient?.user || guild)}
+									variant="large"
+									stateInitial={
+										recepient?.user
+											? (recepient?.presence?.status as any) ||
+											  PresenceUpdateStatus.Offline
+											: PresenceUpdateStatus.Idle
+									}
+									guild={!!guild}
+								/>
+							</div>
+							<div className={styles.ownPfp}>
+								<PfpBorder
+									pfp={getPfp(state?.ready?.user)}
+									variant="large"
+									stateInitial={myPresence.status as any}
+								/>
+							</div>
 						</div>
-						<div className={styles.ownPfp}>
-							<PfpBorder
-								pfp={getPfp(state?.ready?.user)}
-								variant="large"
-								stateInitial={myPresence.status as any}
-							/>
+					) : (
+						<div className={styles.channelsContainer}>
+							<img src={lilGuy} className={styles.lilGuy} />
+							<div className={styles.channels}>
+								{channels
+									.filter(
+										(c) => c.properties.type === ChannelType.GuildCategory,
+									)
+									.map((cat) => (
+										<Dropdown
+											key={cat.properties.id}
+											header={cat.properties.name
+												.toLowerCase()
+												.split(" ")
+												.map(
+													(word) =>
+														word.charAt(0).toUpperCase() + word.slice(1),
+												)
+												.join(" ")}
+										>
+											{channels
+												.filter(
+													(c) =>
+														(c.properties.type === ChannelType.GuildText ||
+															c.properties.type ===
+																ChannelType.GuildAnnouncement) &&
+														c.properties.parent_id === cat.properties.id,
+												)
+												.map((c) => (
+													<div
+														onClick={() => setChannelId(c.properties.id)}
+														key={c.properties.id}
+														className={styles.channel}
+													>
+														#{c.properties.name}
+													</div>
+												))}
+										</Dropdown>
+									))}
+							</div>
 						</div>
-					</div>
+					)}
 					<div className={styles.messagingContainer}>
 						<div className={styles.username}>
 							{guild
@@ -249,10 +455,15 @@ function MessagePage() {
 											: guild.name || "Unknown Server"
 								  }`
 								: recepient?.user?.global_name || recepient?.user?.username}
+							{guild ? (
+								<div className={styles.topic}>
+									{(channel as APITextChannel).topic}
+								</div>
+							) : null}
 						</div>
 						<div
 							style={{
-								marginTop: 12,
+								marginTop: !guild ? 4 : !(channel as any).topic ? -20 : 8,
 							}}
 							className={styles.divider}
 						/>
@@ -284,66 +495,18 @@ function MessagePage() {
 											spellCheck={false}
 											className={styles.message}
 										>
-											{parseMessage(m.content)}
+											{parseMessage(m)}
 										</span>
 									</div>
-									{/* {(() => {
-										const potentialUsername = (() => {
-											const msg = (
-												<div className={styles.messageUsername}>
-													{liveState.connections.find((c) => c.id === m.from)
-														?.username || liveState.username}{" "}
-													said:
-												</div>
-											);
-											if (i === 0) return msg;
-											if (messages.at(i - 1)!.from !== m.from) return msg;
-											if (messages.at(i - 1)!.messageType !== m.messageType)
-												return msg;
-											return <></>;
-										})();
-										switch (m.messageType) {
-											case MessageType.TEXT_MESSAGE_SERVER:
-												return (
-
-												);
-											case MessageType.ERROR: {
-												return (
-													<div className={styles.error}>
-														<img src={error} />
-														<div className={styles.errorText}>{m.message}</div>
-													</div>
-												);
-											}
-											case MessageType.NUDGE_RESPONSE: {
-												return (
-													<div className={styles.nudge}>
-														{messages.at(i - 1)?.messageType !==
-															MessageType.NUDGE_RESPONSE && (
-															<div className={styles.nudgeDivider} />
-														)}
-														<div>
-															{m.from === liveState.id
-																? "You have just sent a nudge."
-																: `${user.username} just sent you a nudge.`}
-														</div>
-														<div className={styles.nudgeDivider} />
-													</div>
-												);
-											}
-											case MessageType.IMAGE_RESPONSE: {
-												return (
-													<div className={styles.imageContainer}>
-														{potentialUsername}
-														<img src={m.image} />
-													</div>
-												);
-											}
-										}
-									})()} */}
 								</div>
 							))}
 						</div>
+						{typing.length !== 0 && (
+							<div className={styles.typing}>
+								<img src={typingIcon} />
+								{generateTyping(...typing.map((t) => t.name))}
+							</div>
+						)}
 						<div className={styles.inputWidgets}>
 							<div
 								className={styles.divider}
@@ -401,15 +564,6 @@ function MessagePage() {
 								/> */}
 							</div>
 						</div>
-						{/* {otherTyping && (
-							<div className={styles.typing}>
-								<img src={typing} />
-								<div>
-									<span style={{ fontWeight: "bold" }}>{user.username}</span> is
-									typing...
-								</div>
-							</div>
-						)} */}
 						{/* <div
 							ref={emoticonRef}
 							className={styles.emoticons}

@@ -149,6 +149,7 @@
 .messageContainer {
 	margin-left: 24px;
 }
+
 .messageContainer::before {
 	content: "▪";
 	color: #999999;
@@ -197,7 +198,7 @@
 }
 
 .inputWidgets {
-	width: calc(100% - 32px);
+	width: calc(100% - 16px);
 	margin-bottom: 24px;
 }
 
@@ -446,4 +447,11 @@
 		inset 0px 12px 12px -12px rgba(0, 0, 0, 0.75),
 		inset 0px 12px 12px -12px rgba(255, 255, 255, 0.5),
 		0px 0px 0px 1px rgba(0, 0, 0, 0.75);
+}
+
+.speen {
+	position: absolute;
+	left: calc(50% - 16px);
+	transform: translateX(-50%);
+	bottom: 16px;
 }

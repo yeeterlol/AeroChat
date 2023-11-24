@@ -15,6 +15,7 @@ import {
 	APIGuildCategoryChannel,
 	APINewsChannel,
 	MessageType,
+	GuildChannelType,
 } from "discord-api-types/v9";
 import { useSearchParams } from "react-router-dom";
 import { addDispatchListener, removeGatewayListener } from "@renderer/util/ipc";
@@ -36,6 +37,13 @@ import remarkGfm from "remark-gfm";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
+import speen from "@renderer/assets/login/speen.png";
+
+function isGuildChannel(type: ChannelType): type is GuildChannelType {
+	return Object.keys(ChannelType)
+		.filter((k) => k.startsWith("Guild"))
+		.includes(ChannelType[type]);
+}
 
 function generateNonce() {
 	let result = "";
@@ -246,6 +254,7 @@ function MessagePage() {
 		};
 	}, [channel, typing]);
 	async function fetchChannel() {
+		console.log(channelId);
 		if (!channelId) return;
 		const channel = (
 			await apiReq(`/channels/${channelId}`, "GET", state?.token || "")
@@ -262,7 +271,21 @@ function MessagePage() {
 	useEffect(() => {
 		fetchMessages();
 		fetchChannel();
+		console.log(guild);
+		if (!guild) return;
+		if ("properties" in guild) {
+			setChannel({
+				...(guild.channels.find((c) => c.id === channelId) as any),
+				guild_id: guild.id,
+			});
+			setMessages([]);
+			// setChannel(guild.channels.find((c) => c.id === channelId) as any);
+		}
 	}, [channelId]);
+	useEffect(() => {
+		console.log(channel);
+	}, [channel]);
+	const [canSendChannel, setCanSendChannel] = useState(false);
 	useEffect(() => {
 		if (!guild || !("properties" in guild)) return;
 		const memberReady = DiscordUtil.getMembership(guild);
@@ -279,6 +302,33 @@ function MessagePage() {
 			.sort((a, b) => a.properties.position - b.properties.position);
 		setChannels(channels);
 	}, [guild]);
+	const recepient =
+		channel?.type === ChannelType.DM
+			? {
+					user: state?.ready?.users.find(
+						(u) => u.id === channel?.recipients?.[0].id,
+					),
+					presence:
+						state?.ready?.merged_presences?.friends.find(
+							(f) => f.user_id === channel?.recipients?.[0].id,
+						) ||
+						state?.ready?.merged_presences?.guilds
+							?.flat()
+							?.find((p) => p.user_id === channel?.recipients?.[0].id),
+			  }
+			: undefined;
+	useEffect(() => {
+		if (!guild || !("properties" in guild) || !channel) return;
+		const memberReady = DiscordUtil.getMembership(guild);
+		if (!memberReady) throw new Error("member not found??");
+		const member = new Member(memberReady);
+		setCanSendChannel(
+			!hasPermission(
+				computePermissions(member, new Channel(channel as any)),
+				PermissionFlagsBits.SendMessages,
+			),
+		);
+	}, [channel, guild, recepient]);
 	useEffect(() => {
 		// observe the element for child changes
 		if (!messageContainer) return;
@@ -357,60 +407,30 @@ function MessagePage() {
 	}, [channelId, messages, typing]);
 	// if (!userId || !recepient.user || !recepient.presence) return <></>;
 	useEffect(() => {
+		if (!channel) return;
 		setGuild(
-			channel?.type === ChannelType.GuildText
-				? state?.ready?.guilds.find((g) => g.id === channel.guild_id)
+			isGuildChannel(channel.type)
+				? state?.ready?.guilds.find((g) => g.id === (channel as any).guild_id)
 				: undefined,
 		);
-		const guild =
-			channel?.type === ChannelType.DM
-				? undefined
-				: state?.ready?.guilds.find((g) => g.id === channel?.guild_id);
-		(async () => {
-			if (!guild) return;
-			const req = await apiReq(
-				`/guilds/${guild.id}`,
-				"GET",
-				state?.token || "",
-			);
-			const res = req.body as APIGuild;
-			setGuild(res);
-		})();
-	}, [channel]);
-	const recepient =
-		channel?.type === ChannelType.DM
-			? {
-					user: state?.ready?.users.find(
-						(u) => u.id === channel?.recipients?.[0].id,
-					),
-					presence:
-						state?.ready?.merged_presences?.friends.find(
-							(f) => f.user_id === channel?.recipients?.[0].id,
-						) ||
-						state?.ready?.merged_presences?.guilds
-							?.flat()
-							?.find((p) => p.user_id === channel?.recipients?.[0].id),
-			  }
-			: undefined;
+	}, [channel, channelId]);
 	const myPresence = state?.ready?.sessions[0];
 
 	useEffect(() => {
-		remote.getCurrentWindow().setIcon(remote.nativeImage.createEmpty());
+		remote
+			.getCurrentWindow()
+			.setIcon(remote.nativeImage.createFromPath("resources/icon-chat.ico"));
 	}, []);
 	useEffect(() => {
-		const win = remote.getCurrentWindow();
-		win.setIcon(remote.nativeImage.createFromPath("resources/icon-chat.ico"));
 		if (recepient) {
-			win.setTitle(
-				recepient.user?.global_name
-					? `${recepient.user?.global_name}  <${recepient.user?.username}>`
-					: `${recepient.user?.username}`,
-			);
+			document.title = recepient.user?.global_name
+				? `${recepient.user?.global_name}  <${recepient.user?.username}>`
+				: `${recepient.user?.username}`;
 		} else if (guild && channel) {
 			if ("properties" in guild) {
-				win.setTitle(`${channel.name}  <${guild.properties.name}>`);
+				document.title = `${channel.name}  <${guild.properties.name}>`;
 			} else {
-				win.setTitle(`${channel.name}  <${guild.name}>`);
+				document.title = `${channel.name}  <${guild.name}>`;
 			}
 		}
 	}, [channel, recepient, guild]);
@@ -646,78 +666,96 @@ function MessagePage() {
 							className={styles.divider}
 						/>
 						<div ref={setMessageContainer} className={styles.messagesContainer}>
-							{messages.map((m, i) => (
-								<div key={m.nonce} className={styles.messageGroup}>
-									<div
-										style={{
-											display:
-												messages[i - 1]?.author.id === m.author.id &&
-												messages[i - 1]?.attachments.length === 0 &&
-												new Date(m.timestamp).getTime() -
-													new Date(messages[i - 1]?.timestamp).getTime() <=
-													7 * 60 * 1000
-													? "none"
-													: undefined,
-										}}
-										className={styles.messageUsername}
-									>
-										{m.author.global_name || m.author.username} said:
-									</div>
-									<div className={styles.messageContainer}>
-										<span
-											style={{ opacity: m.id.length > 26 ? 0.5 : 1 }}
-											contentEditable
-											suppressContentEditableWarning // the user shouldn't be able to edit the message, we only want the caret
-											onKeyDown={(e) => {
-												if (e.metaKey || e.ctrlKey) return;
-												e.preventDefault();
+							{messages.length > 0 ? (
+								messages.map((m, i) => (
+									<div key={m.nonce} className={styles.messageGroup}>
+										<div
+											style={{
+												display:
+													messages[i - 1]?.author.id === m.author.id &&
+													messages[i - 1]?.attachments.length === 0 &&
+													new Date(m.timestamp).getTime() -
+														new Date(messages[i - 1]?.timestamp).getTime() <=
+														7 * 60 * 1000
+														? "none"
+														: undefined,
 											}}
-											spellCheck={false}
-											className={styles.message}
+											className={styles.messageUsername}
 										>
-											{parseMessage(m, [
-												{
-													pattern:
-														/(<|)(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/g,
-													replacement(match) {
-														// remove < and > from the match at the beginning and end if they exist
-														return (
-															<a
-																href="#"
-																onClick={(e) => {
-																	e.preventDefault();
-																	e.stopPropagation();
-																	remote
-																		.require("electron")
-																		.shell.openExternal(match[0]);
-																}}
-															>
-																{match[0].replace(/^(<)|(>)$/g, "")}
-															</a>
-														);
+											{m.author.global_name || m.author.username} says
+											{m.referenced_message
+												? ` (in reply to ${
+														m.referenced_message.author.global_name ||
+														m.referenced_message.author.username
+												  }'s message '${m.referenced_message.content}')`
+												: ""}{" "}
+											{`(${new Date(m.timestamp)
+												.toLocaleTimeString([], {
+													hour: "2-digit",
+													minute: "2-digit",
+													hour12: true,
+												})
+												.toUpperCase()})`}
+											:
+										</div>
+										<div className={styles.messageContainer}>
+											<span
+												style={{ opacity: m.id.length > 26 ? 0.5 : 1 }}
+												contentEditable
+												suppressContentEditableWarning // the user shouldn't be able to edit the message, we only want the caret
+												onKeyDown={(e) => {
+													if (e.metaKey || e.ctrlKey) return;
+													e.preventDefault();
+												}}
+												spellCheck={false}
+												className={styles.message}
+											>
+												{parseMessage(m, [
+													{
+														pattern:
+															/(<|)(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/g,
+														replacement(match) {
+															// remove < and > from the match at the beginning and end if they exist
+															return (
+																<a
+																	href="#"
+																	onClick={(e) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+																		remote
+																			.require("electron")
+																			.shell.openExternal(match[0]);
+																	}}
+																>
+																	{match[0].replace(/^(<)|(>)$/g, "")}
+																</a>
+															);
+														},
 													},
-												},
-												{
-													pattern: /<(a|):.+?:\d+>/gm,
-													replacement(match) {
-														const { name, url } = parseEmoji(match[0]);
-														return (
-															<img
-																style={{
-																	width: 20,
-																	height: 20,
-																}}
-																src={url}
-																alt={name}
-															/>
-														);
+													{
+														pattern: /<(a|):.+?:\d+>/gm,
+														replacement(match) {
+															const { name, url } = parseEmoji(match[0]);
+															return (
+																<img
+																	style={{
+																		width: 20,
+																		height: 20,
+																	}}
+																	src={url}
+																	alt={name}
+																/>
+															);
+														},
 													},
-												},
-											])}
-										</span>
+												])}
+											</span>
+										</div>
 									</div>
-								</div>
-							))}
+								))
+							) : (
+								<img src={speen} className={styles.speen} />
+							)}
 						</div>
 						{typing.length !== 0 && (
 							<div className={styles.typing}>
@@ -735,6 +773,17 @@ function MessagePage() {
 								}}
 							/>
 							<textarea
+								disabled={canSendChannel ? true : false}
+								style={{
+									border: canSendChannel ? "solid thin #a9b6bb" : undefined,
+									fontStyle: canSendChannel ? "italic" : undefined,
+									backgroundColor: canSendChannel ? "#e6ede9" : undefined,
+									fontSize: canSendChannel ? 12 : undefined,
+									paddingTop: canSendChannel ? 5 : undefined,
+								}}
+								placeholder={
+									canSendChannel ? "You can't chat here." : undefined
+								}
 								onKeyDown={(e) => {
 									if (e.key === "Enter" && !e.shiftKey) {
 										e.preventDefault();

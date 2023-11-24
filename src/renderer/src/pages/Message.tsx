@@ -361,19 +361,27 @@ function MessagePage() {
 			setGuild(res);
 		})();
 	}, [channel]);
-	if (!channel) return <></>;
 	const recepient =
-		channel.type === ChannelType.DM
+		channel?.type === ChannelType.DM
 			? {
 					user: state?.ready?.users.find(
 						(u) => u.id === channel?.recipients?.[0].id,
 					),
-					presence: state?.ready?.merged_presences?.friends.find(
-						(f) => f.user_id === channel?.recipients?.[0].id,
-					),
+					presence:
+						state?.ready?.merged_presences?.friends.find(
+							(f) => f.user_id === channel?.recipients?.[0].id,
+						) ||
+						state?.ready?.merged_presences?.guilds
+							?.flat()
+							?.find((p) => p.user_id === channel?.recipients?.[0].id),
 			  }
 			: undefined;
 	const myPresence = state?.ready?.sessions[0];
+
+	useEffect(() => {
+		remote.getCurrentWindow().setIcon(remote.nativeImage.createEmpty());
+	}, []);
+	if (!channel) return <></>;
 	return (
 		<div className={styles.window}>
 			<div className={styles.content}>

@@ -26,6 +26,7 @@ import {
 	ContextMenuStyle,
 	Friend,
 	FriendActivity,
+	GuildPresence,
 	IGuild,
 	State,
 	Status,
@@ -175,7 +176,7 @@ export function Dropdown({
 				</h1>
 			</div>
 			<div className={styles.dropdownContent} data-toggled={open}>
-				{open ? children : <></>}
+				{children}
 			</div>
 		</div>
 	);
@@ -185,7 +186,12 @@ function Contact(
 	props: React.DetailedHTMLProps<
 		React.HTMLAttributes<HTMLDivElement>,
 		HTMLDivElement
-	> & { format?: string; user: APIUser; status: Friend; guild?: boolean },
+	> & {
+		format?: string;
+		user: APIUser;
+		status: Friend | GuildPresence;
+		guild?: boolean;
+	},
 ) {
 	const p = { ...props, user: undefined, status: undefined, guild: undefined };
 	return (
@@ -418,7 +424,7 @@ function Home() {
 	const status = state.ready?.sessions[0]?.activities?.find(
 		(a) => a.type === 4,
 	);
-	const unfilteredFriends = state?.ready?.relationships
+	const friends = state?.ready?.relationships
 		?.filter((r) => r.type === RelationshipTypes.FRIEND)
 		.map((u) => ({
 			user: state?.ready?.users?.find(
@@ -436,8 +442,15 @@ function Home() {
 				},
 			},
 		}));
-	const friends = search
-		? new Fuse(unfilteredFriends, {
+	const onlineUnsearched = friends
+		?.filter((f) => f.status.status !== Status.Offline)
+		.sort((a, b) =>
+			(a.user.global_name || a.user.username).localeCompare(
+				b.user.global_name || b.user.username,
+			),
+		);
+	const online = search
+		? new Fuse(onlineUnsearched, {
 				keys: [
 					{
 						name: "username",
@@ -448,21 +461,69 @@ function Home() {
 		  })
 				.search(search)
 				.map((s) => s.item)
-		: unfilteredFriends;
-	const online = friends
-		?.filter((f) => f.status.status !== Status.Offline)
-		.sort((a, b) =>
-			(a.user.global_name || a.user.username).localeCompare(
-				b.user.global_name || b.user.username,
-			),
-		);
-	const offline = friends
+		: onlineUnsearched;
+	const offlineUnsearched = friends
 		?.filter((f) => f.status.status === Status.Offline)
 		.sort((a, b) =>
 			(a.user.global_name || a.user.username).localeCompare(
 				b.user.global_name || b.user.username,
 			),
 		);
+	const offline = search
+		? new Fuse(offlineUnsearched, {
+				keys: [
+					{
+						name: "username",
+						weight: 1,
+						getFn: (obj) => obj.user.global_name || obj.user.username,
+					},
+				],
+		  })
+				.search(search)
+				.map((s) => s.item)
+		: offlineUnsearched;
+	const dmsUnsearched = state?.ready?.private_channels
+		?.filter((c) => c.type === ChannelType.DM)
+		?.filter((c) => c.last_message_id !== null)
+		?.filter(
+			(c) =>
+				!state?.ready?.relationships
+					?.map((r) => r.user_id)
+					.includes(c.recipient_ids[0]),
+		)
+		.filter((c) => c.recipient_ids.length === 1)
+		.sort(
+			(a, b) =>
+				(DiscordUtil.getDateById(b.last_message_id) || 0) -
+				(DiscordUtil.getDateById(a.last_message_id) || 0),
+		)
+		.map((c) => ({
+			user: state?.ready?.users?.find((v) => v.id === c.recipient_ids[0])!,
+			status: state?.ready?.merged_presences?.guilds
+				?.flat()
+				?.find((p) => p.user_id === c.recipient_ids[0]) || {
+				activities: [],
+				client_status: {},
+				status: "offline" as Status,
+				user_id: c.recipient_ids[0],
+				user: {
+					id: c.recipient_ids[0],
+				},
+			},
+		}));
+	const dms = search
+		? new Fuse(dmsUnsearched, {
+				keys: [
+					{
+						name: "username",
+						weight: 1,
+						getFn: (obj) => obj.user.global_name || obj.user.username,
+					},
+				],
+		  })
+				.search(search)
+				.map((s) => s.item)
+		: dmsUnsearched;
 	// const channels = state?.ready?.guilds
 	// 	?.map((g) =>
 	// 		g.channels.map((c) => ({
@@ -737,8 +798,15 @@ function Home() {
 							header="Online"
 							info={`(${online.length}/${friends.length})`}
 						>
-							{online?.map((c) => (
+							{onlineUnsearched?.map((c) => (
 								<Contact
+									style={{
+										display: search
+											? online?.map((d) => d.user.id).includes(c.user.id)
+												? ""
+												: "none"
+											: "",
+									}}
 									onDoubleClick={() => doubleClick(c.user)}
 									onContextMenu={() => contactContextMenu(c.user)}
 									key={c.user.id}
@@ -746,79 +814,34 @@ function Home() {
 								/>
 							))}
 						</Dropdown>
-						<Dropdown header="Servers" info={`(${guilds?.length})`}>
-							{/* {guilds.map((c) => (
-								<Dropdown
-									color={`#${
-										c.guilds.length > 1
-											? c.properties?.color?.value
-													.toString(16)
-													.padStart(6, "0") || "0099ff"
-											: ""
-									}`}
-									header={
-										c.guilds.length === 1
-											? c.guilds[0].properties?.name
-											: c.properties?.name?.value || "Unknown Folder"
-									}
-									key={c.guilds.map((g) => g.properties?.id).join()}
-								>
-									{c.guilds.length === 1
-										? c.guilds[0].channels
-												.filter((c) => c.type === ChannelType.GuildText)
-												.sort((a, b) => a.position - b.position)
-												.map((d) => (
-													<Contact
-														format=".webp?size=256"
-														onDoubleClick={() => doubleClick(d)}
-														key={d.id}
-														user={
-															{
-																id: c.guilds[0].properties?.id,
-																avatar: c.guilds[0].properties?.icon,
-																global_name: `#${d.name}`,
-															} as any
-														}
-														status={PresenceUpdateStatus.Online as any}
-														guild
-													/>
-												))
-										: c.guilds.map((g) => (
-												<Dropdown
-													color={`#${
-														c.guilds.length > 1
-															? c.properties?.color?.value
-																	.toString(16)
-																	.padStart(6, "0") || "0099ff"
-															: ""
-													}`}
-													header={g.properties?.name}
-													key={g.id}
-												>
-													{g.channels
-														.filter((c) => c.type === ChannelType.GuildText)
-														.map((d) => (
-															<Contact
-																format=".webp?size=256"
-																onDoubleClick={() => doubleClick(d)}
-																key={d.id}
-																user={
-																	{
-																		id: g.id,
-																		avatar: g.properties?.icon,
-																		global_name: `#${d.name}`,
-																	} as any
-																}
-																status={PresenceUpdateStatus.Online as any}
-																guild
-															/>
-														))}
-												</Dropdown>
-										  ))}
-								</Dropdown>
-							))} */}
-							{guilds.map((c) => (
+						<Dropdown header="Unfriended DMs" info={`(${dms?.length})`}>
+							{dmsUnsearched?.map((c) => (
 								<Contact
+									style={{
+										display: search
+											? dms?.map((d) => d.user.id).includes(c.user.id)
+												? ""
+												: "none"
+											: "",
+									}}
+									onDoubleClick={() => doubleClick(c.user)}
+									onContextMenu={() => contactContextMenu(c.user)}
+									key={c.user.id}
+									status={c.status}
+									user={c.user}
+								/>
+							))}
+						</Dropdown>
+						<Dropdown header="Servers" info={`(${guilds?.length})`}>
+							{guildsUnsearched.map((c) => (
+								<Contact
+									style={{
+										display: search
+											? guilds?.map((d) => d.id).includes(c.id)
+												? ""
+												: "none"
+											: "",
+									}}
 									format=".webp?size=256"
 									onDoubleClick={() => {
 										const memberReady = DiscordUtil.getMembership(c);
@@ -852,8 +875,15 @@ function Home() {
 							))}
 						</Dropdown>
 						<Dropdown header="Offline" info={`(${offline.length})`}>
-							{offline?.map((c) => (
+							{offlineUnsearched?.map((c) => (
 								<Contact
+									style={{
+										display: search
+											? offline?.map((d) => d.user.id).includes(c.user.id)
+												? ""
+												: "none"
+											: "",
+									}}
 									onDoubleClick={() => doubleClick(c.user)}
 									onContextMenu={() => contactContextMenu(c.user)}
 									key={c.user.id}

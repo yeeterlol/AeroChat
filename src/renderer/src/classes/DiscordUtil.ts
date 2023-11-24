@@ -43,6 +43,9 @@ export class DiscordUtil {
 			g.channels.some((c) => c.id === id),
 		);
 	}
+	static getDateById(id?: string | null): number | undefined {
+		return id ? Number(BigInt(id) >> 22n) + 1420070400000 : undefined;
+	}
 }
 
 export class Member {

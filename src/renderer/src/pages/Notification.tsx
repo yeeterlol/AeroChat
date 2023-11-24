@@ -23,7 +23,7 @@ function Notification() {
 		const offset = 100;
 		window.setPosition(x, y + offset);
 		const timeToEnter = 1000;
-		const timeToWait = 2000;
+		const timeToWait = 5000;
 		const timeToLeave = 1000;
 		const stepTime = timeToEnter / steps;
 		const interval = setInterval(() => {

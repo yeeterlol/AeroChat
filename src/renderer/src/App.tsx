@@ -22,7 +22,7 @@ import ContextMenu from "./pages/ContextMenu";
 import { DispatchEventsCustom } from "../../shared/gateway";
 import Message from "./pages/Message";
 import { DiscordUtil } from "./classes/DiscordUtil";
-const { screen } = window.require(
+const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
 
@@ -88,7 +88,7 @@ function App(): JSX.Element {
 						reactState.ready.users.find((u) => u.id === r.id),
 					);
 					const user = a?.find((u) => u?.id === d.user.id);
-					const primary = screen.getPrimaryDisplay();
+					const primary = remote.screen.getPrimaryDisplay();
 					// use work area size to get bottom right
 					const { width, height, monX, monY } = {
 						...primary.workAreaSize,
@@ -102,7 +102,7 @@ function App(): JSX.Element {
 					createWindow({
 						customProps: {
 							url: `/notification?title=${encodeURIComponent(
-								`${user?.global_name || user?.username} is online!`,
+								`${user?.global_name || user?.username} has just signed in.`,
 							)}&img=${encodeURIComponent(
 								user?.avatar
 									? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
@@ -131,6 +131,18 @@ function App(): JSX.Element {
 		return () => {
 			ids.forEach((id) => removeGatewayListener(id));
 		};
+	}, [reactState]);
+	useEffect(() => {
+		(async () => {
+			const window = remote.getCurrentWindow();
+			const activeIcon = remote.nativeImage.createFromPath(
+				__dirname + "/public/native/active.ico",
+			);
+			console.log(__dirname + "/public/native/active.ico");
+			console.log(activeIcon.toPNG());
+			window.setIcon(activeIcon);
+			console.log("done");
+		})();
 	}, [reactState]);
 	return (
 		<Context.Provider value={{ state: reactState, setState }}>

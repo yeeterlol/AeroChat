@@ -46,8 +46,51 @@ export interface ClientInfo {
 	client: string;
 }
 
+export interface GuildPresence {
+	user_id: string;
+	status: Status;
+	client_status: ClientStatus;
+	broadcast: null;
+	activities: Activity[];
+}
+
+export enum LargeText {
+	Idling = "Idling",
+	Wake = "Wake",
+}
+
+export interface Emoji {
+	name: string;
+	id?: string;
+	animated?: boolean;
+}
+
+export enum ActivityID {
+	A56Acdd357C75176 = "a56acdd357c75176",
+	Custom = "custom",
+	Eb6Ae5D3E4A3Bfa7 = "eb6ae5d3e4a3bfa7",
+	Ec0B28A579Ecb4Bd = "ec0b28a579ecb4bd",
+	Spotify1 = "spotify:1",
+	The69A65D9Ff28B032B = "69a65d9ff28b032b",
+}
+
+export interface Party {
+	id: string;
+}
+
+export interface Timestamps {
+	end?: number;
+	start?: number;
+}
+
+export interface ClientStatus {
+	web?: Status;
+	desktop?: Status;
+	mobile?: Status;
+}
+
 export interface MergedPresences {
-	guilds: Array<IGuild[]>;
+	guilds: Array<GuildPresence[]>;
 	friends: Friend[];
 }
 
@@ -357,15 +400,39 @@ export interface MergedMember {
 	avatar: null;
 }
 
+export interface PrivateChannel {
+	type: number;
+	safety_warnings?: any[];
+	recipient_ids: string[];
+	last_pin_timestamp?: Date;
+	last_message_id: null | string;
+	is_spam?: boolean;
+	id: string;
+	flags: number;
+	owner_id?: string;
+	name?: null | string;
+	icon?: null | string;
+	is_message_request_timestamp?: Date | null;
+	is_message_request?: boolean;
+}
+
+export interface ReadyRelationship {
+	user_id: string;
+	type: number;
+	since?: Date;
+	nickname: null | string;
+	id: string;
+}
+
 export interface Ready {
 	_trace: string[];
 	v: number;
 	user: APIUser;
 	user_settings_proto?: string;
 	guilds: IGuild[];
-	relationships: Relationship[];
+	relationships: ReadyRelationship[];
 	friend_suggestion_count?: number;
-	private_channels: APIChannel[];
+	private_channels: PrivateChannel[];
 	connected_accounts: APIConnection[];
 	notes: Map<string, string>;
 	presences: Presence[];

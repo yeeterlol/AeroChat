@@ -6,9 +6,13 @@ A Discord client themed to look like WLM 09, in React and Typescript.
 
 - [VSCode](https://code.visualstudio.com/) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
 
-## Setting up the project
+## Testing it out
+
+**If you're here out of curiousity, do this!!**
 
 ### Install
+
+Install [Node.js](https://nodejs.org) and download this project's source code, then run the following commands:
 
 ```bash
 $ npm install

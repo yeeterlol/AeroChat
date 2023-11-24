@@ -236,6 +236,7 @@ function Contact(
 }
 
 function Home() {
+	const [input, setInput] = useState<HTMLInputElement | null>(null);
 	const [ad, setAd] = useState<HTMLDivElement | null>(null);
 	const { state, setState } = useContext(Context);
 	function contactContextMenu(user: APIUser) {
@@ -318,7 +319,6 @@ function Home() {
 			openMessageWindow(channels.id);
 		}
 	}
-	const inputRef = useRef<HTMLInputElement>(null);
 	const [paperSrc] = useState("");
 	useEffect(() => {
 		console.log(state.userSettings);
@@ -391,14 +391,10 @@ function Home() {
 	// 	inputRef.current?.focus();
 	// }, [editingStatus]);
 	useEffect(() => {
-		if (!inputRef.current) return;
-		inputRef.current.placeholder = inputRef.current.value
-			? ""
-			: "Share a quick message";
-		inputRef.current.style.width = `${calcWidth(
-			inputRef.current.value || inputRef.current.placeholder,
-		)}px`;
-	}, []);
+		if (!input) return;
+		input.placeholder = input.value ? "" : "Share a quick message";
+		input.style.width = `${calcWidth(input.value || input.placeholder)}px`;
+	}, [input]);
 	const [search, setSearch] = useState("");
 	const [contextMenuOpacity, setContextMenuOpacity] = useState("0");
 	useEffect(() => {
@@ -709,7 +705,7 @@ function Home() {
 							{/* <img src={dropdown} /> */}
 						</div>
 						<input
-							ref={inputRef}
+							ref={setInput}
 							className={styles.message}
 							defaultValue={status?.state}
 							contentEditable={true}

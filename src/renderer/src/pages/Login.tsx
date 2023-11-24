@@ -4,6 +4,7 @@ import Vibrant from "node-vibrant";
 import pfp from "@renderer/assets/login/sample-pfp.png";
 import {
 	addDispatchListener,
+	closeGateway,
 	removeGatewayListener,
 	startGateway,
 } from "@renderer/util/ipc";
@@ -16,6 +17,7 @@ const { safeStorage, getCurrentWindow } = window.require(
 const Store = window.require(
 	"electron-store",
 ) as typeof import("electron-store");
+import speen from "@renderer/assets/login/speen.png";
 
 function hexToPixelImage(hexCode: string) {
 	const canvas = document.createElement("canvas");
@@ -179,9 +181,16 @@ function Login(): JSX.Element {
 	return (
 		<div className={styles.window}>
 			<div className={styles.pfp} ref={pfpRef} />
-			<div className={styles.heading}>Sign in</div>
+			<div className={styles.heading}>
+				{clicked ? "Signing in..." : "Sign in"}
+			</div>
 			<div className={styles.content}>
-				<div className={styles.hero}>
+				<div
+					className={styles.hero}
+					style={{
+						display: clicked ? "none" : undefined,
+					}}
+				>
 					Sign in with your Discord token. Don't have an account?{" "}
 					<a href="https://discord.com/login" target="_blank">
 						Create one.
@@ -190,7 +199,12 @@ function Login(): JSX.Element {
 				{/* <div className={styles.hero}>
 					Sign in with your Windows Live ID. Don't have one? Sign up.
 				</div> */}
-				<div className={styles.form}>
+				<div
+					className={styles.form}
+					style={{
+						display: clicked ? "none" : undefined,
+					}}
+				>
 					<SecurePassword
 						placeholder="Enter your token"
 						value={token}
@@ -246,16 +260,28 @@ function Login(): JSX.Element {
 						<a>(Forget me)</a>
 					</div>
 				</div>
+				<img
+					src={speen}
+					className={styles.speen}
+					style={{
+						display: clicked ? undefined : "none",
+					}}
+				/>
 				<button
-					disabled={userInfo?.id === undefined || clicked}
 					onClick={() => {
-						startGateway(token);
-						setState({ ...state, token });
-						setClicked(true);
+						if (clicked) {
+							closeGateway();
+							setState({} as any);
+							setClicked(false);
+						} else {
+							startGateway(token);
+							setState({ ...state, token });
+							setClicked(true);
+						}
 					}}
 					className={styles.signIn}
 				>
-					Sign in
+					{clicked ? "Cancel" : "Sign in"}
 				</button>
 			</div>
 			<div className={styles.windowFooter}>

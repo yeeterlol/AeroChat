@@ -309,6 +309,7 @@ function createWindow(): void {
 			});
 		};
 		socket!.onmessage = (event) => {
+			if (!socket) return;
 			const data = JSON.parse(event.data.toString()) as GatewayReceivePayload;
 			BrowserWindow.getAllWindows().forEach((window) => {
 				listeners.forEach((id) => {
@@ -374,10 +375,11 @@ function createWindow(): void {
 		};
 	});
 	ipcMain.on("send-op", (_e, data: string) => {
-		socket!.send(data);
+		socket?.send(data);
 	});
 	ipcMain.on("close-gateway", () => {
-		socket!.close();
+		socket?.close();
+		socket = null;
 	});
 
 	ipcMain.on("set-state", (_e, newState) => {

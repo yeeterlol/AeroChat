@@ -29,6 +29,71 @@ const remote = window.require(
 function App(): JSX.Element {
 	// on ctrl + shift + i
 	useEffect(() => {
+		(async () => {
+			[
+				(await import("@renderer/assets/ui-elements/checkbox/check.png"))
+					.default,
+				(await import("@renderer/assets/ui-elements/checkbox/check-hover.png"))
+					.default,
+				(await import("@renderer/assets/ui-elements/checkbox/check-active.png"))
+					.default,
+				(
+					await import(
+						"@renderer/assets/ui-elements/checkbox/check-disabled.png"
+					)
+				).default,
+				(
+					await import(
+						"@renderer/assets/ui-elements/checkbox/check-checked.png"
+					)
+				).default,
+				(
+					await import(
+						"@renderer/assets/ui-elements/checkbox/check-checked-hover.png"
+					)
+				).default,
+				(
+					await import(
+						"@renderer/assets/ui-elements/checkbox/check-checked-active.png"
+					)
+				).default,
+				(
+					await import(
+						"@renderer/assets/ui-elements/checkbox/check-checked-disabled.png"
+					)
+				).default,
+				(
+					await import(
+						"@renderer/assets/ui-elements/checkbox/check-indeterminate.png"
+					)
+				).default,
+				(
+					await import(
+						"@renderer/assets/ui-elements/checkbox/check-indeterminate-hover.png"
+					)
+				).default,
+				(
+					await import(
+						"@renderer/assets/ui-elements/checkbox/check-indeterminate-active.png"
+					)
+				).default,
+				(
+					await import(
+						"@renderer/assets/ui-elements/checkbox/check-indeterminate-disabled.png"
+					)
+				).default,
+			].forEach((url) => {
+				const img = new Image();
+				img.src = url;
+				img.style.opacity = "0";
+				img.style.position = "absolute";
+				img.style.pointerEvents = "none";
+				img.style.zIndex = "-1";
+				document.body.appendChild(img);
+			});
+		})();
+	}, []);
+	useEffect(() => {
 		function keyDown(e: KeyboardEvent) {
 			if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i")) {
 				ipcRenderer.send("open-dev-tools");
@@ -110,6 +175,8 @@ function App(): JSX.Element {
 							)}`,
 							alwaysOnTopValue: "status",
 						},
+						minWidth: 0,
+						minHeight: 0,
 						x,
 						y,
 						width: 200,
@@ -133,17 +200,19 @@ function App(): JSX.Element {
 		};
 	}, [reactState]);
 	useEffect(() => {
+		console.log(remote.getCurrentWindow().getSize());
 		(async () => {
+			if (!reactState?.ready?.sessions) return;
+			const session = reactState.ready.sessions[0];
 			const window = remote.getCurrentWindow();
-			const activeIcon = remote.nativeImage.createFromPath(
-				__dirname + "/public/native/active.ico",
+			console.log(session.status);
+			window.setOverlayIcon(
+				remote.nativeImage.createFromPath(`resources/${session.status}.ico`),
+				session.status,
 			);
-			console.log(__dirname + "/public/native/active.ico");
-			console.log(activeIcon.toPNG());
-			window.setIcon(activeIcon);
 			console.log("done");
 		})();
-	}, [reactState]);
+	}, [reactState?.ready?.sessions]);
 	return (
 		<Context.Provider value={{ state: reactState, setState }}>
 			<HashRouter>

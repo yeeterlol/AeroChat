@@ -6,10 +6,10 @@ import {
 	globalShortcut,
 	Rectangle,
 	safeStorage,
+	nativeImage,
 } from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
-import icon from "../../resources/icon.png?asset";
 import main, { enable } from "@electron/remote/main";
 import Store from "electron-store";
 import {
@@ -137,17 +137,21 @@ async function showContextMenu(
 const listeners: string[] = [];
 
 const defaultOptions: Electron.BrowserWindowConstructorOptions = {
-	width: 273,
-	height: 477,
+	width: 329,
+	height: 700,
+	minWidth: 200,
+	minHeight: 600,
 	show: false,
 	autoHideMenuBar: true,
+	icon: nativeImage.createFromPath(`resources/icon-default.ico`),
 	backgroundColor: "white",
-	...(process.platform === "linux" ? { icon } : {}),
+	title: "Windows Live Messenger",
 	webPreferences: {
 		preload: join(__dirname, "../preload/index.js"),
 		sandbox: false,
 		nodeIntegration: true,
 		contextIsolation: false,
+		webSecurity: false,
 	},
 };
 

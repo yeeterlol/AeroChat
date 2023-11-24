@@ -279,15 +279,21 @@ function Home() {
 		);
 	}
 	async function doubleClick(data: APIUser | APIChannel) {
-		if ("type" in data) {
-			if (data.type !== ChannelType.GuildText) return;
+		function openMessageWindow(id: string) {
 			createWindow({
 				customProps: {
-					url: `/message?channelId=${data.id}`,
+					url: `/message?channelId=${id}`,
 				},
 				width: 550,
 				height: 400,
+				minWidth: 366,
+				minHeight: 248,
+				icon: remote.nativeImage.createFromPath("resources/icon-chat.ico"),
 			});
+		}
+		if ("type" in data) {
+			if (data.type !== ChannelType.GuildText) return;
+			openMessageWindow(data.id);
 			return;
 		}
 		if ("global_name" in data) {
@@ -300,13 +306,7 @@ function Home() {
 				(c) => c.recipient_ids?.length === 1 && c.recipient_ids[0] === data.id,
 			);
 			if (channel) {
-				createWindow({
-					customProps: {
-						url: `/message?channelId=${channel.id}`,
-					},
-					width: 550,
-					height: 400,
-				});
+				openMessageWindow(channel.id);
 				return;
 			}
 			const channels = (
@@ -315,13 +315,7 @@ function Home() {
 				})
 			).body;
 			if (!channels.id) return;
-			createWindow({
-				customProps: {
-					url: `/message?channelId=${channels.id}`,
-				},
-				width: 550,
-				height: 400,
-			});
+			openMessageWindow(channels.id);
 		}
 	}
 	const inputRef = useRef<HTMLInputElement>(null);

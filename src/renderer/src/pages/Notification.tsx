@@ -65,7 +65,7 @@ function Notification() {
 						// src={`${import.meta.env.BASE_URL}icons/window/msn.png`}
 						src={params.get("img") || ""}
 					/>
-					<div className={styles.notificationTitle}>Binbows Live Messenger</div>
+					<div className={styles.notificationTitle}>Windows Live Messenger</div>
 					<div className={styles.notificationClose} />
 				</div>
 				<div className={styles.notificationContentContainer}>

@@ -11,7 +11,7 @@
 	width: 100%;
 	height: calc(100% - 82px);
 	box-sizing: border-box;
-	padding-top: 32px;
+	padding-top: 31px;
 }
 
 .backgroundImage {
@@ -31,8 +31,13 @@
 }
 
 .toolbar {
+	gap: 8px;
+	display: flex;
+	align-items: center;
 	width: 100%;
-	height: 32px;
+	height: 31px;
+	box-sizing: border-box;
+	padding: 0px 5px;
 	box-shadow:
 		inset 0px 0px 0px 1px var(--aero-white),
 		0px 0px 0px 0px rgba(0, 0, 0, 0.264);
@@ -144,11 +149,11 @@
 .messageContainer {
 	margin-left: 24px;
 }
-
 .messageContainer::before {
 	content: "▪";
 	color: #999999;
-	display: inline-block;
+	display: inline;
+	margin-right: calc(1em - 4px);
 	width: 1em;
 	margin-left: calc(-1em - 4px);
 }
@@ -158,6 +163,26 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	box-sizing: border-box;
+	white-space: pre-wrap;
+}
+
+.message p {
+	margin: 0px;
+}
+
+.message *:not(.message) {
+	display: inline;
+	height: fit-content;
+}
+
+.message ol * {
+	display: list-item !important;
+	display: block;
+}
+
+.message ul,
+.message ul li {
+	display: inline-block !important;
 }
 
 .message * {
@@ -390,4 +415,35 @@
 .channels {
 	overflow-y: auto;
 	height: calc(100% - 88px);
+}
+
+.toolbarItem {
+	color: rgba(255, 255, 255, 0.9);
+	width: fit-content;
+	height: 24px;
+	margin-bottom: 2px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0px 8px;
+	border-radius: 2px;
+}
+
+.toolbarItem:hover {
+	box-shadow: var(--aero-outline);
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.3) 0%,
+		rgba(255, 255, 255, 0.04) 50%,
+		rgba(0, 0, 0, 0.04) 50%,
+		rgba(255, 255, 255, 0.22) 100%
+	);
+}
+
+.toolbarItem:active {
+	background: none;
+	box-shadow:
+		inset 0px 12px 12px -12px rgba(0, 0, 0, 0.75),
+		inset 0px 12px 12px -12px rgba(255, 255, 255, 0.5),
+		0px 0px 0px 1px rgba(0, 0, 0, 0.75);
 }

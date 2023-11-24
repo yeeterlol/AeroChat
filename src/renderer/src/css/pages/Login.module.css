@@ -9,7 +9,7 @@
 			#3bb1e8 0px,
 			#e1eff5 80px,
 			#fff 160px,
-			#fff 80%,
+			#fff 75%,
 			#c9e7f3 100%
 		);
 	width: 100vw;
@@ -114,4 +114,61 @@
 .windowFooter * {
 	font-size: 10px;
 	display: inline;
+}
+
+.check {
+	width: 13px !important;
+	height: 13px;
+	padding: 0 !important;
+	margin: 0 !important;
+	border: none !important;
+	border-radius: 0 !important;
+	background: url(@renderer/assets/ui-elements/checkbox/check.png) !important;
+	outline: none !important;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+}
+
+.check:hover {
+	background: url(@renderer/assets/ui-elements/checkbox/check-hover.png) !important;
+}
+
+.check:active {
+	background: url(@renderer/assets/ui-elements/checkbox/check-active.png) !important;
+}
+
+.check:checked {
+	background: url(@renderer/assets/ui-elements/checkbox/check-checked.png) !important;
+}
+
+.check:checked:hover {
+	background: url(@renderer/assets/ui-elements/checkbox/check-checked-hover.png) !important;
+}
+
+.check:checked:active {
+	background: url(@renderer/assets/ui-elements/checkbox/check-checked-active.png) !important;
+}
+
+.check:disabled {
+	background: url(@renderer/assets/ui-elements/checkbox/check-disabled.png) !important;
+}
+
+.check:checked:disabled {
+	background: url(@renderer/assets/ui-elements/checkbox/check-checked-disabled.png) !important;
+}
+
+.check:not(:disabled):has(+ label:active) {
+	background: url(@renderer/assets/ui-elements/checkbox/check-active.png) !important;
+}
+
+.check:not(:disabled):checked:has(+ label:active) {
+	background: url(@renderer/assets/ui-elements/checkbox/check-checked-active.png) !important;
+}
+
+.checkInput {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
 }

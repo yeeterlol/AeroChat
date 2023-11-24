@@ -58,7 +58,9 @@ body {
 	margin: 0;
 	overflow: hidden;
 	--aero-white: #ffffff7a;
-	--aero-black: #000000bd;
+	--aero-black: #00000040;
+	--aero-outline: 0px 0px 0px 1px var(--aero-black),
+		inset 0px 0px 0px 1px var(--aero-white);
 }
 
 h1 {

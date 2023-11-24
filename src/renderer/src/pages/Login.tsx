@@ -10,9 +10,9 @@ import {
 import { GatewayDispatchEvents } from "discord-api-types/v9";
 import { Context } from "@renderer/util";
 import { useNavigate } from "react-router-dom";
-const { safeStorage } = window.require(
+const { safeStorage, getCurrentWindow } = window.require(
 	"@electron/remote",
-) as typeof import("electron");
+) as typeof import("@electron/remote");
 const Store = window.require(
 	"electron-store",
 ) as typeof import("electron-store");
@@ -173,6 +173,9 @@ function Login(): JSX.Element {
 			}
 		}
 	}, [token]);
+	useEffect(() => {
+		console.log(getCurrentWindow().getSize());
+	}, []);
 	return (
 		<div className={styles.window}>
 			<div className={styles.pfp} ref={pfpRef} />
@@ -232,6 +235,16 @@ function Login(): JSX.Element {
 							</a>
 						</div>
 					)}
+					<div className={styles.checkInput}>
+						<input
+							disabled={clicked}
+							id="save-token"
+							className={styles.check}
+							type="checkbox"
+						/>
+						<label htmlFor="save-token">Remember me</label>
+						<a>(Forget me)</a>
+					</div>
 				</div>
 				<button
 					disabled={userInfo?.id === undefined || clicked}

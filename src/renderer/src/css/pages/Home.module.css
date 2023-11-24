@@ -371,7 +371,6 @@
 	position: relative;
 	flex: none;
 	display: block;
-	box-shadow: var(--aero-outline);
 
 	--mask: linear-gradient(
 		transparent,

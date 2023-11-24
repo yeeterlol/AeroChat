@@ -31,6 +31,8 @@ import {
 } from "@renderer/classes/DiscordUtil";
 import { Dropdown } from "./Home";
 import lilGuy from "@renderer/assets/message/buddies.png";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -62,28 +64,43 @@ function getPfp(user: APIUser | APIGuild | IGuild | undefined) {
 }
 
 function parseEmoji(emoji: string): { name: string; url: string } {
+	const animated = emoji.startsWith("<a:");
 	const name = emoji.split(":")[1];
 	const url = `https://cdn.discordapp.com/emojis/${emoji
 		.split(":")[2]
-		.replace(">", "")}.png`;
+		.replace(">", "")}${animated ? ".gif" : ".webp"}`;
 	return { name, url };
 }
 
-function parseMessage(message: APIMessage): React.ReactNode {
+type ReplacementRule = {
+	pattern: RegExp;
+	replacement: React.ReactNode | ((match: RegExpExecArray) => React.ReactNode);
+};
+
+function parseMessage(
+	message: APIMessage,
+	rules: ReplacementRule[],
+): React.ReactNode {
 	const msg = message.content;
-	const tokens: (string | React.ReactNode)[] = [];
-	// split the message into tokens, wherever we match /<:.+?:\d+>/gm
-	let match;
+	const tokens: React.ReactNode[] = [];
 	let lastIndex = 0;
-	const regex = /<:.+?:\d+>/gm;
-	while ((match = regex.exec(msg)) !== null) {
-		const [fullMatch] = match;
-		const { name, url } = parseEmoji(fullMatch);
-		tokens.push(msg.slice(lastIndex, match.index));
-		tokens.push(<img src={url} alt={name} />);
-		lastIndex = match.index + fullMatch.length;
-	}
+
+	rules.forEach(({ pattern, replacement }) => {
+		let match: RegExpExecArray | null;
+		while ((match = pattern.exec(msg)) !== null) {
+			const [fullMatch] = match;
+			tokens.push(msg.slice(lastIndex, match.index));
+
+			const replaced =
+				typeof replacement === "function" ? replacement(match) : replacement;
+			tokens.push(replaced);
+
+			lastIndex = match.index + fullMatch.length;
+		}
+	});
+
 	tokens.push(msg.slice(lastIndex));
+
 	message.attachments.forEach((a) => {
 		let shouldBreak = false;
 		if (tokens.filter((t) => t).length > 0) shouldBreak = true;
@@ -93,12 +110,12 @@ function parseMessage(message: APIMessage): React.ReactNode {
 				onClick={(e) => {
 					e.preventDefault();
 					e.stopPropagation();
-					if (!a.url.startsWith("https://")) return;
+					if (!a?.url.startsWith("https://")) return;
 					remote.require("electron").shell.openExternal(a.url);
 				}}
 				target="_blank"
 			>
-				View image
+				View attachment
 			</a>,
 			shouldBreak ? <br /> : null,
 		);
@@ -261,7 +278,6 @@ function MessagePage() {
 			)
 			.sort((a, b) => a.properties.position - b.properties.position);
 		setChannels(channels);
-		console.log(channels);
 	}, [guild]);
 	useEffect(() => {
 		// observe the element for child changes
@@ -381,12 +397,166 @@ function MessagePage() {
 	useEffect(() => {
 		remote.getCurrentWindow().setIcon(remote.nativeImage.createEmpty());
 	}, []);
+	useEffect(() => {
+		const win = remote.getCurrentWindow();
+		win.setIcon(remote.nativeImage.createFromPath("resources/icon-chat.ico"));
+		if (recepient) {
+			win.setTitle(
+				recepient.user?.global_name
+					? `${recepient.user?.global_name}  <${recepient.user?.username}>`
+					: `${recepient.user?.username}`,
+			);
+		} else if (guild && channel) {
+			if ("properties" in guild) {
+				win.setTitle(`${channel.name}  <${guild.properties.name}>`);
+			} else {
+				win.setTitle(`${channel.name}  <${guild.name}>`);
+			}
+		}
+	}, [channel, recepient, guild]);
 	if (!channel) return <></>;
 	return (
 		<div className={styles.window}>
 			<div className={styles.content}>
 				<div className={styles.toolbarContainer}>
-					<div className={styles.toolbar} />
+					<div className={styles.toolbar}>
+						<div
+							onClick={async () => {
+								const { dialog } = remote.require(
+									"electron",
+								) as typeof import("electron");
+								const fs = remote.require("fs") as typeof import("fs");
+								const res = await dialog.showOpenDialog({
+									properties: ["openFile"],
+									filters: [
+										{
+											name: "Images (*.png, *.jpg, *.jpeg, *.gif, *.webp)",
+											extensions: ["png", "jpg", "jpeg", "gif", "webp"],
+										},
+										{
+											name: "Videos (*.mp4, *.mov, *.webm)",
+											extensions: ["mp4", "mov", "webm"],
+										},
+										{
+											name: "Other (*.*)",
+											extensions: ["*"],
+										},
+									],
+								});
+								if (res.canceled) return;
+								const nonce = generateNonce();
+								const file = res.filePaths[0];
+								const info = fs.statSync(file);
+								const data = {
+									// id should be rand between 0 100
+									files: [
+										{
+											file_size: info.size,
+											filename: file
+												.split("/")
+												.map((f) => f.split("\\"))
+												.flat()
+												.at(-1),
+											id: Math.floor(Math.random() * 100),
+											is_clip: false,
+										},
+									],
+								};
+								setMessages([
+									...messages,
+									{
+										id: nonce + nonce,
+										content: "",
+										attachments: data.files.map((f) => ({
+											url: "#",
+											filename: f.filename,
+											id: f.id.toString(),
+										})) as any,
+										author: state.ready.user as any,
+										channel_id: channelId || "",
+										timestamp: new Date().toISOString(),
+										edited_timestamp: null,
+										mention_everyone: false,
+										embeds: [],
+										mentions: [],
+										mention_roles: [],
+										pinned: false,
+										tts: false,
+										type: 1,
+										nonce,
+									},
+								]);
+								const {
+									attachments,
+								}: {
+									attachments: {
+										id: string;
+										upload_url: string;
+										upload_filename: string;
+									}[];
+								} = await (
+									await fetch(
+										`https://discord.com/api/v9/channels/${channelId}/attachments`,
+										{
+											method: "POST",
+											headers: {
+												authorization: state?.token,
+												"content-type": "application/json",
+											},
+											body: JSON.stringify(data),
+										},
+									)
+								).json();
+								const listOfAttachments: {
+									filename: string;
+									id: string;
+									uploaded_filename: string;
+								}[] = [];
+								for await (const attachment of attachments) {
+									await fetch(attachment.upload_url, {
+										method: "PUT",
+										headers: {
+											"content-type": "application/octet-stream",
+											authorization: state?.token,
+										},
+										body: fs.readFileSync(file),
+									});
+									listOfAttachments.push({
+										filename: attachment.upload_filename,
+										id: attachment.id,
+										uploaded_filename: attachment.upload_filename,
+									});
+								}
+								const msg = await (
+									await fetch(
+										`https://discord.com/api/v9/channels/${channelId}/messages`,
+										{
+											method: "POST",
+											headers: {
+												authorization: state?.token,
+												"content-type": "application/json",
+											},
+											body: JSON.stringify({
+												content: "",
+												nonce,
+												type: MessageType.Default,
+												attachments: listOfAttachments,
+											}),
+										},
+									)
+								).json();
+								setMessages((msgs) => {
+									let newMsgs = [...msgs];
+									newMsgs = newMsgs.filter((msg) => msg.nonce !== nonce);
+									newMsgs.push(msg);
+									return [...newMsgs];
+								});
+							}}
+							className={styles.toolbarItem}
+						>
+							Attachment
+						</div>
+					</div>
 				</div>
 				<div className={styles.contentContainer}>
 					{!guild ? (
@@ -481,7 +651,11 @@ function MessagePage() {
 									<div
 										style={{
 											display:
-												messages[i - 1]?.author.id === m.author.id
+												messages[i - 1]?.author.id === m.author.id &&
+												messages[i - 1]?.attachments.length === 0 &&
+												new Date(m.timestamp).getTime() -
+													new Date(messages[i - 1]?.timestamp).getTime() <=
+													7 * 60 * 1000
 													? "none"
 													: undefined,
 										}}
@@ -491,9 +665,7 @@ function MessagePage() {
 									</div>
 									<div className={styles.messageContainer}>
 										<span
-											style={{
-												opacity: m.id.length > 25 ? 0.5 : 1,
-											}}
+											style={{ opacity: m.id.length > 26 ? 0.5 : 1 }}
 											contentEditable
 											suppressContentEditableWarning // the user shouldn't be able to edit the message, we only want the caret
 											onKeyDown={(e) => {
@@ -503,7 +675,45 @@ function MessagePage() {
 											spellCheck={false}
 											className={styles.message}
 										>
-											{parseMessage(m)}
+											{parseMessage(m, [
+												{
+													pattern:
+														/(<|)(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/g,
+													replacement(match) {
+														// remove < and > from the match at the beginning and end if they exist
+														return (
+															<a
+																href="#"
+																onClick={(e) => {
+																	e.preventDefault();
+																	e.stopPropagation();
+																	remote
+																		.require("electron")
+																		.shell.openExternal(match[0]);
+																}}
+															>
+																{match[0].replace(/^(<)|(>)$/g, "")}
+															</a>
+														);
+													},
+												},
+												{
+													pattern: /<(a|):.+?:\d+>/gm,
+													replacement(match) {
+														const { name, url } = parseEmoji(match[0]);
+														return (
+															<img
+																style={{
+																	width: 20,
+																	height: 20,
+																}}
+																src={url}
+																alt={name}
+															/>
+														);
+													},
+												},
+											])}
 										</span>
 									</div>
 								</div>

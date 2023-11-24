@@ -317,6 +317,7 @@ function Home() {
 			).body;
 			if (!channels.id) return;
 			openMessageWindow(channels.id);
+			return;
 		}
 	}
 	const [paperSrc] = useState("");
@@ -841,13 +842,14 @@ function Home() {
 											.filter((c) => c.type === ChannelType.GuildText)
 											.sort((a, b) => a.position - b.position)
 											.map((c) => new Channel(c as any));
+										const perms = computePermissions(member, channels[0]);
 										const channel = channels.find((c) =>
 											hasPermission(
 												computePermissions(member, c),
 												PermissionFlagsBits.ViewChannel,
 											),
 										);
-										// console.log(channel);
+										console.log(channel);
 										if (!channel) return;
 										doubleClick(channel.properties);
 									}}

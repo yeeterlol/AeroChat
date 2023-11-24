@@ -18,9 +18,6 @@ export class DiscordUtil {
 	static updateState(state: State) {
 		this.state = state;
 	}
-	static checkPermissions(permissionValue: any, permission: bigint) {
-		return (BigInt(permissionValue) & permission) === permission;
-	}
 	static getMembership(guild: IGuild) {
 		return this.state.ready?.merged_members
 			.flat()
@@ -114,6 +111,7 @@ export function hasPermission(
 	permissions: bigint,
 	permission: bigint,
 ): boolean {
+	if (permissions & PermissionFlagsBits.Administrator) return true;
 	return (permissions & permission) === permission;
 }
 

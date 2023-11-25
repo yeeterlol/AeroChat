@@ -775,7 +775,7 @@ function MessagePage() {
 												: ""}{" "}
 											{`(${new Date(m.timestamp)
 												.toLocaleTimeString([], {
-													hour: "2-digit",
+													hour: "numeric",
 													minute: "2-digit",
 													hour12: true,
 												})

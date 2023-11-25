@@ -1,8 +1,6 @@
 import {
 	APIChannel,
 	APITextChannel,
-	APIUser,
-	ChannelType,
 	PermissionFlagsBits,
 } from "discord-api-types/v9";
 import {

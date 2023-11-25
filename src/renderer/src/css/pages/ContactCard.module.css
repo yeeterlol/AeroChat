@@ -16,6 +16,8 @@
 .usernamePronouns {
 	margin-bottom: 10px;
 	margin-left: 6px;
+	box-sizing: border-box;
+	padding-right: 32px;
 	display: flex;
 	flex-direction: column;
 	gap: 4px;

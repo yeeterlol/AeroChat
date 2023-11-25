@@ -1,14 +1,13 @@
 import styles from "@renderer/css/pages/Home.module.css";
 import { joinClasses } from "@renderer/util";
 import { useEffect, useRef, useState } from "react";
-import ReactDOM from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import {
 	ContextMenuItem,
 	ContextMenuItemType,
 	ContextMenuStyle,
 } from "../../../shared/types";
-const { getCurrentWindow, BrowserWindow } = window.require(
+const { getCurrentWindow } = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
 const { ipcRenderer } = require("electron");

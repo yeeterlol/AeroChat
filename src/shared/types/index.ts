@@ -1,12 +1,6 @@
-import { Relationship } from "detritus-client/lib/structures";
-import {
-	APIChannel,
-	APIConnection,
-	APIGuild,
-	APIUser,
-} from "discord-api-types/v9";
+import { APIConnection, APIUser } from "discord-api-types/v9";
 import { PreloadedUserSettings } from "discord-protos";
-import { GuildMember, PartialUser, Presence } from "discord.js-selfbot-v13";
+import { Presence } from "discord.js-selfbot-v13";
 
 export interface Session {
 	status: string;

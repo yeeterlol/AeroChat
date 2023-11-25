@@ -3,8 +3,6 @@ import {
 	shell,
 	BrowserWindow,
 	ipcMain,
-	globalShortcut,
-	Rectangle,
 	safeStorage,
 	nativeImage,
 } from "electron";
@@ -36,14 +34,6 @@ function pathToHash(path: string) {
 		const indexPath = join(__dirname, "../renderer/index.html");
 		return `file://${indexPath}#${path}`;
 	}
-}
-function isClickOutisde(bounds: Rectangle, mouseX: number, mouseY: number) {
-	return (
-		mouseX < bounds.x ||
-		mouseX > bounds.x + bounds.width ||
-		mouseY < bounds.y ||
-		mouseY > bounds.y + bounds.height
-	);
 }
 
 export const mergeObjects = <T extends object = object>(

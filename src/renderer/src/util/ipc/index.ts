@@ -18,7 +18,6 @@ import {
 	State,
 } from "../../../../shared/types";
 import { v4 } from "uuid";
-import reactElementToJSXString from "react-element-to-jsx-string";
 
 export function startGateway(token: string) {
 	ipcRenderer.send("start-gateway", token);

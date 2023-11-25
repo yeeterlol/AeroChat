@@ -16,7 +16,6 @@ import {
 	APINewsChannel,
 	MessageType,
 	GuildChannelType,
-	StickerFormatType,
 } from "discord-api-types/v9";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -27,7 +26,7 @@ import {
 import { IGuild } from "../../../shared/types";
 import typingIcon from "@renderer/assets/message/typing.png";
 import { sendOp } from "../../../shared/gateway";
-import { APIChannel, PermissionFlagsBits } from "discord-api-types/v10";
+import { PermissionFlagsBits } from "discord-api-types/v10";
 import {
 	DiscordUtil,
 	hasPermission,
@@ -37,13 +36,10 @@ import {
 } from "@renderer/classes/DiscordUtil";
 import { Dropdown } from "./Home";
 import lilGuy from "@renderer/assets/message/buddies.png";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
 import speen from "@renderer/assets/login/speen.png";
-import { Player } from "@lottiefiles/react-lottie-player";
 
 function isGuildChannel(type: ChannelType): type is GuildChannelType {
 	return Object.keys(ChannelType)

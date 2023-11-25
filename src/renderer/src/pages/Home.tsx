@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import styles from "@renderer/css/pages/Home.module.css";
 import {
 	Context,
@@ -10,8 +10,6 @@ import PfpBorder from "@renderer/components/PfpBorder";
 import {
 	APIChannel,
 	APIDMChannel,
-	APIGuild,
-	APITextChannel,
 	APIUser,
 	ChannelType,
 	GatewayOpcodes,
@@ -30,9 +28,7 @@ import {
 	ContextMenuItemType,
 	ContextMenuStyle,
 	Friend,
-	FriendActivity,
 	GuildPresence,
-	IGuild,
 	State,
 	Status,
 } from "../../../shared/types";
@@ -45,18 +41,13 @@ import {
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
-import hasEmoji from "has-emoji";
-import gameIcon from "@renderer/assets/home/statuses/game.png";
-import musicIcon from "@renderer/assets/home/statuses/music.png";
 import { RelationshipTypes } from "../../../shared/types";
 import Fuse from "fuse.js";
 import {
 	Channel,
 	DiscordUtil,
-	Guild,
 	Member,
 	computePermissions,
-	convertPermsToArray,
 	hasPermission,
 } from "@renderer/classes/DiscordUtil";
 import { useNavigate } from "react-router-dom";
@@ -797,7 +788,6 @@ function Home() {
 											.filter((c) => c.type === ChannelType.GuildText)
 											.sort((a, b) => a.position - b.position)
 											.map((c) => new Channel(c as any));
-										const perms = computePermissions(member, channels[0]);
 										const channel = channels.find((c) =>
 											hasPermission(
 												computePermissions(member, c),

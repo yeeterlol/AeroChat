@@ -2,15 +2,8 @@ import styles from "@renderer/css/pages/Login.module.css";
 import { ChangeEvent, useContext, useEffect, useRef, useState } from "react";
 import Vibrant from "node-vibrant";
 import pfp from "@renderer/assets/login/sample-pfp.png";
-import {
-	addDispatchListener,
-	closeGateway,
-	removeGatewayListener,
-	startGateway,
-} from "@renderer/util/ipc";
-import { GatewayDispatchEvents } from "discord-api-types/v9";
+import { closeGateway, startGateway } from "@renderer/util/ipc";
 import { Context } from "@renderer/util";
-import { useNavigate } from "react-router-dom";
 const { safeStorage, getCurrentWindow } = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");

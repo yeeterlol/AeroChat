@@ -1,6 +1,6 @@
 import { createContext } from "react";
 import * as ipc from "./ipc";
-import { FriendActivity, IContext } from "src/shared/types";
+import { FriendActivity, IContext } from "../../../shared/types";
 import hasEmoji from "has-emoji";
 import gameIcon from "@renderer/assets/home/statuses/game.png";
 import musicIcon from "@renderer/assets/home/statuses/music.png";

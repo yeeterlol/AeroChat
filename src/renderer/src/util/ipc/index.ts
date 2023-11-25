@@ -9,7 +9,7 @@ import {
 	DispatchData,
 	DispatchEventsCustom,
 	OpcodeReceiveData,
-} from "src/shared/gateway";
+} from "../../../../shared/gateway";
 import {
 	ContextMenuItem,
 	ContextMenuItemType,

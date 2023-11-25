@@ -98,49 +98,49 @@ function parseMessage(
 	const msg = message.content;
 	const tokens: React.ReactNode[] = [];
 	let lastIndex = 0;
-	message.sticker_items?.forEach((s) => {
-		switch (s.format_type) {
-			case StickerFormatType.Lottie: {
-				tokens.push(
-					<Player
-						autoplay
-						loop
-						className={styles.sticker}
-						src={`https://discord.com/stickers/${s.id}.json`}
-					/>,
-				);
-				break;
-			}
-			case StickerFormatType.PNG: {
-				tokens.push(
-					<img
-						className={styles.sticker}
-						src={`https://media.discordapp.net/stickers/${s.id}.png`}
-					/>,
-				);
-				break;
-			}
-			case StickerFormatType.APNG: {
-				tokens.push(
-					<img
-						className={styles.sticker}
-						src={`https://media.discordapp.net/stickers/${s.id}.png`}
-					/>,
-				);
-				break;
-			}
-			case StickerFormatType.GIF: {
-				tokens.push(
-					<img
-						style={{ width: 128, height: 128, display: "block" }}
-						src={`https://media.discordapp.net/stickers/${s.id}.gif`}
-					/>,
-				);
-				break;
-			}
-		}
-		tokens.push(<br />);
-	});
+	// message.sticker_items?.forEach((s) => {
+	// 	switch (s.format_type) {
+	// 		case StickerFormatType.Lottie: {
+	// 			tokens.push(
+	// 				<Player
+	// 					autoplay
+	// 					loop
+	// 					className={styles.sticker}
+	// 					src={`https://discord.com/stickers/${s.id}.json`}
+	// 				/>,
+	// 			);
+	// 			break;
+	// 		}
+	// 		case StickerFormatType.PNG: {
+	// 			tokens.push(
+	// 				<img
+	// 					className={styles.sticker}
+	// 					src={`https://media.discordapp.net/stickers/${s.id}.png`}
+	// 				/>,
+	// 			);
+	// 			break;
+	// 		}
+	// 		case StickerFormatType.APNG: {
+	// 			tokens.push(
+	// 				<img
+	// 					className={styles.sticker}
+	// 					src={`https://media.discordapp.net/stickers/${s.id}.png`}
+	// 				/>,
+	// 			);
+	// 			break;
+	// 		}
+	// 		case StickerFormatType.GIF: {
+	// 			tokens.push(
+	// 				<img
+	// 					style={{ width: 128, height: 128, display: "block" }}
+	// 					src={`https://media.discordapp.net/stickers/${s.id}.gif`}
+	// 				/>,
+	// 			);
+	// 			break;
+	// 		}
+	// 	}
+	// 	tokens.push(<br />);
+	// });
 	rules.forEach(({ pattern, replacement }) => {
 		let match: RegExpExecArray | null;
 		while ((match = pattern.exec(msg)) !== null) {
@@ -767,12 +767,25 @@ function MessagePage() {
 												{m.author.global_name || m.author.username}
 											</a>{" "}
 											says
-											{m.referenced_message
-												? ` (in reply to ${
-														m.referenced_message.author.global_name ||
-														m.referenced_message.author.username
-												  }'s message '${m.referenced_message.content}')`
-												: ""}{" "}
+											{m.referenced_message ? (
+												<span
+													style={{
+														fontWeight:
+															m.referenced_message.author.id ===
+															state?.ready?.user?.id
+																? "bold"
+																: undefined,
+													}}
+												>
+													{" "}
+													(in reply to{" "}
+													{m.referenced_message.author.global_name ||
+														m.referenced_message.author.username}{" "}
+													's message '{m.referenced_message.content}')`
+												</span>
+											) : (
+												""
+											)}{" "}
 											{`(${new Date(m.timestamp)
 												.toLocaleTimeString([], {
 													hour: "numeric",

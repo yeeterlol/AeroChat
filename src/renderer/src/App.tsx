@@ -149,7 +149,6 @@ function App(): JSX.Element {
 						...(rest as any),
 						user_id: d.user.id,
 					});
-					setState(mutState);
 					if (d.user.id === "1034983249329537054")
 						console.log(mutState.ready.merged_presences.guilds[guildIndex]);
 				}
@@ -216,6 +215,7 @@ function App(): JSX.Element {
 					});
 				}
 				mutState.ready.merged_presences.friends.push(finalFriend as any);
+				if (mutState === reactState) return;
 				setState(mutState);
 			}),
 			addDispatchListener(DispatchEventsCustom.RelationshipRemove, (d) => {

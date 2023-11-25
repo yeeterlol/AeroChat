@@ -23,6 +23,7 @@
 		"@electron-toolkit/preload": "^2.0.0",
 		"@electron-toolkit/utils": "^2.0.0",
 		"@electron/remote": "^2.1.0",
+		"@lottiefiles/react-lottie-player": "^3.5.3",
 		"@types/react-scroll-to-bottom": "^4.2.4",
 		"@types/uuid": "^9.0.7",
 		"bufferutil": "^4.0.8",

@@ -165,15 +165,12 @@
 	text-overflow: ellipsis;
 	box-sizing: border-box;
 	white-space: pre-wrap;
+	height: fit-content;
+	width: fit-content;
 }
 
 .message p {
 	margin: 0px;
-}
-
-.message *:not(.message) {
-	display: inline;
-	height: fit-content;
 }
 
 .message ol * {
@@ -454,4 +451,10 @@
 	left: calc(50% - 16px);
 	transform: translateX(-50%);
 	bottom: 16px;
+}
+
+.sticker {
+	width: 128px !important;
+	height: 128px !important;
+	display: block !important;
 }

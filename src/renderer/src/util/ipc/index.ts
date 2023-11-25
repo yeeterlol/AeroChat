@@ -1,5 +1,6 @@
 const { ipcRenderer } = require("electron");
 import {
+	APIUser,
 	GatewayDispatchEvents,
 	GatewayOpcodes,
 	GatewayReceivePayload,
@@ -115,4 +116,8 @@ export async function contextMenu(
 			resolve();
 		});
 	});
+}
+
+export function contactCard(user: APIUser, x?: number, y?: number) {
+	ipcRenderer.send("contact-card", user, x, y);
 }

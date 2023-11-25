@@ -63,6 +63,10 @@ body {
 		inset 0px 0px 0px 1px var(--aero-white);
 }
 
+.lf-player-container {
+	width: fit-content !important;
+}
+
 h1 {
 	color: #003399;
 	font-weight: normal;

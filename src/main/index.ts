@@ -20,7 +20,11 @@ import {
 	allCapabilities,
 } from "../shared/types";
 import { sendOp } from "../shared/gateway";
-import { GatewayOpcodes, GatewayReceivePayload } from "discord-api-types/v9";
+import {
+	APIUser,
+	GatewayOpcodes,
+	GatewayReceivePayload,
+} from "discord-api-types/v9";
 import WebSocket from "ws";
 import { writeFileSync } from "fs";
 import { PreloadedUserSettings } from "discord-protos";
@@ -244,7 +248,7 @@ function createWindow(): void {
 	// HMR for renderer base on electron-vite cli.
 	// Load the remote URL for development or the local html file for production.
 	if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
-		mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
+		mainWindow.loadURL("http://127.0.0.1:5173");
 	} else {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
@@ -458,6 +462,27 @@ function createWindow(): void {
 		props.customProps.checkForDupes
 			? createOrFocusWindow(props)
 			: createPopupWindow(props);
+	});
+	ipcMain.on("contact-card", (_e, user: APIUser, x?: number, y?: number) => {
+		const win = createPopupWindow({
+			customProps: {
+				url: `/contact-card?user=${encodeURIComponent(JSON.stringify(user))}${
+					x ? `&x=${x}` : ""
+				}${y ? `&y=${y}` : ""}`,
+				alwaysOnTopValue: "floating",
+			},
+			width: 350,
+			height: 300,
+			frame: false,
+			resizable: false,
+			minWidth: 0,
+			minHeight: 0,
+			hasShadow: false,
+			transparent: true,
+			skipTaskbar: true,
+			focusable: false,
+		});
+		win.hide();
 	});
 	win = mainWindow;
 }

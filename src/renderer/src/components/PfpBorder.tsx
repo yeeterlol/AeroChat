@@ -88,6 +88,11 @@ export default function PfpBorder({
 							duration: 0,
 							fill: "forwards",
 						});
+					} else {
+						containerRef.current?.animate([{ opacity: "1" }], {
+							duration: 0,
+							fill: "forwards",
+						});
 					}
 					setFirstRender(false);
 				} else {
@@ -111,6 +116,10 @@ export default function PfpBorder({
 						return;
 					} else {
 						containerRef.current.style.opacity = "1";
+						containerRef.current.animate([{ opacity: "1" }], {
+							duration: 250,
+							fill: "forwards",
+						});
 						border.style.opacity = "0";
 						borderDummy1.style.opacity = "1";
 						borderDummy2.style.opacity = "0";
@@ -305,7 +314,11 @@ export default function PfpBorder({
 				ref={containerRef}
 				className={styles.pfpBorder}
 				style={{
-					opacity: state === "invisible" && !guild ? 0.5 : 1,
+					opacity:
+						stateInitial === PresenceUpdateStatus.Offline ||
+						stateInitial === PresenceUpdateStatus.Invisible
+							? 0.5
+							: 1,
 					...style,
 				}}
 			>

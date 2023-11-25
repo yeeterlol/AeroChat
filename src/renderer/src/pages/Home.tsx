@@ -1,6 +1,11 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import styles from "@renderer/css/pages/Home.module.css";
-import { Context, apiReq, hasParentWithClass } from "@renderer/util";
+import {
+	Context,
+	apiReq,
+	getActivityText,
+	hasParentWithClass,
+} from "@renderer/util";
 import PfpBorder from "@renderer/components/PfpBorder";
 import {
 	APIChannel,
@@ -31,7 +36,12 @@ import {
 	State,
 	Status,
 } from "../../../shared/types";
-import { closeGateway, contextMenu, createWindow } from "@renderer/util/ipc";
+import {
+	closeGateway,
+	contactCard,
+	contextMenu,
+	createWindow,
+} from "@renderer/util/ipc";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -50,68 +60,6 @@ import {
 	hasPermission,
 } from "@renderer/classes/DiscordUtil";
 import { useNavigate } from "react-router-dom";
-
-function getActivityText(activities?: FriendActivity[]) {
-	const music = activities?.find((a) => a.type === 2);
-	if (music) {
-		return (
-			<span className={styles.customStatus}>
-				<span>
-					<img src={musicIcon} width="14" />
-				</span>
-				<span className={styles.customStatusText}>
-					<i>
-						{music.state} - {music.details}
-					</i>
-				</span>
-			</span>
-		);
-	}
-	const game = activities?.find((a) => a.type === 0);
-	if (game) {
-		return (
-			<span className={styles.customStatus}>
-				<span>
-					<img src={gameIcon} width="14" />
-				</span>
-				<span className={styles.customStatusText}>
-					<b>{game.name}</b>{" "}
-					{game.details && (
-						<span>
-							(<i>{game.details}</i>)
-						</span>
-					)}
-				</span>
-			</span>
-		);
-	}
-	const custom = activities?.find((a) => a.type === 4);
-	if (custom) {
-		return (
-			<span className={styles.customStatus}>
-				{custom.emoji ? (
-					hasEmoji(custom.emoji.name) ? (
-						<span>{custom.emoji.name}</span>
-					) : (
-						<span>
-							<img
-								src={`https://cdn.discordapp.com/emojis/${custom.emoji.id}.webp?quality=lossless&size=128`}
-							/>
-						</span>
-					)
-				) : (
-					<></>
-				)}
-				{custom.state ? (
-					<span className={styles.customStatusText}>{custom.state}</span>
-				) : (
-					<></>
-				)}
-			</span>
-		);
-	}
-	return "";
-}
 
 function calcWidth(text: string, offset: number = 1): number {
 	const body = document.querySelector("body");
@@ -240,7 +188,10 @@ function Home() {
 	const [input, setInput] = useState<HTMLInputElement | null>(null);
 	const [ad, setAd] = useState<HTMLDivElement | null>(null);
 	const { state, setState } = useContext(Context);
-	function contactContextMenu(user: APIUser) {
+	function contactContextMenu(
+		user: APIUser,
+		e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+	) {
 		const cursor = remote.screen.getCursorScreenPoint();
 		contextMenu(
 			[
@@ -252,27 +203,24 @@ function Home() {
 					},
 				},
 				{
-					type: ContextMenuItemType.Item,
-					label: `Lazily pad out the context menu with a long label`,
-				},
-				{
-					type: ContextMenuItemType.Item,
-					label: `Apologies, by the way; the divider looks bad with just one item`,
-				},
-				{
 					type: ContextMenuItemType.Divider,
 				},
 				{
 					type: ContextMenuItemType.Item,
 					label: `View contact card`,
-				},
-				{
-					type: ContextMenuItemType.Item,
-					label: `Call this person a dummy`,
-				},
-				{
-					type: ContextMenuItemType.Item,
-					label: `Blehhh :p :p :p :p :p :p :p :p :p :p :p :p :p :p :p :p`,
+					click() {
+						const closest = (e.target as HTMLDivElement).closest(
+							`.${styles.contact}`,
+						) as HTMLDivElement;
+						const window = remote.getCurrentWindow();
+						const windowPos = window.getContentBounds();
+						const bounds = closest.getBoundingClientRect();
+						contactCard(
+							user,
+							windowPos.x + bounds.left,
+							windowPos.y + bounds.top + bounds.height,
+						);
+					},
 				},
 			],
 			cursor.x,
@@ -806,7 +754,7 @@ function Home() {
 											: "",
 									}}
 									onDoubleClick={() => doubleClick(c.user)}
-									onContextMenu={() => contactContextMenu(c.user)}
+									onContextMenu={(e) => contactContextMenu(c.user, e)}
 									key={c.user.id}
 									{...c}
 								/>
@@ -823,7 +771,7 @@ function Home() {
 											: "",
 									}}
 									onDoubleClick={() => doubleClick(c.user)}
-									onContextMenu={() => contactContextMenu(c.user)}
+									onContextMenu={(e) => contactContextMenu(c.user, e)}
 									key={c.user.id}
 									status={c.status}
 									user={c.user}
@@ -884,7 +832,7 @@ function Home() {
 											: "",
 									}}
 									onDoubleClick={() => doubleClick(c.user)}
-									onContextMenu={() => contactContextMenu(c.user)}
+									onContextMenu={(e) => contactContextMenu(c.user, e)}
 									key={c.user.id}
 									{...c}
 								/>

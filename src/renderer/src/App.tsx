@@ -22,6 +22,7 @@ import ContextMenu from "./pages/ContextMenu";
 import { DispatchEventsCustom } from "../../shared/gateway";
 import Message from "./pages/Message";
 import { DiscordUtil } from "./classes/DiscordUtil";
+import ContactCard from "./pages/ContactCard";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -130,11 +131,37 @@ function App(): JSX.Element {
 		const ids = [
 			addDispatchListener(GatewayDispatchEvents.PresenceUpdate, (d) => {
 				const mutState = { ...reactState };
+				if (d.guild_id) {
+					if (!mutState.ready.merged_presences?.guilds) return;
+					const guildIndex = mutState.ready.guilds.findIndex(
+						(g) => g.id === d.guild_id,
+					);
+					if (guildIndex === -1) return;
+					const guild = mutState.ready.merged_presences.guilds[guildIndex];
+					const memberIndex = guild.findIndex((m) => m.user_id === d.user.id);
+					if (memberIndex !== -1)
+						mutState.ready.merged_presences.guilds[guildIndex].splice(
+							memberIndex,
+							1,
+						);
+					const { user, ...rest } = d;
+					mutState.ready.merged_presences.guilds[guildIndex].push({
+						...(rest as any),
+						user_id: d.user.id,
+					});
+					setState(mutState);
+					if (d.user.id === "1034983249329537054")
+						console.log(mutState.ready.merged_presences.guilds[guildIndex]);
+				}
 				if (!mutState?.ready?.merged_presences?.friends) return;
 				let friend = mutState.ready.merged_presences.friends.find(
 					(f) => (f.user?.id || f.user_id) === d.user.id,
 				);
-				if (!friend) return;
+				if (!friend) {
+					mutState.ready.merged_presences?.friends.push(d as any);
+					setState(mutState);
+					return;
+				}
 				mutState.ready.merged_presences.friends =
 					mutState.ready.merged_presences.friends.filter(
 						(f) => (f.user_id || f.user?.id) !== d.user.id,
@@ -189,7 +216,7 @@ function App(): JSX.Element {
 					});
 				}
 				mutState.ready.merged_presences.friends.push(finalFriend as any);
-				setReactState(mutState);
+				setState(mutState);
 			}),
 			addDispatchListener(DispatchEventsCustom.RelationshipRemove, (d) => {
 				console.log(d);
@@ -222,6 +249,7 @@ function App(): JSX.Element {
 					<Route path="/notification" element={<Notification />} />
 					<Route path="/context-menu" element={<ContextMenu />} />
 					<Route path="/message" element={<Message />} />
+					<Route path="/contact-card" element={<ContactCard />} />
 				</Routes>
 			</HashRouter>
 		</Context.Provider>

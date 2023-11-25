@@ -16,9 +16,14 @@ import {
 	APINewsChannel,
 	MessageType,
 	GuildChannelType,
+	StickerFormatType,
 } from "discord-api-types/v9";
 import { useSearchParams } from "react-router-dom";
-import { addDispatchListener, removeGatewayListener } from "@renderer/util/ipc";
+import {
+	addDispatchListener,
+	contactCard,
+	removeGatewayListener,
+} from "@renderer/util/ipc";
 import { IGuild } from "../../../shared/types";
 import typingIcon from "@renderer/assets/message/typing.png";
 import { sendOp } from "../../../shared/gateway";
@@ -38,6 +43,7 @@ const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
 import speen from "@renderer/assets/login/speen.png";
+import { Player } from "@lottiefiles/react-lottie-player";
 
 function isGuildChannel(type: ChannelType): type is GuildChannelType {
 	return Object.keys(ChannelType)
@@ -92,7 +98,49 @@ function parseMessage(
 	const msg = message.content;
 	const tokens: React.ReactNode[] = [];
 	let lastIndex = 0;
-
+	message.sticker_items?.forEach((s) => {
+		switch (s.format_type) {
+			case StickerFormatType.Lottie: {
+				tokens.push(
+					<Player
+						autoplay
+						loop
+						className={styles.sticker}
+						src={`https://discord.com/stickers/${s.id}.json`}
+					/>,
+				);
+				break;
+			}
+			case StickerFormatType.PNG: {
+				tokens.push(
+					<img
+						className={styles.sticker}
+						src={`https://media.discordapp.net/stickers/${s.id}.png`}
+					/>,
+				);
+				break;
+			}
+			case StickerFormatType.APNG: {
+				tokens.push(
+					<img
+						className={styles.sticker}
+						src={`https://media.discordapp.net/stickers/${s.id}.png`}
+					/>,
+				);
+				break;
+			}
+			case StickerFormatType.GIF: {
+				tokens.push(
+					<img
+						style={{ width: 128, height: 128, display: "block" }}
+						src={`https://media.discordapp.net/stickers/${s.id}.gif`}
+					/>,
+				);
+				break;
+			}
+		}
+		tokens.push(<br />);
+	});
 	rules.forEach(({ pattern, replacement }) => {
 		let match: RegExpExecArray | null;
 		while ((match = pattern.exec(msg)) !== null) {
@@ -716,8 +764,76 @@ function MessagePage() {
 												}}
 												spellCheck={false}
 												className={styles.message}
+												id={m.id}
 											>
 												{parseMessage(m, [
+													{
+														// match <@user-id>
+														pattern: /<@(\d+?)>/gm,
+														replacement(match) {
+															const user = m.mentions.find(
+																(mention) => mention.id === match[1],
+															);
+															if (!user) return match[0];
+															return (
+																<a
+																	onClick={(e) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+																		if (guild)
+																			sendOp(
+																				14 as any,
+																				{
+																					guild_id: guild.id,
+																					members: [user.id],
+																				} as any,
+																			);
+																		const window = remote.getCurrentWindow();
+																		const windowPos = window.getContentBounds();
+																		const usernameContainer =
+																			document.getElementById(
+																				m.id,
+																			) as HTMLDivElement;
+																		const bounds =
+																			usernameContainer.getBoundingClientRect();
+																		console.log(
+																			windowPos.x + bounds.left,
+																			windowPos.y + bounds.top + bounds.height,
+																		);
+																		contactCard(
+																			user,
+																			windowPos.x + bounds.left,
+																			windowPos.y + bounds.top + bounds.height,
+																		);
+																	}}
+																	href="#"
+																>
+																	@{user.global_name || user.username}
+																</a>
+															);
+														},
+													},
+													{
+														// match <#channel-id>
+														pattern: /<#(\d+?)>/gm,
+														replacement(match) {
+															const name = channels.find(
+																(c) => c.properties.id === match[1],
+															)?.properties?.name;
+															return (
+																<a
+																	onClick={(e) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+																		setChannelId(match[1]);
+																	}}
+																	href="#"
+																>
+																	#{name}
+																</a>
+															);
+														},
+													},
 													{
 														pattern:
 															/(<|)(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/g,

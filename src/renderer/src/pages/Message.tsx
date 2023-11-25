@@ -390,8 +390,15 @@ function MessagePage() {
 	}
 	useEffect(() => {
 		const id = addDispatchListener(GatewayDispatchEvents.MessageCreate, (d) => {
-			if (d.channel_id !== channelId || d.author.id === state?.ready?.user?.id)
-				return;
+			if (d.channel_id !== channelId) return;
+			if (d.author.id === state?.ready?.user?.id && d.nonce) {
+				setMessages((msgs) => {
+					let newMsgs = [...msgs];
+					newMsgs = newMsgs.filter((msg) => msg.nonce !== d.nonce);
+					newMsgs.push(d);
+					return [...newMsgs];
+				});
+			}
 			let typingMut = [...typing];
 			const typingUser = typingMut.find((t) => t.id === d.author.id);
 			if (typingUser) {
@@ -399,7 +406,7 @@ function MessagePage() {
 				typingMut = typingMut.filter((t) => t.id !== d.author.id);
 			}
 			setTyping(typingMut);
-			setMessages([...messages, d]);
+			if (d.author.id !== state?.ready?.user?.id) setMessages([...messages, d]);
 		});
 		return () => {
 			removeGatewayListener(id);
@@ -777,9 +784,9 @@ function MessagePage() {
 								style={{
 									border: canSendChannel ? "solid thin #a9b6bb" : undefined,
 									fontStyle: canSendChannel ? "italic" : undefined,
-									backgroundColor: canSendChannel ? "#e6ede9" : undefined,
 									fontSize: canSendChannel ? 12 : undefined,
 									paddingTop: canSendChannel ? 5 : undefined,
+									opacity: canSendChannel ? 0.5 : undefined,
 								}}
 								placeholder={
 									canSendChannel ? "You can't chat here." : undefined

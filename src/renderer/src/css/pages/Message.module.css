@@ -131,7 +131,7 @@
 	height: calc(100% - 31px - 94px);
 	padding-bottom: 4px;
 	position: relative;
-	overflow: auto;
+	overflow-y: auto;
 	padding-right: 16px;
 }
 

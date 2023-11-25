@@ -31,7 +31,7 @@ import {
 	State,
 	Status,
 } from "../../../shared/types";
-import { contextMenu, createWindow } from "@renderer/util/ipc";
+import { closeGateway, contextMenu, createWindow } from "@renderer/util/ipc";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -49,6 +49,7 @@ import {
 	convertPermsToArray,
 	hasPermission,
 } from "@renderer/classes/DiscordUtil";
+import { useNavigate } from "react-router-dom";
 
 function getActivityText(activities?: FriendActivity[]) {
 	const music = activities?.find((a) => a.type === 2);
@@ -583,6 +584,7 @@ function Home() {
 				.search(search)
 				.map((s) => s.item)
 		: guildsUnsearched;
+	const navigate = useNavigate();
 	return !state.ready?.user?.id ? (
 		<></>
 	) : (
@@ -667,6 +669,11 @@ function Home() {
 												.require("os")
 												.hostname()})`,
 											type: ContextMenuItemType.Item,
+											click() {
+												closeGateway();
+												setState({} as State);
+												navigate("/");
+											},
 										},
 										{
 											type: ContextMenuItemType.Divider,

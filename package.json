@@ -1,9 +1,9 @@
 {
 	"name": "wlm-09-discord",
-	"version": "1.0.0",
-	"description": "An Electron application with React and TypeScript",
+	"version": "1.0.0-rc.1",
+	"description": "Windows Live Messenger (2009), but for Discord!",
 	"main": "./out/main/index.js",
-	"author": "example.com",
+	"author": "Madeline, with special thanks to luisl and the Nostalgia '09 team",
 	"homepage": "https://www.electronjs.org",
 	"scripts": {
 		"format": "prettier --write .",

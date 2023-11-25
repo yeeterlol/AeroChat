@@ -737,7 +737,36 @@ function MessagePage() {
 											}}
 											className={styles.messageUsername}
 										>
-											{m.author.global_name || m.author.username} says
+											<a
+												href="#"
+												onClick={(e) => {
+													e.preventDefault();
+													e.stopPropagation();
+													if (guild)
+														sendOp(
+															14 as any,
+															{
+																guild_id: guild.id,
+																members: [m.author.id],
+															} as any,
+														);
+													const window = remote.getCurrentWindow();
+													const windowPos = window.getContentBounds();
+													const username = e.target as HTMLAnchorElement;
+													const bounds = username.getBoundingClientRect();
+													contactCard(
+														m.author,
+														windowPos.x + bounds.left,
+														windowPos.y + bounds.top + bounds.height,
+													);
+												}}
+												style={{
+													color: "#545454",
+												}}
+											>
+												{m.author.global_name || m.author.username}
+											</a>{" "}
+											says
 											{m.referenced_message
 												? ` (in reply to ${
 														m.referenced_message.author.global_name ||
@@ -796,10 +825,6 @@ function MessagePage() {
 																			) as HTMLDivElement;
 																		const bounds =
 																			usernameContainer.getBoundingClientRect();
-																		console.log(
-																			windowPos.x + bounds.left,
-																			windowPos.y + bounds.top + bounds.height,
-																		);
 																		contactCard(
 																			user,
 																			windowPos.x + bounds.left,

@@ -5,6 +5,9 @@ import {
 	ipcMain,
 	safeStorage,
 	nativeImage,
+	Menu,
+	Tray,
+	dialog,
 } from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
@@ -80,6 +83,7 @@ let state: State;
 let win: BrowserWindow | null;
 let ctxMenu: BrowserWindow | null;
 let interval: NodeJS.Timeout | null;
+let trayIcon: Tray | null;
 
 async function showContextMenu(
 	id: string,
@@ -88,6 +92,8 @@ async function showContextMenu(
 	y?: number,
 	offsetWidth?: number,
 	style?: ContextMenuStyle,
+	vertical: "top" | "bottom" = "top",
+	horizontal: "left" | "right" = "left",
 ) {
 	if (!ctxMenu) return;
 	if (interval) clearInterval(interval);
@@ -118,7 +124,7 @@ async function showContextMenu(
 				JSON.stringify(menu),
 			)}&x=${x || 0}&y=${y || 0}&offsetWidth=${offsetWidth || 0}&style=${
 				style || ContextMenuStyle.Modern
-			}`,
+			}&vertical=${vertical}&horizontal=${horizontal}`,
 		),
 	);
 	ctxMenu.reload();
@@ -225,7 +231,19 @@ function createWindow(): void {
 	const mainWindow = new BrowserWindow(defaultOptions);
 
 	main.enable(mainWindow.webContents);
-
+	mainWindow.on("close", (e) => {
+		if (ctxMenu) {
+			e.preventDefault();
+			dialog.showMessageBoxSync(mainWindow, {
+				message: "Warning",
+				title: "Windows Live Messenger",
+				detail: "This window will be minimized to the system tray.",
+				type: "info",
+				noLink: true,
+			});
+			mainWindow.hide();
+		}
+	});
 	mainWindow.on("ready-to-show", () => {
 		mainWindow.show();
 	});
@@ -243,8 +261,6 @@ function createWindow(): void {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
 	ipcMain.on("start-gateway", (_e, token: string) => {
-		const store = new Store();
-		store.set("token", safeStorage.encryptString(token));
 		socket = new WebSocket("wss://gateway.discord.gg/?v=9&encoding=json");
 		socket!.onopen = async () => {
 			sendOp(
@@ -402,8 +418,10 @@ function createWindow(): void {
 			y?: number,
 			offsetWidth?: number,
 			style?: ContextMenuStyle,
+			vertical: "top" | "bottom" = "top",
+			horizontal: "left" | "right" = "left",
 		) => {
-			showContextMenu(id, menu, x, y, offsetWidth, style);
+			showContextMenu(id, menu, x, y, offsetWidth, style, vertical, horizontal);
 			ipcMain.once(`${id}-close`, (_, selectedId) => {
 				e.sender.send(`${id}-close`, selectedId);
 			});
@@ -474,6 +492,35 @@ function createWindow(): void {
 		});
 		win.hide();
 	});
+
+	trayIcon = new Tray(
+		nativeImage.createFromPath("resources/icon-default.ico"),
+		"0a7e2c8f-a657-44ac-be2e-3906926039ed",
+	);
+	trayIcon.on("click", () => {
+		mainWindow.show();
+	});
+	trayIcon.setContextMenu(
+		Menu.buildFromTemplate([
+			{
+				label: "Show",
+				click() {
+					mainWindow.show();
+				},
+			},
+			{
+				label: "Exit",
+				click() {
+					BrowserWindow.getAllWindows().forEach((window) => {
+						window.destroy();
+					});
+					if (!ctxMenu?.isDestroyed()) ctxMenu?.destroy();
+					app.quit();
+					trayIcon?.destroy();
+				},
+			},
+		]),
+	);
 	win = mainWindow;
 }
 
@@ -511,9 +558,6 @@ app.whenReady().then(() => {
 	ctxMenu.setOpacity(0);
 	ctxMenu.show();
 	createWindow();
-	win?.on("close", () => {
-		app.quit();
-	});
 	app.on("activate", function () {
 		// On macOS it's common to re-create a window in the app when the
 		// dock icon is clicked and there are no other windows open.

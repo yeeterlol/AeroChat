@@ -4,7 +4,7 @@ import Vibrant from "node-vibrant";
 import pfp from "@renderer/assets/login/sample-pfp.png";
 import { closeGateway, startGateway } from "@renderer/util/ipc";
 import { Context } from "@renderer/util";
-const { safeStorage, getCurrentWindow } = window.require(
+const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
 const Store = window.require(
@@ -114,7 +114,9 @@ function Login(): JSX.Element {
 	const [clicked, setClicked] = useState(false);
 	const [token, setToken] = useState(
 		store.get("token")
-			? safeStorage.decryptString(Buffer.from((store.get("token") as any).data))
+			? remote.safeStorage.decryptString(
+					Buffer.from((store.get("token") as any).data),
+			  )
 			: "",
 	);
 	const [userInfo, setUserInfo] = useState<IUser>();
@@ -169,7 +171,7 @@ function Login(): JSX.Element {
 		}
 	}, [token]);
 	useEffect(() => {
-		console.log(getCurrentWindow().getSize());
+		console.log(remote.getCurrentWindow().getSize());
 	}, []);
 	return (
 		<div className={styles.window}>
@@ -248,9 +250,30 @@ function Login(): JSX.Element {
 							id="save-token"
 							className={styles.check}
 							type="checkbox"
+							defaultChecked={!!store.get("token")}
 						/>
 						<label htmlFor="save-token">Remember me</label>
-						<a>(Forget me)</a>
+						<a
+							onClick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								store.delete("token");
+								setToken("");
+								(
+									document.getElementById("save-token") as HTMLInputElement
+								).checked = false;
+
+								remote.dialog.showMessageBoxSync(remote.getCurrentWindow(), {
+									message: "Forgotten",
+									title: "Windows Live Messenger",
+									detail: "Your token has been forgotten.",
+									type: "info",
+									noLink: true,
+								});
+							}}
+						>
+							(Forget me)
+						</a>
 					</div>
 				</div>
 				<img
@@ -270,6 +293,14 @@ function Login(): JSX.Element {
 							startGateway(token);
 							setState({ ...state, token });
 							setClicked(true);
+							const save = (
+								document.getElementById("save-token") as HTMLInputElement
+							)?.checked;
+							if (save) {
+								store.set("token", remote.safeStorage.encryptString(token));
+							} else {
+								store.delete("token");
+							}
 						}
 					}}
 					className={styles.signIn}

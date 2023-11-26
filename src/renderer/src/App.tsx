@@ -3,9 +3,10 @@ import Login from "@renderer/pages/Login";
 import Home from "@renderer/pages/Home";
 import { Context } from "@renderer/util";
 import { useEffect, useState } from "react";
-import { State, Status } from "../../shared/types/index";
+import { ContextMenuItemType, State, Status } from "../../shared/types/index";
 import {
 	addDispatchListener,
+	contextMenu,
 	createWindow,
 	getState,
 	removeGatewayListener,

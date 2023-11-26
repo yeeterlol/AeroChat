@@ -91,6 +91,8 @@ export async function contextMenu(
 	y?: number,
 	offsetWidth?: number,
 	style?: ContextMenuStyle,
+	vertical: "top" | "bottom" = "top",
+	horizontal: "left" | "right" = "left",
 ): Promise<void> {
 	const id = v4();
 	const idItems = items.map((i) => ({ ...i, id: v4() }));

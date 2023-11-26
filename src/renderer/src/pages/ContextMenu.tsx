@@ -56,6 +56,10 @@ function ContextMenu() {
 		})[]
 	>([...JSON.parse(params.get("menu") || "[]")]);
 	const [x, y] = parseInts(params.get("x"), params.get("y"));
+	const [vertical, horizontal]: ["top" | "bottom", "left" | "right"] = [
+		params.get("vertical") as "top" | "bottom",
+		params.get("horizontal") as "left" | "right",
+	];
 	const style = params.get("style") as ContextMenuStyle;
 	useEffect(() => {
 		const win = getCurrentWindow();
@@ -87,10 +91,14 @@ function ContextMenu() {
 				height: height,
 			},
 		]);
-		win.setPosition(x, y);
+		// win.setPosition(x, y);
+		win.setPosition(
+			horizontal === "left" ? x : x - width,
+			vertical === "top" ? y : y - height,
+		);
 		win.setIgnoreMouseEvents(false);
 		win.show();
-	}, [items, x, y, width, params]);
+	}, [items, x, y, horizontal, vertical, width, params]);
 	useEffect(() => {
 		const offsetWidth = parseInt(params.get("offsetWidth") || "0");
 		// get the item with the highest label width

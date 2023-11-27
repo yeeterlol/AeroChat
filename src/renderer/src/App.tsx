@@ -19,7 +19,6 @@ import Notification from "./pages/Notification";
 const { ipcRenderer }: { ipcRenderer: any } = window.require("electron");
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import ContextMenu from "./pages/ContextMenu";
-import { DispatchEventsCustom } from "../../shared/gateway";
 import Message from "./pages/Message";
 import { DiscordUtil } from "./classes/DiscordUtil";
 import ContactCard from "./pages/ContactCard";

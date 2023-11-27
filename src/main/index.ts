@@ -6,7 +6,6 @@ import {
 	nativeImage,
 	Menu,
 	Tray,
-	dialog,
 } from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";

@@ -12,7 +12,6 @@ import {
 } from "../../../../shared/gateway";
 import {
 	ContextMenuItem,
-	ContextMenuItemType,
 	ContextMenuStyle,
 	PopupWindowProps,
 	State,

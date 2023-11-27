@@ -84,15 +84,14 @@ export function closeGateway() {
 	ipcRenderer.send("close-gateway");
 }
 
-export async function contextMenu(
-	items: ContextMenuItem[],
-	x?: number,
-	y?: number,
-	offsetWidth?: number,
-	style?: ContextMenuStyle,
-	// vertical: "top" | "bottom" = "top",
-	// horizontal: "left" | "right" = "left",
-): Promise<void> {
+export async function contextMenu(): Promise<void> {
+// items: ContextMenuItem[],
+// x?: number,
+// y?: number,
+// offsetWidth?: number,
+// style?: ContextMenuStyle,
+// vertical: "top" | "bottom" = "top",
+// horizontal: "left" | "right" = "left",
 	// const id = v4();
 	// const idItems = items.map((i) => ({ ...i, id: v4() }));
 	// ipcRenderer.send(

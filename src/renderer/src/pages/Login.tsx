@@ -111,6 +111,8 @@ interface IUser {
 const store = new Store();
 
 function Login(): JSX.Element {
+	const [saveToken, setSaveToken] = useState(false);
+	const [autoLogin, setAutoLogin] = useState(false);
 	const [clicked, setClicked] = useState(false);
 	const [token, setToken] = useState(
 		store.get("token")
@@ -120,8 +122,24 @@ function Login(): JSX.Element {
 			: "",
 	);
 	const [userInfo, setUserInfo] = useState<IUser>();
+	const [checkedAutoLogin, setCheckedAutoLogin] = useState(false);
+	useEffect(() => {
+		if (checkedAutoLogin) return;
+		setCheckedAutoLogin(true);
+		if (store.get("autoLogin")) {
+			(document.getElementById("save-token") as HTMLInputElement).checked =
+				true;
+			setSaveToken(true);
+			setAutoLogin(true);
+			startGateway(token);
+			setClicked(true);
+		}
+	}, [checkedAutoLogin, token]);
 	const pfpRef = useRef<HTMLDivElement>(null);
 	const { state, setState } = useContext(Context);
+	useEffect(() => {
+		store.set("autoLogin", autoLogin);
+	}, [autoLogin]);
 	useEffect(() => {
 		if (isTokenPotentiallyValid(token)) {
 			setUserInfo({
@@ -250,6 +268,15 @@ function Login(): JSX.Element {
 							id="save-token"
 							className={styles.check}
 							type="checkbox"
+							onChange={(e) => {
+								setSaveToken(e.target.checked);
+								if (!e.target.checked) {
+									(
+										document.getElementById("auto-login") as HTMLInputElement
+									).checked = false;
+									setAutoLogin(false);
+								}
+							}}
 							defaultChecked={!!store.get("token")}
 						/>
 						<label htmlFor="save-token">Remember me</label>
@@ -274,6 +301,17 @@ function Login(): JSX.Element {
 						>
 							(Forget me)
 						</a>
+					</div>
+					<div className={styles.checkInput}>
+						<input
+							disabled={!saveToken}
+							id="auto-login"
+							className={styles.check}
+							type="checkbox"
+							onChange={(e) => setAutoLogin(e.target.checked)}
+							defaultChecked={!!store.get("token")}
+						/>
+						<label htmlFor="auto-login">Automatically log me in</label>
 					</div>
 				</div>
 				<img

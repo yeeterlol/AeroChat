@@ -507,22 +507,19 @@ function Home() {
 	// 			.search(search)
 	// 			.map((s) => s.item)
 	// 	: [...folders, ...noFolders];
-	const guildsUnsearched = state.ready?.guilds.sort(
-		(a, b) => a.properties?.name.localeCompare(b.properties?.name),
-	);
-	const guilds = search
-		? new Fuse(guildsUnsearched, {
-				keys: [
-					{
-						name: "name",
-						weight: 1,
-						getFn: (obj) => obj.properties?.name,
-					},
-				],
-		  })
-				.search(search)
-				.map((s) => s.item)
-		: guildsUnsearched;
+	const guilds =
+		state.userSettings?.guildFolders?.folders
+			.map((folder) => {
+				const guilds = folder.guildIds.map(
+					(g) => state.ready.guilds.find((h) => h.id === g.toString())!,
+				);
+				return {
+					folder: folder,
+					guilds: guilds,
+					isFolder: guilds.length !== 1,
+				};
+			})
+			.flat() || [];
 	const navigate = useNavigate();
 	return !state.ready?.user?.id ? (
 		<></>
@@ -769,47 +766,106 @@ function Home() {
 								/>
 							))}
 						</Dropdown>
-						<Dropdown header="Servers" info={`(${guilds?.length})`}>
-							{guildsUnsearched.map((c) => (
-								<Contact
-									style={{
-										display: search
-											? guilds?.map((d) => d.id).includes(c.id)
-												? ""
-												: "none"
-											: "",
-									}}
-									format=".webp?size=256"
-									onDoubleClick={() => {
-										const memberReady = DiscordUtil.getMembership(c);
-										if (!memberReady) throw new Error("member not found??");
-										const member = new Member(memberReady);
-										const channels = c.channels
-											.filter((c) => c.type === ChannelType.GuildText)
-											.sort((a, b) => a.position - b.position)
-											.map((c) => new Channel(c as any));
-										const channel = channels.find((c) =>
-											hasPermission(
-												computePermissions(member, c),
-												PermissionFlagsBits.ViewChannel,
-											),
-										);
-										console.log(channel);
-										if (!channel) return;
-										doubleClick(channel.properties);
-									}}
-									key={c.id}
-									user={
-										{
-											id: c.id,
-											avatar: c.properties?.icon,
-											global_name: c.properties?.name,
-										} as any
-									}
-									status={PresenceUpdateStatus.Online as any}
-									guild
-								/>
-							))}
+						<Dropdown
+							header="Servers"
+							info={`(${guilds?.map((g) => g.guilds).length})`}
+						>
+							{guilds.map((f) =>
+								f.isFolder ? (
+									<Dropdown
+										header={f.folder.name?.value || "Unnamed folder"}
+										info={`(${f.guilds.length})`}
+										color={
+											"#" +
+												f.folder.color?.value.toString(16).padStart(6, "0") ||
+											undefined
+										}
+									>
+										{f.guilds.map((c) => (
+											<Contact
+												// style={{
+												// 	display: search
+												// 		? guilds?.map((d) => d.id).includes(c.id)
+												// 			? ""
+												// 			: "none"
+												// 		: "",
+												// }}
+												format=".webp?size=256"
+												onDoubleClick={() => {
+													const memberReady = DiscordUtil.getMembership(c);
+													if (!memberReady)
+														throw new Error("member not found??");
+													const member = new Member(memberReady);
+													const channels = c.channels
+														.filter((c) => c.type === ChannelType.GuildText)
+														.sort((a, b) => a.position - b.position)
+														.map((c) => new Channel(c as any));
+													const channel = channels.find((c) =>
+														hasPermission(
+															computePermissions(member, c),
+															PermissionFlagsBits.ViewChannel,
+														),
+													);
+													console.log(channel);
+													if (!channel) return;
+													doubleClick(channel.properties);
+												}}
+												key={c.id}
+												user={
+													{
+														id: c.id,
+														avatar: c.properties?.icon,
+														global_name: c.properties?.name,
+													} as any
+												}
+												status={PresenceUpdateStatus.Online as any}
+												guild
+											/>
+										))}
+									</Dropdown>
+								) : (
+									f.guilds.map((c) => (
+										<Contact
+											// style={{
+											// 	display: search
+											// 		? guilds?.map((d) => d.id).includes(c.id)
+											// 			? ""
+											// 			: "none"
+											// 		: "",
+											// }}
+											format=".webp?size=256"
+											onDoubleClick={() => {
+												const memberReady = DiscordUtil.getMembership(c);
+												if (!memberReady) throw new Error("member not found??");
+												const member = new Member(memberReady);
+												const channels = c.channels
+													.filter((c) => c.type === ChannelType.GuildText)
+													.sort((a, b) => a.position - b.position)
+													.map((c) => new Channel(c as any));
+												const channel = channels.find((c) =>
+													hasPermission(
+														computePermissions(member, c),
+														PermissionFlagsBits.ViewChannel,
+													),
+												);
+												console.log(channel);
+												if (!channel) return;
+												doubleClick(channel.properties);
+											}}
+											key={c.id}
+											user={
+												{
+													id: c.id,
+													avatar: c.properties?.icon,
+													global_name: c.properties?.name,
+												} as any
+											}
+											status={PresenceUpdateStatus.Online as any}
+											guild
+										/>
+									))
+								),
+							)}
 						</Dropdown>
 						<Dropdown header="Offline" info={`(${offline.length})`}>
 							{offlineUnsearched?.map((c) => (

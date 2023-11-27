@@ -16,6 +16,8 @@ import {
 	APINewsChannel,
 	MessageType,
 	GuildChannelType,
+	GatewayOpcodes,
+	APIRole,
 } from "discord-api-types/v9";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -227,6 +229,8 @@ function MessagePage() {
 	const [channel, setChannel] = useState<
 		APITextChannel | APIDMChannel | APINewsChannel
 	>();
+	let shouldAllowTyping = true;
+	let typingTimeout: NodeJS.Timeout | undefined;
 	const [channels, setChannels] = useState<
 		Channel<APITextChannel | APIGuildCategoryChannel | APINewsChannel>[]
 	>([]);
@@ -270,6 +274,7 @@ function MessagePage() {
 			if (d.channel_id !== channelId) return;
 			let typingMut = [...typing];
 			const typingUser = typingMut.find((t) => t.id === d.user_id);
+			if (d.user_id === state?.ready?.user?.id) return;
 			const user = state?.ready?.users?.find((u) => u.id === d.user_id);
 			if (typingUser) {
 				clearTimeout(typingUser.timeout);
@@ -298,7 +303,6 @@ function MessagePage() {
 		};
 	}, [channel, typing]);
 	async function fetchChannel() {
-		console.log(channelId);
 		if (!channelId) return;
 		const channel = (
 			await apiReq(`/channels/${channelId}`, "GET", state?.token || "")
@@ -315,7 +319,6 @@ function MessagePage() {
 	useEffect(() => {
 		fetchMessages();
 		fetchChannel();
-		console.log(guild);
 		if (!guild) return;
 		if ("properties" in guild) {
 			setChannel({
@@ -326,9 +329,6 @@ function MessagePage() {
 			// setChannel(guild.channels.find((c) => c.id === channelId) as any);
 		}
 	}, [channelId]);
-	useEffect(() => {
-		console.log(channel);
-	}, [channel]);
 	const [canSendChannel, setCanSendChannel] = useState(false);
 	useEffect(() => {
 		if (!guild || !("properties" in guild)) return;
@@ -466,12 +466,49 @@ function MessagePage() {
 		);
 	}, [channel, channelId]);
 	const myPresence = state?.ready?.sessions[0];
-
 	useEffect(() => {
 		remote
 			.getCurrentWindow()
 			.setIcon(remote.nativeImage.createFromPath("resources/icon-chat.ico"));
 	}, []);
+	const [userRoles, setUserRoles] = useState<{ id: string; roles: string[] }[]>(
+		[],
+	);
+	useEffect(() => {
+		// get a list of users in messages which don't have a matching id in userRoles
+		// then remove duplicates
+		if (!guild) return;
+		const users = [
+			...new Set(
+				messages
+					.map((m) => m.author.id)
+					.filter((id) => !userRoles.find((u) => u.id === id)),
+			),
+		];
+		if (users.length === 0) return;
+		sendOp(GatewayOpcodes.RequestGuildMembers, {
+			guild_id: guild?.id,
+			user_ids: users,
+		});
+		console.log("op sent, maybe?");
+	}, [userRoles, messages]);
+	useEffect(() => {
+		if (!guild) return;
+		const id = addDispatchListener(
+			GatewayDispatchEvents.GuildMembersChunk,
+			(d) => {
+				setUserRoles((u) => [
+					...new Set([
+						...u,
+						...d.members.map((m) => ({ id: m.user!.id, roles: m.roles })),
+					]),
+				]);
+			},
+		);
+		return () => {
+			removeGatewayListener(id);
+		};
+	}, [guild, userRoles]);
 	useEffect(() => {
 		if (recepient) {
 			document.title = recepient.user?.global_name
@@ -757,7 +794,26 @@ function MessagePage() {
 													);
 												}}
 												style={{
-													color: "#545454",
+													color: guild
+														? "#" +
+																(() => {
+																	const roles = (guild.roles as APIRole[]).sort(
+																		(a, b) => b.position - a.position,
+																	);
+																	const authorRoles = userRoles.find(
+																		(u) => u.id === m.author.id,
+																	)?.roles;
+																	const role = roles.find(
+																		(r) =>
+																			authorRoles?.includes(r.id) &&
+																			r.color !== 0,
+																	);
+																	return (
+																		role?.color.toString(16).padStart(6, "0") ||
+																		"545454"
+																	);
+																})() || "545454"
+														: "#545454",
 												}}
 											>
 												{m.author.global_name || m.author.username}
@@ -776,8 +832,8 @@ function MessagePage() {
 													{" "}
 													(in reply to{" "}
 													{m.referenced_message.author.global_name ||
-														m.referenced_message.author.username}{" "}
-													's message '{m.referenced_message.content}')`
+														m.referenced_message.author.username}
+													's message '{m.referenced_message.content}')
 												</span>
 											) : (
 												""
@@ -930,6 +986,19 @@ function MessagePage() {
 								}}
 							/>
 							<textarea
+								onChange={() => {
+									if (!shouldAllowTyping) return;
+									shouldAllowTyping = false;
+									if (typingTimeout) clearTimeout(typingTimeout);
+									typingTimeout = setTimeout(() => {
+										shouldAllowTyping = true;
+									}, 5000);
+									apiReq(
+										`/channels/${channelId}/typing`,
+										"POST",
+										state?.token || "",
+									);
+								}}
 								disabled={canSendChannel ? true : false}
 								style={{
 									border: canSendChannel ? "solid thin #a9b6bb" : undefined,
@@ -955,6 +1024,120 @@ function MessagePage() {
 										sendMessage(e.currentTarget.value);
 										e.currentTarget.value = "";
 									}
+								}}
+								onPaste={async (e) => {
+									// if its text, return
+									const target = e.target as unknown as HTMLTextAreaElement;
+									const value = target.value;
+									if (e.clipboardData?.types.includes("text/plain")) return;
+									e.preventDefault();
+									const file = e.clipboardData?.files[0];
+									if (!file) return;
+									target.value = "";
+									const nonce = generateNonce();
+									setMessages([
+										...messages,
+										{
+											id: nonce + nonce,
+											content: value || "",
+											attachments: [
+												{
+													url: "#",
+													filename: file.name,
+													id: nonce,
+													size: file.size,
+													proxy_url: "",
+												},
+											],
+											author: state.ready.user as any,
+											channel_id: channelId || "",
+											timestamp: new Date().toISOString(),
+											edited_timestamp: null,
+											mention_everyone: false,
+											embeds: [],
+											mentions: [],
+											mention_roles: [],
+											pinned: false,
+											tts: false,
+											type: 1,
+											nonce,
+										},
+									]);
+									const data = {
+										files: [
+											{
+												file_size: file.size,
+												filename: file.name,
+												id: Math.floor(Math.random() * 100),
+												is_clip: false,
+											},
+										],
+									};
+									const {
+										attachments,
+									}: {
+										attachments: {
+											id: string;
+											upload_url: string;
+											upload_filename: string;
+										}[];
+									} = await (
+										await fetch(
+											`https://discord.com/api/v9/channels/${channelId}/attachments`,
+											{
+												method: "POST",
+												headers: {
+													authorization: state?.token,
+													"content-type": "application/json",
+												},
+												body: JSON.stringify(data),
+											},
+										)
+									).json();
+									const listOfAttachments: {
+										filename: string;
+										id: string;
+										uploaded_filename: string;
+									}[] = [];
+									for await (const attachment of attachments) {
+										await fetch(attachment.upload_url, {
+											method: "PUT",
+											headers: {
+												"content-type": "application/octet-stream",
+												authorization: state?.token,
+											},
+											body: file,
+										});
+										listOfAttachments.push({
+											filename: attachment.upload_filename,
+											id: attachment.id,
+											uploaded_filename: attachment.upload_filename,
+										});
+									}
+									const msg = await (
+										await fetch(
+											`https://discord.com/api/v9/channels/${channelId}/messages`,
+											{
+												method: "POST",
+												headers: {
+													authorization: state?.token,
+													"content-type": "application/json",
+												},
+												body: JSON.stringify({
+													content: value || "",
+													nonce,
+													type: MessageType.Default,
+													attachments: listOfAttachments,
+												}),
+											},
+										)
+									).json();
+									setMessages((msgs) => {
+										let newMsgs = [...msgs];
+										newMsgs = newMsgs.filter((msg) => msg.nonce !== nonce);
+										newMsgs.push(msg);
+										return [...newMsgs];
+									});
 								}}
 								spellCheck={false}
 								className={styles.messageBox}

@@ -91,31 +91,32 @@ export async function contextMenu(
 	y?: number,
 	offsetWidth?: number,
 	style?: ContextMenuStyle,
-	vertical: "top" | "bottom" = "top",
-	horizontal: "left" | "right" = "left",
+	// vertical: "top" | "bottom" = "top",
+	// horizontal: "left" | "right" = "left",
 ): Promise<void> {
-	const id = v4();
-	const idItems = items.map((i) => ({ ...i, id: v4() }));
-	ipcRenderer.send(
-		"context-menu",
-		id,
-		idItems.map((i) =>
-			i.type === ContextMenuItemType.Item ? { ...i, click: undefined } : i,
-		),
-		x,
-		y,
-		offsetWidth,
-		style,
-	);
+	// const id = v4();
+	// const idItems = items.map((i) => ({ ...i, id: v4() }));
+	// ipcRenderer.send(
+	// 	"context-menu",
+	// 	id,
+	// 	idItems.map((i) =>
+	// 		i.type === ContextMenuItemType.Item ? { ...i, click: undefined } : i,
+	// 	),
+	// 	x,
+	// 	y,
+	// 	offsetWidth,
+	// 	style,
+	// );
 	return new Promise((resolve) => {
-		ipcRenderer.once(`${id}-close`, (_, id: string) => {
-			const item = idItems.find((i) => i.id === id);
-			if (!item) return;
-			if (item.type === ContextMenuItemType.Item) {
-				item.click?.();
-			}
-			resolve();
-		});
+		// ipcRenderer.once(`${id}-close`, (_, id: string) => {
+		// 	const item = idItems.find((i) => i.id === id);
+		// 	if (!item) return;
+		// 	if (item.type === ContextMenuItemType.Item) {
+		// 		item.click?.();
+		// 	}
+		// 	resolve();
+		// });
+		resolve();
 	});
 }
 

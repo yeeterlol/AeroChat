@@ -3,10 +3,9 @@ import Login from "@renderer/pages/Login";
 import Home from "@renderer/pages/Home";
 import { Context } from "@renderer/util";
 import { useEffect, useState } from "react";
-import { ContextMenuItemType, State, Status } from "../../shared/types/index";
+import { State, Status } from "../../shared/types/index";
 import {
 	addDispatchListener,
-	contextMenu,
 	createWindow,
 	getState,
 	removeGatewayListener,
@@ -150,8 +149,6 @@ function App(): JSX.Element {
 						...(rest as any),
 						user_id: d.user.id,
 					});
-					if (d.user.id === "1034983249329537054")
-						console.log(mutState.ready.merged_presences.guilds[guildIndex]);
 				}
 				if (!mutState?.ready?.merged_presences?.friends) return;
 				let friend = mutState.ready.merged_presences.friends.find(
@@ -219,26 +216,20 @@ function App(): JSX.Element {
 				if (mutState === reactState) return;
 				setState(mutState);
 			}),
-			addDispatchListener(DispatchEventsCustom.RelationshipRemove, (d) => {
-				console.log(d);
-			}),
 		];
 		return () => {
 			ids.forEach((id) => removeGatewayListener(id));
 		};
 	}, [reactState]);
 	useEffect(() => {
-		console.log(remote.getCurrentWindow().getSize());
 		(async () => {
 			if (!reactState?.ready?.sessions) return;
 			const session = reactState.ready.sessions[0];
 			const window = remote.getCurrentWindow();
-			console.log(session.status);
 			window.setOverlayIcon(
 				remote.nativeImage.createFromPath(`resources/${session.status}.ico`),
 				session.status,
 			);
-			console.log("done");
 		})();
 	}, [reactState?.ready?.sessions]);
 	return (

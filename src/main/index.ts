@@ -3,7 +3,6 @@ import {
 	shell,
 	BrowserWindow,
 	ipcMain,
-	safeStorage,
 	nativeImage,
 	Menu,
 	Tray,
@@ -204,22 +203,6 @@ function createOrFocusWindow(props: PopupWindowProps) {
 }
 
 function setState(newState: State) {
-	if (
-		state?.userSettings &&
-		newState?.userSettings &&
-		state.userSettings !== newState.userSettings
-	) {
-		fetch("https://discord.com/api/v9/users/@me/settings-proto/1", {
-			headers: {
-				Authorization: state?.token,
-				"Content-Type": "application/json",
-			},
-			method: "PATCH",
-			body: JSON.stringify({
-				settings: PreloadedUserSettings.toBase64(newState.userSettings),
-			}),
-		});
-	}
 	state = newState;
 	BrowserWindow.getAllWindows().forEach((window) => {
 		window.webContents.send("set-state", newState);
@@ -231,19 +214,19 @@ function createWindow(): void {
 	const mainWindow = new BrowserWindow(defaultOptions);
 
 	main.enable(mainWindow.webContents);
-	mainWindow.on("close", (e) => {
-		if (ctxMenu) {
-			e.preventDefault();
-			dialog.showMessageBoxSync(mainWindow, {
-				message: "Warning",
-				title: "Windows Live Messenger",
-				detail: "This window will be minimized to the system tray.",
-				type: "info",
-				noLink: true,
-			});
-			mainWindow.hide();
-		}
-	});
+	// mainWindow.on("close", (e) => {
+	// 	if (ctxMenu) {
+	// 		e.preventDefault();
+	// 		dialog.showMessageBoxSync(mainWindow, {
+	// 			message: "Warning",
+	// 			title: "Windows Live Messenger",
+	// 			detail: "This window will be minimized to the system tray.",
+	// 			type: "info",
+	// 			noLink: true,
+	// 		});
+	// 		mainWindow.hide();
+	// 	}
+	// });
 	mainWindow.on("ready-to-show", () => {
 		mainWindow.show();
 	});

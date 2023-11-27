@@ -20,22 +20,22 @@ import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import { sendOp } from "../../../shared/gateway";
 // const { Menu, getCurrentWindow, nativeImage } =
 // 	require("@electron/remote") as typeof import("@electron/remote");
-import active from "@renderer/assets/home/context-menu/active.png";
-import idle from "@renderer/assets/home/context-menu/idle.png";
-import invisible from "@renderer/assets/home/context-menu/invisible.png";
-import dnd from "@renderer/assets/home/context-menu/dnd.png";
+// import active from "@renderer/assets/home/context-menu/active.png";
+// import idle from "@renderer/assets/home/context-menu/idle.png";
+// import invisible from "@renderer/assets/home/context-menu/invisible.png";
+// import dnd from "@renderer/assets/home/context-menu/dnd.png";
 import {
-	ContextMenuItemType,
-	ContextMenuStyle,
+	// ContextMenuItemType,
+	// ContextMenuStyle,
 	Friend,
 	GuildPresence,
-	State,
+	// State,
 	Status,
 } from "../../../shared/types";
 import {
-	closeGateway,
-	contactCard,
-	contextMenu,
+	// closeGateway,
+	// contactCard,
+	// contextMenu,
 	createWindow,
 } from "@renderer/util/ipc";
 const remote = window.require(
@@ -50,7 +50,7 @@ import {
 	computePermissions,
 	hasPermission,
 } from "@renderer/classes/DiscordUtil";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 
 function calcWidth(text: string, offset: number = 1): number {
 	const body = document.querySelector("body");
@@ -178,47 +178,47 @@ function Contact(
 function Home() {
 	const [input, setInput] = useState<HTMLInputElement | null>(null);
 	const [ad, setAd] = useState<HTMLDivElement | null>(null);
-	const { state, setState } = useContext(Context);
-	function contactContextMenu(
-		user: APIUser,
-		e: React.MouseEvent<HTMLDivElement, MouseEvent>,
-	) {
-		const cursor = remote.screen.getCursorScreenPoint();
-		contextMenu(
-			[
-				{
-					type: ContextMenuItemType.Item,
-					label: `[b]Send message (${user.username})[/b]`,
-					click() {
-						doubleClick(user);
-					},
-				},
-				{
-					type: ContextMenuItemType.Divider,
-				},
-				{
-					type: ContextMenuItemType.Item,
-					label: `View contact card`,
-					click() {
-						const closest = (e.target as HTMLDivElement).closest(
-							`.${styles.contact}`,
-						) as HTMLDivElement;
-						const window = remote.getCurrentWindow();
-						const windowPos = window.getContentBounds();
-						const bounds = closest.getBoundingClientRect();
-						contactCard(
-							user,
-							windowPos.x + bounds.left,
-							windowPos.y + bounds.top + bounds.height,
-						);
-					},
-				},
-			],
-			cursor.x,
-			cursor.y,
-			-50,
-		);
-	}
+	const { state } = useContext(Context);
+	// function contactContextMenu(
+	// 	user: APIUser,
+	// 	e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+	// ) {
+	// 	const cursor = remote.screen.getCursorScreenPoint();
+	// 	// contextMenu(
+	// 	// 	[
+	// 	// 		{
+	// 	// 			type: ContextMenuItemType.Item,
+	// 	// 			label: `[b]Send message (${user.username})[/b]`,
+	// 	// 			click() {
+	// 	// 				doubleClick(user);
+	// 	// 			},
+	// 	// 		},
+	// 	// 		{
+	// 	// 			type: ContextMenuItemType.Divider,
+	// 	// 		},
+	// 	// 		{
+	// 	// 			type: ContextMenuItemType.Item,
+	// 	// 			label: `View contact card`,
+	// 	// 			click() {
+	// 	// 				const closest = (e.target as HTMLDivElement).closest(
+	// 	// 					`.${styles.contact}`,
+	// 	// 				) as HTMLDivElement;
+	// 	// 				const window = remote.getCurrentWindow();
+	// 	// 				const windowPos = window.getContentBounds();
+	// 	// 				const bounds = closest.getBoundingClientRect();
+	// 	// 				contactCard(
+	// 	// 					user,
+	// 	// 					windowPos.x + bounds.left,
+	// 	// 					windowPos.y + bounds.top + bounds.height,
+	// 	// 				);
+	// 	// 			},
+	// 	// 		},
+	// 	// 	],
+	// 	// 	cursor.x,
+	// 	// 	cursor.y,
+	// 	// 	-50,
+	// 	// );
+	// }
 	async function doubleClick(data: APIUser | APIChannel) {
 		function openMessageWindow(id: string) {
 			createWindow({
@@ -264,29 +264,29 @@ function Home() {
 	useEffect(() => {
 		console.log(state.userSettings);
 	}, []);
-	function setStatus(status: PresenceUpdateStatus) {
-		let mutState = { ...state };
-		mutState.ready.sessions[0].status = status;
-		sendOp(GatewayOpcodes.PresenceUpdate, {
-			status:
-				status === PresenceUpdateStatus.Offline
-					? PresenceUpdateStatus.Invisible
-					: status,
-			since: 0,
-			activities: [
-				localStorage.getItem("statusMessage")
-					? ({
-							name: "Custom Status",
-							type: 4,
-							state: localStorage.getItem("statusMessage") || "",
-							emoji: null,
-					  } as any)
-					: null,
-			],
-			afk: false,
-		});
-		setState(mutState);
-	}
+	// function setStatus(status: PresenceUpdateStatus) {
+	// 	let mutState = { ...state };
+	// 	mutState.ready.sessions[0].status = status;
+	// 	sendOp(GatewayOpcodes.PresenceUpdate, {
+	// 		status:
+	// 			status === PresenceUpdateStatus.Offline
+	// 				? PresenceUpdateStatus.Invisible
+	// 				: status,
+	// 		since: 0,
+	// 		activities: [
+	// 			localStorage.getItem("statusMessage")
+	// 				? ({
+	// 						name: "Custom Status",
+	// 						type: 4,
+	// 						state: localStorage.getItem("statusMessage") || "",
+	// 						emoji: null,
+	// 				  } as any)
+	// 				: null,
+	// 		],
+	// 		afk: false,
+	// 	});
+	// 	setState(mutState);
+	// }
 	let lastAd = -1;
 	useEffect(() => {
 		function mouseDown(e: MouseEvent) {
@@ -520,7 +520,7 @@ function Home() {
 				};
 			})
 			.flat() || [];
-	const navigate = useNavigate();
+	// const navigate = useNavigate();
 	return !state.ready?.user?.id ? (
 		<></>
 	) : (
@@ -557,88 +557,89 @@ function Home() {
 						<div
 							onClick={() => {
 								setContextMenuOpacity("1");
-								const window = remote.getCurrentWindow();
-								const windowPos = window.getContentBounds();
-								const usernameContainer = document.querySelector(
-									`.${styles.usernameContainer}`,
-								) as HTMLDivElement;
-								const bounds = usernameContainer.getBoundingClientRect();
-								contextMenu(
-									[
-										{
-											click() {
-												setStatus(PresenceUpdateStatus.Online);
-											},
-											label: "Available",
-											icon: active,
-											type: ContextMenuItemType.Item,
-										},
-										{
-											click() {
-												setStatus(PresenceUpdateStatus.DoNotDisturb);
-											},
-											label: "Busy",
-											icon: dnd,
-											type: ContextMenuItemType.Item,
-										},
-										{
-											click() {
-												setStatus(PresenceUpdateStatus.Idle);
-											},
-											label: "Away",
-											icon: idle,
-											type: ContextMenuItemType.Item,
-										},
-										{
-											click() {
-												setStatus(PresenceUpdateStatus.Invisible);
-											},
-											label: "Appear offline",
-											icon: invisible,
-											type: ContextMenuItemType.Item,
-										},
-										{
-											type: ContextMenuItemType.Divider,
-										},
-										{
-											label: `Sign out from here (${remote
-												.require("os")
-												.hostname()})`,
-											type: ContextMenuItemType.Item,
-											click() {
-												closeGateway();
-												setState({} as State);
-												navigate("/");
-											},
-										},
-										{
-											type: ContextMenuItemType.Divider,
-										},
-										{
-											type: ContextMenuItemType.Item,
-											label: "Change display picture...",
-										},
-										{
-											type: ContextMenuItemType.Item,
-											label: "Change scene...",
-										},
-										{
-											type: ContextMenuItemType.Item,
-											label: "Change display name...",
-										},
-										{
-											type: ContextMenuItemType.Divider,
-										},
-										{
-											type: ContextMenuItemType.Item,
-											label: "Options...",
-										},
-									],
-									windowPos.x + bounds.left,
-									windowPos.y + bounds.top + bounds.height,
-									50,
-									ContextMenuStyle.Classic,
-								).then(() => setContextMenuOpacity("0"));
+								// const window = remote.getCurrentWindow();
+								// const windowPos = window.getContentBounds();
+								// const usernameContainer = document.querySelector(
+								// `.${styles.usernameContainer}`,
+								// ) as HTMLDivElement;
+								// const bounds = usernameContainer.getBoundingClientRect();
+								// setContextMenuOpacity("0");
+								// contextMenu(
+								// 	[
+								// 		{
+								// 			click() {
+								// 				setStatus(PresenceUpdateStatus.Online);
+								// 			},
+								// 			label: "Available",
+								// 			icon: active,
+								// 			type: ContextMenuItemType.Item,
+								// 		},
+								// 		{
+								// 			click() {
+								// 				setStatus(PresenceUpdateStatus.DoNotDisturb);
+								// 			},
+								// 			label: "Busy",
+								// 			icon: dnd,
+								// 			type: ContextMenuItemType.Item,
+								// 		},
+								// 		{
+								// 			click() {
+								// 				setStatus(PresenceUpdateStatus.Idle);
+								// 			},
+								// 			label: "Away",
+								// 			icon: idle,
+								// 			type: ContextMenuItemType.Item,
+								// 		},
+								// 		{
+								// 			click() {
+								// 				setStatus(PresenceUpdateStatus.Invisible);
+								// 			},
+								// 			label: "Appear offline",
+								// 			icon: invisible,
+								// 			type: ContextMenuItemType.Item,
+								// 		},
+								// 		{
+								// 			type: ContextMenuItemType.Divider,
+								// 		},
+								// 		{
+								// 			label: `Sign out from here (${remote
+								// 				.require("os")
+								// 				.hostname()})`,
+								// 			type: ContextMenuItemType.Item,
+								// 			click() {
+								// 				closeGateway();
+								// 				setState({} as State);
+								// 				navigate("/");
+								// 			},
+								// 		},
+								// 		{
+								// 			type: ContextMenuItemType.Divider,
+								// 		},
+								// 		{
+								// 			type: ContextMenuItemType.Item,
+								// 			label: "Change display picture...",
+								// 		},
+								// 		{
+								// 			type: ContextMenuItemType.Item,
+								// 			label: "Change scene...",
+								// 		},
+								// 		{
+								// 			type: ContextMenuItemType.Item,
+								// 			label: "Change display name...",
+								// 		},
+								// 		{
+								// 			type: ContextMenuItemType.Divider,
+								// 		},
+								// 		{
+								// 			type: ContextMenuItemType.Item,
+								// 			label: "Options...",
+								// 		},
+								// 	],
+								// 	windowPos.x + bounds.left,
+								// 	windowPos.y + bounds.top + bounds.height,
+								// 	50,
+								// 	ContextMenuStyle.Classic,
+								// ).then(() => setContextMenuOpacity("0"));
 							}}
 							className={styles.usernameContainer}
 							data-toggled={`${contextMenuOpacity === "1"}`}
@@ -742,7 +743,7 @@ function Home() {
 											: "",
 									}}
 									onDoubleClick={() => doubleClick(c.user)}
-									onContextMenu={(e) => contactContextMenu(c.user, e)}
+									// onContextMenu={(e) => contactContextMenu(c.user, e)}
 									key={c.user.id}
 									{...c}
 								/>
@@ -759,7 +760,7 @@ function Home() {
 											: "",
 									}}
 									onDoubleClick={() => doubleClick(c.user)}
-									onContextMenu={(e) => contactContextMenu(c.user, e)}
+									// onContextMenu={(e) => contactContextMenu(c.user, e)}
 									key={c.user.id}
 									status={c.status}
 									user={c.user}
@@ -878,7 +879,7 @@ function Home() {
 											: "",
 									}}
 									onDoubleClick={() => doubleClick(c.user)}
-									onContextMenu={(e) => contactContextMenu(c.user, e)}
+									// onContextMenu={(e) => contactContextMenu(c.user, e)}
 									key={c.user.id}
 									{...c}
 								/>

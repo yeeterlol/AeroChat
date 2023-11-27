@@ -226,7 +226,11 @@ function createWindow(): void {
 	// 		mainWindow.hide();
 	// 	}
 	// });
-	mainWindow.on("close", () => app.quit());
+	mainWindow.on("close", () => {
+		try {
+			app.quit();
+		} catch {}
+	});
 	mainWindow.on("ready-to-show", () => {
 		mainWindow.show();
 	});

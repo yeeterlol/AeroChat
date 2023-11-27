@@ -11,8 +11,9 @@ import {
 	OpcodeReceiveData,
 } from "../../../../shared/gateway";
 import {
-	// ContextMenuItem,
-	// ContextMenuStyle,
+	ContextMenuItem,
+	ContextMenuItemType,
+	ContextMenuStyle,
 	PopupWindowProps,
 	State,
 } from "../../../../shared/types";
@@ -84,37 +85,37 @@ export function closeGateway() {
 	ipcRenderer.send("close-gateway");
 }
 
-export async function contextMenu(): Promise<void> {
-	// items: ContextMenuItem[],
-	// x?: number,
-	// y?: number,
-	// offsetWidth?: number,
-	// style?: ContextMenuStyle,
+export async function contextMenu(
+	items: ContextMenuItem[],
+	x?: number,
+	y?: number,
+	offsetWidth?: number,
+	style?: ContextMenuStyle,
 	// vertical: "top" | "bottom" = "top",
-	// horizontal: "left" | "right" = "left",
-	// const id = v4();
-	// const idItems = items.map((i) => ({ ...i, id: v4() }));
-	// ipcRenderer.send(
-	// 	"context-menu",
-	// 	id,
-	// 	idItems.map((i) =>
-	// 		i.type === ContextMenuItemType.Item ? { ...i, click: undefined } : i,
-	// 	),
-	// 	x,
-	// 	y,
-	// 	offsetWidth,
-	// 	style,
-	// );
-	return new Promise((resolve) => {
-		// ipcRenderer.once(`${id}-close`, (_, id: string) => {
-		// 	const item = idItems.find((i) => i.id === id);
-		// 	if (!item) return;
-		// 	if (item.type === ContextMenuItemType.Item) {
-		// 		item.click?.();
-		// 	}
-		// 	resolve();
-		// });
-		resolve();
+	// horizontal: "left" | "right" = "left")
+) {
+	const id = v4();
+	const idItems = items.map((i) => ({ ...i, id: v4() }));
+	ipcRenderer.send(
+		"context-menu",
+		id,
+		idItems.map((i) =>
+			i.type === ContextMenuItemType.Item ? { ...i, click: undefined } : i,
+		),
+		x,
+		y,
+		offsetWidth,
+		style,
+	);
+	return new Promise<void>((resolve) => {
+		ipcRenderer.once(`${id}-close`, (_, id: string) => {
+			const item = idItems.find((i) => i.id === id);
+			if (!item) return;
+			if (item.type === ContextMenuItemType.Item) {
+				item.click?.();
+			}
+			resolve();
+		});
 	});
 }
 

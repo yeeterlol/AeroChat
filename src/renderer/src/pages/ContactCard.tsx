@@ -83,6 +83,8 @@ function ContactCard() {
 		if (x !== 0 && y !== 0) {
 			window.moveTo(x, y);
 		}
+		console.log(state);
+		if (!state?.token) return;
 		(async () => {
 			const res = await fetch(
 				`https://discord.com/api/v9/users/${user.id}/profile`,
@@ -95,7 +97,7 @@ function ContactCard() {
 			const json = await res.json();
 			setProfile(json);
 		})();
-	}, [params]);
+	}, [params, state]);
 	return (
 		<div className={styles.contactCard}>
 			<div className={styles.closeButton} onClick={() => window.close()} />

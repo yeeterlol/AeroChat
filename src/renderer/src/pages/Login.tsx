@@ -123,6 +123,7 @@ function Login(): JSX.Element {
 	);
 	const [userInfo, setUserInfo] = useState<IUser>();
 	const [checkedAutoLogin, setCheckedAutoLogin] = useState(false);
+	const { state, setState } = useContext(Context);
 	useEffect(() => {
 		if (checkedAutoLogin) return;
 		setCheckedAutoLogin(true);
@@ -131,12 +132,16 @@ function Login(): JSX.Element {
 				true;
 			setSaveToken(true);
 			setAutoLogin(true);
+			// we need to get and decrypt the token ourselves from the store
+			const token = remote.safeStorage.decryptString(
+				Buffer.from((store.get("token") as any).data),
+			);
 			startGateway(token);
+			setState({ ...state, token });
 			setClicked(true);
 		}
-	}, [checkedAutoLogin, token]);
+	}, [checkedAutoLogin, state]);
 	const pfpRef = useRef<HTMLDivElement>(null);
-	const { state, setState } = useContext(Context);
 	useEffect(() => {
 		store.set("autoLogin", autoLogin);
 	}, [autoLogin]);

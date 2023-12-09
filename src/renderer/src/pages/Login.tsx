@@ -272,7 +272,7 @@ function Login(): JSX.Element {
 					)}
 					<div className={styles.checkInput}>
 						<input
-							disabled={clicked}
+							disabled={clicked || !remote.safeStorage.isEncryptionAvailable()}
 							id="save-token"
 							className={styles.check}
 							type="checkbox"
@@ -312,7 +312,9 @@ function Login(): JSX.Element {
 					</div>
 					<div className={styles.checkInput}>
 						<input
-							disabled={!saveToken}
+							disabled={
+								!saveToken || !remote.safeStorage.isEncryptionAvailable()
+							}
 							id="auto-login"
 							className={styles.check}
 							type="checkbox"

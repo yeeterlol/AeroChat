@@ -791,47 +791,49 @@ function Home() {
 											undefined
 										}
 									>
-										{f.guilds.map((c) => (
-											<Contact
-												// style={{
-												// 	display: search
-												// 		? guilds?.map((d) => d.id).includes(c.id)
-												// 			? ""
-												// 			: "none"
-												// 		: "",
-												// }}
-												format=".webp?size=256"
-												onDoubleClick={() => {
-													const memberReady = DiscordUtil.getMembership(c);
-													if (!memberReady)
-														throw new Error("member not found??");
-													const member = new Member(memberReady);
-													const channels = c.channels
-														.filter((c) => c.type === ChannelType.GuildText)
-														.sort((a, b) => a.position - b.position)
-														.map((c) => new Channel(c as any));
-													const channel = channels.find((c) =>
-														hasPermission(
-															computePermissions(member, c),
-															PermissionFlagsBits.ViewChannel,
-														),
-													);
-													console.log(channel);
-													if (!channel) return;
-													doubleClick(channel.properties);
-												}}
-												key={c.id}
-												user={
-													{
-														id: c.id,
-														avatar: c.properties?.icon,
-														global_name: c.properties?.name,
-													} as any
-												}
-												status={PresenceUpdateStatus.Online as any}
-												guild
-											/>
-										))}
+										{f.guilds
+											?.filter((g) => !!g)
+											.map((c) => (
+												<Contact
+													// style={{
+													// 	display: search
+													// 		? guilds?.map((d) => d.id).includes(c.id)
+													// 			? ""
+													// 			: "none"
+													// 		: "",
+													// }}
+													format=".webp?size=256"
+													onDoubleClick={() => {
+														const memberReady = DiscordUtil.getMembership(c);
+														if (!memberReady)
+															throw new Error("member not found??");
+														const member = new Member(memberReady);
+														const channels = c.channels
+															.filter((c) => c.type === ChannelType.GuildText)
+															.sort((a, b) => a.position - b.position)
+															.map((c) => new Channel(c as any));
+														const channel = channels.find((c) =>
+															hasPermission(
+																computePermissions(member, c),
+																PermissionFlagsBits.ViewChannel,
+															),
+														);
+														console.log(channel);
+														if (!channel) return;
+														doubleClick(channel.properties);
+													}}
+													key={c.id}
+													user={
+														{
+															id: c.id,
+															avatar: c.properties?.icon,
+															global_name: c.properties?.name,
+														} as any
+													}
+													status={PresenceUpdateStatus.Online as any}
+													guild
+												/>
+											))}
 									</Dropdown>
 								) : (
 									f.guilds.map((c) => (

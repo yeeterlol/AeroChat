@@ -117,7 +117,10 @@ function Login(): JSX.Element {
 	const [token, setToken] = useState(
 		store.get("token")
 			? remote.safeStorage.decryptString(
-					Buffer.from((store.get("token") as any).data),
+					Buffer.from(
+						(store.get("token") as any)?.data ||
+							remote.safeStorage.encryptString(""),
+					),
 			  )
 			: "",
 	);

@@ -134,7 +134,7 @@ function Login(): JSX.Element {
 			setAutoLogin(true);
 			// we need to get and decrypt the token ourselves from the store
 			const token = remote.safeStorage.decryptString(
-				Buffer.from((store.get("token") as any)?.data) || "",
+				Buffer.from((store.get("token") as any)?.data || ""),
 			);
 			startGateway(token);
 			setState({ ...state, token });

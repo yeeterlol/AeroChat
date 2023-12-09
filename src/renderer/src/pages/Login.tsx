@@ -115,10 +115,12 @@ function Login(): JSX.Element {
 	const [autoLogin, setAutoLogin] = useState(false);
 	const [clicked, setClicked] = useState(false);
 	const [token, setToken] = useState(
-		store.get("token")
-			? remote.safeStorage.decryptString(
-					Buffer.from((store.get("token") as any)?.data || ""),
-			  )
+		remote.safeStorage.isEncryptionAvailable()
+			? store.get("token")
+				? remote.safeStorage.decryptString(
+						Buffer.from((store.get("token") as any)?.data || ""),
+				  )
+				: ""
 			: "",
 	);
 	const [userInfo, setUserInfo] = useState<IUser>();
@@ -133,6 +135,7 @@ function Login(): JSX.Element {
 			setSaveToken(true);
 			setAutoLogin(true);
 			// we need to get and decrypt the token ourselves from the store
+			if (!remote.safeStorage.isEncryptionAvailable()) return;
 			const token = remote.safeStorage.decryptString(
 				Buffer.from((store.get("token") as any)?.data || ""),
 			);

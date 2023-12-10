@@ -521,7 +521,7 @@ function Home() {
 				);
 				return {
 					folder: folder,
-					guilds: guilds,
+					guilds: guilds.filter((g) => !!g),
 					isFolder: guilds.length !== 1,
 				};
 			})

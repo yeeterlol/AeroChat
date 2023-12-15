@@ -381,7 +381,6 @@ function Home() {
 			if (shouldOpen) {
 				const oldWin = getWindow(`/message?channelId=${d.channel_id}`);
 				const audio = new Audio(receiveAudio);
-				audio.play();
 				if (oldWin) {
 					oldWin.flashFrame(true);
 					oldWin.setAlwaysOnTop(true);
@@ -389,6 +388,7 @@ function Home() {
 					oldWin.focus();
 					return;
 				}
+				audio.play();
 				createWindow({
 					customProps: {
 						url: `/message?channelId=${d.channel_id}`,
@@ -591,7 +591,10 @@ function Home() {
 			.flat() || [];
 	const navigate = useNavigate();
 	return !state.ready?.user?.id ? (
-		<></>
+		<>
+			error: user is undefined! contact me on my discord:{" "}
+			<code>notnullptr</code>
+		</>
 	) : (
 		<div className={styles.window}>
 			<div

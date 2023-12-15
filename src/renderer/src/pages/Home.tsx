@@ -441,14 +441,16 @@ function Home() {
 					id: u.id,
 				},
 			},
-		}));
+		}))
+		.filter(Boolean);
 	const onlineUnsearched = friends
 		?.filter((f) => f.status.status !== Status.Offline)
 		.sort((a, b) =>
 			(a.user.global_name || a.user.username).localeCompare(
 				b.user.global_name || b.user.username,
 			),
-		);
+		)
+		.filter(Boolean);
 	const online = search
 		? new Fuse(onlineUnsearched, {
 				keys: [
@@ -468,7 +470,8 @@ function Home() {
 			(a.user.global_name || a.user.username).localeCompare(
 				b.user.global_name || b.user.username,
 			),
-		);
+		)
+		.filter(Boolean);
 	const offline = search
 		? new Fuse(offlineUnsearched, {
 				keys: [
@@ -812,31 +815,31 @@ function Home() {
 								<Contact
 									style={{
 										display: search
-											? online?.map((d) => d.user.id).includes(c.user.id)
+											? online?.map((d) => d.user?.id).includes(c.user?.id)
 												? ""
 												: "none"
 											: "",
 									}}
 									onDoubleClick={() => doubleClick(c.user)}
 									onContextMenu={(e) => contactContextMenu(c.user, e)}
-									key={c.user.id}
+									key={c.user?.id}
 									{...c}
 								/>
 							))}
 						</Dropdown>
 						<Dropdown header="Unfriended DMs" info={`(${dms?.length})`}>
-							{dmsUnsearched?.map((c) => (
+							{dmsUnsearched?.filter(Boolean).map((c) => (
 								<Contact
 									style={{
 										display: search
-											? dms?.map((d) => d.user.id).includes(c.user.id)
+											? dms?.map((d) => d.user?.id).includes(c.user?.id)
 												? ""
 												: "none"
 											: "",
 									}}
 									onDoubleClick={() => doubleClick(c.user)}
 									onContextMenu={(e) => contactContextMenu(c.user, e)}
-									key={c.user.id}
+									key={c.user?.id}
 									status={c.status}
 									user={c.user}
 								/>
@@ -950,14 +953,14 @@ function Home() {
 								<Contact
 									style={{
 										display: search
-											? offline?.map((d) => d.user.id).includes(c.user.id)
+											? offline?.map((d) => d.user?.id).includes(c.user?.id)
 												? ""
 												: "none"
 											: "",
 									}}
 									onDoubleClick={() => doubleClick(c.user)}
 									onContextMenu={(e) => contactContextMenu(c.user, e)}
-									key={c.user.id}
+									key={c.user?.id}
 									{...c}
 								/>
 							))}

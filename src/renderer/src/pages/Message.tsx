@@ -54,6 +54,7 @@ const remote = window.require(
 import speen from "@renderer/assets/login/speen.png";
 import Fuse from "fuse.js";
 import nudgeButton from "@renderer/assets/message/nudge.png";
+import nudgeAudio from "@renderer/assets/audio/nudge.mp3";
 
 function isGuildChannel(type: ChannelType): type is GuildChannelType {
 	return Object.keys(ChannelType)
@@ -550,6 +551,8 @@ function MessagePage() {
 			if (d.channel_id !== channelId) return;
 			console.log(d.content);
 			if (d.content === "[nudge]") {
+				const audio = new Audio(nudgeAudio);
+				audio.play();
 				const window = remote.getCurrentWindow();
 				const windowPos = window.getPosition();
 				window.setMovable(false);

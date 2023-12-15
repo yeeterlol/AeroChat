@@ -34,6 +34,7 @@ import {
 	ContextMenuStyle,
 	Friend,
 	IGuild,
+	State,
 } from "../../../shared/types";
 import typingIcon from "@renderer/assets/message/typing.png";
 import { sendOp } from "../../../shared/gateway";
@@ -119,6 +120,7 @@ function parseMessage(
 	message: APIMessage,
 	rules: ReplacementRule[],
 	prevMessage?: APIMessage,
+	state?: State,
 ): React.ReactNode {
 	const msg = message.content;
 	if (msg === "[nudge]") {
@@ -128,8 +130,15 @@ function parseMessage(
 					<div className={styles.nudgeDivider} />
 				)}
 				<div>
-					{message.author.global_name || message.author.username} just sent you
-					a nudge.
+					{state?.ready?.user?.id
+						? state.ready.user.id !== message.author.id
+							? `${
+									message.author.global_name || message.author.username
+							  } just sent you a nudge.`
+							: `You have just sent a nudge.`
+						: `${
+								message.author.global_name || message.author.username
+						  } just sent you a nudge.`}
 				</div>
 				<div className={styles.nudgeDivider} />
 			</div>
@@ -1258,6 +1267,7 @@ function MessagePage() {
 														},
 													],
 													messages.at(i - 1),
+													state,
 												)}
 											</span>
 										</div>

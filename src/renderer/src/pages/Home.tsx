@@ -12,6 +12,7 @@ import {
 	APIDMChannel,
 	APIUser,
 	ChannelType,
+	GatewayDispatchEvents,
 	GatewayOpcodes,
 	PermissionFlagsBits,
 	PresenceUpdateStatus,
@@ -36,10 +37,12 @@ import {
 	Status,
 } from "../../../shared/types";
 import {
+	addDispatchListener,
 	closeGateway,
 	contactCard,
 	contextMenu,
 	createWindow,
+	removeGatewayListener,
 } from "@renderer/util/ipc";
 const remote = window.require(
 	"@electron/remote",
@@ -57,6 +60,7 @@ import { useNavigate } from "react-router-dom";
 const Store = remote.require(
 	"electron-store",
 ) as typeof import("electron-store");
+import receiveAudio from "@renderer/assets/audio/type.mp3";
 
 function calcWidth(text: string, offset: number = 1): number {
 	const body = document.querySelector("body");
@@ -128,7 +132,7 @@ export function Dropdown({
 	);
 }
 
-function Contact(
+export function Contact(
 	props: React.DetailedHTMLProps<
 		React.HTMLAttributes<HTMLDivElement>,
 		HTMLDivElement
@@ -153,7 +157,7 @@ function Contact(
 				contact.classList.add(styles.selected);
 				props.onClick?.(e);
 			}}
-			className={styles.contact}
+			className={`${styles.contact} ${props.className || ""}`}
 		>
 			<PfpBorder
 				pfp={
@@ -355,6 +359,65 @@ function Home() {
 		document.addEventListener("mousedown", mouseDown);
 		return () => {
 			document.removeEventListener("mousedown", mouseDown);
+		};
+	}, []);
+	useEffect(() => {
+		function getWindow(path: string) {
+			for (const window of remote.BrowserWindow.getAllWindows()) {
+				const rawUrl = window.webContents.getURL();
+				if (!rawUrl) continue;
+				const url = new URL(rawUrl);
+				if (url.hash.replace("#", "") === path) return window;
+			}
+			return null;
+		}
+		const id = addDispatchListener(GatewayDispatchEvents.MessageCreate, (d) => {
+			const shouldOpen =
+				(!!d.mentions.find((m) => m.id === state?.ready?.user?.id) ||
+					!!state?.ready?.private_channels?.find(
+						(c) => c.id === d.channel_id,
+					)) &&
+				d.author.id !== state?.ready?.user?.id;
+			if (shouldOpen) {
+				const oldWin = getWindow(`/message?channelId=${d.channel_id}`);
+				const audio = new Audio(receiveAudio);
+				audio.play();
+				if (oldWin) {
+					oldWin.flashFrame(true);
+					oldWin.setAlwaysOnTop(true);
+					oldWin.setAlwaysOnTop(false);
+					oldWin.focus();
+					return;
+				}
+				createWindow({
+					customProps: {
+						url: `/message?channelId=${d.channel_id}`,
+					},
+					width: 550,
+					height: 400,
+					minWidth: 366,
+					minHeight: 248,
+					icon: remote.nativeImage.createFromPath("resources/icon-chat.ico"),
+				});
+				const window = getWindow(`/message?channelId=${d.channel_id}`);
+				if (!window) return;
+				window.flashFrame(true);
+				window.focus();
+			}
+			// // open a window
+			// createWindow({
+			// 	customProps: {
+			// 		url: `/message?channelId=${d.channel_id}`,
+			// 	},
+			// 	width: 550,
+			// 	height: 400,
+			// 	minWidth: 366,
+			// 	minHeight: 248,
+			// 	icon: remote.nativeImage.createFromPath("resources/icon-chat.ico"),
+			// });
+		});
+		return () => {
+			removeGatewayListener(id);
 		};
 	}, []);
 	const userStatus = state.ready?.sessions[0];

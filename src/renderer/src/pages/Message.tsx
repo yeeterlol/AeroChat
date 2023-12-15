@@ -1,7 +1,7 @@
 import PfpBorder from "@renderer/components/PfpBorder";
 import styles from "@renderer/css/pages/Message.module.css";
-import { Context, apiReq } from "@renderer/util";
-import React, { useContext, useEffect, useState } from "react";
+import { Context, apiReq, joinClasses } from "@renderer/util";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import {
 	APIUser,
@@ -18,6 +18,8 @@ import {
 	GuildChannelType,
 	GatewayOpcodes,
 	APIRole,
+	GatewayGuildMembersChunkDispatch,
+	GatewayGuildMembersChunkDispatchData,
 } from "discord-api-types/v9";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -25,7 +27,7 @@ import {
 	contactCard,
 	removeGatewayListener,
 } from "@renderer/util/ipc";
-import { IGuild } from "../../../shared/types";
+import { Friend, IGuild } from "../../../shared/types";
 import typingIcon from "@renderer/assets/message/typing.png";
 import { sendOp } from "../../../shared/gateway";
 import { PermissionFlagsBits } from "discord-api-types/v10";
@@ -36,12 +38,13 @@ import {
 	Member,
 	Channel,
 } from "@renderer/classes/DiscordUtil";
-import { Dropdown } from "./Home";
+import { Contact, Dropdown } from "./Home";
 import lilGuy from "@renderer/assets/message/buddies.png";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
 import speen from "@renderer/assets/login/speen.png";
+import Fuse from "fuse.js";
 
 function isGuildChannel(type: ChannelType): type is GuildChannelType {
 	return Object.keys(ChannelType)
@@ -221,6 +224,7 @@ function generateTyping(...usernames: string[]): React.JSX.Element {
 }
 
 function MessagePage() {
+	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const [messageContainer, setMessageContainer] =
 		useState<HTMLDivElement | null>();
 	const [params] = useSearchParams();
@@ -236,6 +240,16 @@ function MessagePage() {
 	>([]);
 	const { state } = useContext(Context);
 	const [messages, setMessages] = useState<APIMessage[]>([]);
+	const [open, setOpen] = useState(false);
+	const [users, setUsers] = useState<
+		GatewayGuildMembersChunkDispatchData["members"]
+	>([]);
+	const [selectedMentionUser, setSelectedMentionUser] =
+		useState<GatewayGuildMembersChunkDispatchData["members"][0]>();
+	const [presences, setPresences] = useState<
+		NonNullable<GatewayGuildMembersChunkDispatchData["presences"]>
+	>([]);
+	const [search, setSearch] = useState("");
 	async function fetchMessages() {
 		if (!channelId) return;
 		const messages = (
@@ -251,6 +265,37 @@ function MessagePage() {
 			timeout: NodeJS.Timeout;
 		}[]
 	>([]);
+	const [guild, setGuild] = useState<APIGuild | IGuild | undefined>();
+	useEffect(() => {
+		const id = addDispatchListener(
+			GatewayDispatchEvents.GuildMembersChunk,
+			(d) => {
+				if (d.guild_id !== guild?.id) return;
+				if (d.presences) {
+					setPresences((p) => {
+						const mut = [...p];
+						d.presences!.forEach((presence) => {
+							if (mut.find((m) => m.user?.id === presence.user?.id)) return;
+							mut.push(presence);
+						});
+						return mut;
+					});
+				}
+				setUsers((u) => {
+					const mut = [...u];
+					d.members.forEach((member) => {
+						if (mut.find((m) => m.user?.id === member.user?.id)) return;
+						mut.push(member);
+					});
+					return mut;
+				});
+				console.log(d.members);
+			},
+		);
+		return () => {
+			removeGatewayListener(id);
+		};
+	}, [guild]);
 	useEffect(() => {
 		if (!channel) return;
 		let data: any = {};
@@ -315,7 +360,6 @@ function MessagePage() {
 	// 		(f) => f.user_id === userId,
 	// 	),
 	// };
-	const [guild, setGuild] = useState<APIGuild | IGuild | undefined>();
 	useEffect(() => {
 		fetchMessages();
 		fetchChannel();
@@ -366,13 +410,18 @@ function MessagePage() {
 		const memberReady = DiscordUtil.getMembership(guild);
 		if (!memberReady) throw new Error("member not found??");
 		const member = new Member(memberReady);
-		setCanSendChannel(
-			!hasPermission(
-				computePermissions(member, new Channel(channel as any)),
-				PermissionFlagsBits.SendMessages,
-			),
+		const cantSendChannel = !hasPermission(
+			computePermissions(member, new Channel(channel as any)),
+			PermissionFlagsBits.SendMessages,
 		);
+		if (cantSendChannel) {
+			setOpen(false);
+		}
+		setCanSendChannel(cantSendChannel);
 	}, [channel, guild, recepient]);
+	useEffect(() => {
+		console.log("can send:", canSendChannel);
+	}, [canSendChannel]);
 	useEffect(() => {
 		// observe the element for child changes
 		if (!messageContainer) return;
@@ -522,6 +571,18 @@ function MessagePage() {
 			}
 		}
 	}, [channel, recepient, guild]);
+	const userSearch = new Fuse(users, {
+		keys: [
+			{
+				name: "username",
+				weight: 1,
+				getFn: (obj) => obj.user?.global_name || obj.user?.username || "",
+			},
+		],
+	})
+		.search(search)
+		.map((s) => s.item)
+		.slice(0, 10);
 	if (!channel) return <></>;
 	return (
 		<div className={styles.window}>
@@ -664,8 +725,130 @@ function MessagePage() {
 						>
 							Attachment
 						</div>
+						<div
+							onClick={(e) => {
+								e.preventDefault();
+								if (canSendChannel) return;
+								setOpen(!open);
+							}}
+							className={joinClasses(
+								styles.toolbarItem,
+								canSendChannel ? styles.disabled : "",
+							)}
+							style={{
+								color: canSendChannel ? "rgba(255, 255, 255, 0.5)" : undefined,
+								// boxShadow: "none",
+								// background: "none",
+								background: open ? "none" : undefined,
+								boxShadow: open
+									? "inset 0px 12px 12px -12px rgba(0, 0, 0, 0.75), inset 0px 12px 12px -12px rgba(255, 255, 255, 0.5), 0px 0px 0px 1px rgba(0, 0, 0, 0.75)"
+									: undefined,
+							}}
+						>
+							Mention a User
+						</div>
 					</div>
 				</div>
+				{open && (
+					<div className={styles.mentions}>
+						<input
+							onChange={(e) => {
+								const val = e.target.value;
+								setSearch(val);
+								if (val === "") return;
+								sendOp(
+									8 as any,
+									{
+										query: val,
+										limit: 10,
+										guild_id: [guild?.id],
+										presences: true,
+									} as any,
+								);
+							}}
+							required
+							className={styles.search}
+							placeholder="@username"
+						/>
+						<div className={styles.resultsMentions}>
+							{userSearch.length === 0
+								? users.map((u) => (
+										<div key={u.user?.id}>
+											<Contact
+												onClick={() => setSelectedMentionUser(u)}
+												className={styles.card}
+												status={(() => {
+													const presence =
+														presences.find((p) => p.user?.id === u.user?.id) ||
+														state?.ready?.merged_presences?.guilds
+															?.flat()
+															?.find((p) => p.user_id === u.user?.id) ||
+														state?.ready?.merged_presences?.friends?.find(
+															(p) => p.user_id === u.user?.id,
+														);
+													return {
+														activities: presence?.activities || [],
+														status:
+															presence?.status ||
+															(PresenceUpdateStatus.Offline as any),
+														client_status: presence?.client_status || {},
+														user: u.user!,
+														user_id: u.user?.id || "",
+													} as Friend;
+												})()}
+												user={u.user!}
+											/>
+										</div>
+								  ))
+								: userSearch.map((u) => (
+										<div key={u.user?.id}>
+											<Contact
+												onClick={() => setSelectedMentionUser(u)}
+												className={styles.card}
+												status={(() => {
+													const presence =
+														presences.find((p) => p.user?.id === u.user?.id) ||
+														state?.ready?.merged_presences?.guilds
+															?.flat()
+															?.find((p) => p.user_id === u.user?.id) ||
+														state?.ready?.merged_presences?.friends?.find(
+															(p) => p.user_id === u.user?.id,
+														);
+													return {
+														activities: presence?.activities || [],
+														status:
+															presence?.status ||
+															(PresenceUpdateStatus.Offline as any),
+														client_status: presence?.client_status || {},
+														user: u.user!,
+														user_id: u.user?.id || "",
+													} as Friend;
+												})()}
+												user={u.user!}
+											/>
+										</div>
+								  ))}
+						</div>
+						<button
+							disabled={!selectedMentionUser}
+							onClick={() => {
+								if (!inputRef.current) return;
+								inputRef.current.focus();
+								setOpen(false);
+								setSearch("");
+								// if we can chat here
+								if (canSendChannel) return;
+								inputRef.current.value += ` <@${selectedMentionUser?.user?.id}> `;
+							}}
+							style={{
+								float: "right",
+								marginTop: 10,
+							}}
+						>
+							Insert mention
+						</button>
+					</div>
+				)}
 				<div className={styles.contentContainer}>
 					{!guild ? (
 						<div className={styles.pfpContainer}>
@@ -722,7 +905,12 @@ function MessagePage() {
 													<div
 														onClick={() => setChannelId(c.properties.id)}
 														key={c.properties.id}
-														className={styles.channel}
+														className={joinClasses(
+															styles.channel,
+															channelId === c.properties.id
+																? styles.selected
+																: "",
+														)}
 													>
 														#{c.properties.name}
 													</div>
@@ -986,6 +1174,7 @@ function MessagePage() {
 								}}
 							/>
 							<textarea
+								ref={inputRef}
 								onChange={() => {
 									if (!shouldAllowTyping) return;
 									shouldAllowTyping = false;

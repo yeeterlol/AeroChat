@@ -426,7 +426,8 @@ function Home() {
 	);
 	const friends = state?.ready?.relationships
 		?.filter((r) => r.type === RelationshipTypes.FRIEND)
-		.map((u) => ({
+		?.filter(Boolean)
+		?.map((u) => ({
 			user: state?.ready?.users?.find(
 				(v) => v.id === u.id,
 			) as unknown as APIUser,
@@ -591,7 +592,8 @@ function Home() {
 					isFolder: guilds.length !== 1,
 				};
 			})
-			.flat() || [];
+			.flat()
+			.filter((g) => !!g.guilds) || [];
 	const navigate = useNavigate();
 	return !state.ready?.user?.id ? (
 		<>

@@ -372,11 +372,12 @@ function Home() {
 			return null;
 		}
 		const id = addDispatchListener(GatewayDispatchEvents.MessageCreate, (d) => {
+			const privateChannel = state?.ready?.private_channels?.find(
+				(c) => c.id === d.channel_id,
+			);
 			const shouldOpen =
 				(!!d.mentions.find((m) => m.id === state?.ready?.user?.id) ||
-					!!state?.ready?.private_channels?.find(
-						(c) => c.id === d.channel_id,
-					)) &&
+					(privateChannel && privateChannel.type !== ChannelType.GroupDM)) &&
 				d.author.id !== state?.ready?.user?.id;
 			if (shouldOpen) {
 				const oldWin = getWindow(`/message?channelId=${d.channel_id}`);

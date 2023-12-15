@@ -248,128 +248,138 @@ function createWindow(): void {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
 	ipcMain.on("start-gateway", (_e, token: string) => {
-		socket = new WebSocket("wss://gateway.discord.gg/?v=9&encoding=json");
-		socket!.onopen = async () => {
-			sendOp(
-				GatewayOpcodes.Identify,
-				{
-					token: token,
-					capabilities: allCapabilities,
-					properties: {
-						os: "Linux",
-						browser: "Chrome",
-						device: "",
-						system_locale: "en-GB",
-						browser_user_agent:
-							"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-						browser_version: "119.0.0.0",
-						os_version: "",
-						referrer: "",
-						referring_domain: "",
-						referrer_current: "",
-						referring_domain_current: "",
-						release_channel: "stable",
-						client_build_number: 245648,
-						client_event_source: null,
-					},
-					presence: {
-						status: "unknown",
-						since: 0,
-						activities: [],
-						afk: false,
-					},
-					compress: false,
-					client_state: {
-						guild_versions: {},
-						highest_last_message_id: "0",
-						read_state_version: 0,
-						user_guild_settings_version: -1,
-						user_settings_version: -1,
-						private_channels_version: "0",
-						api_code_version: 0,
-					},
-				} as any,
-				socket!,
-			);
-			const res = (
-				await (
-					await fetch("https://discord.com/api/v9/users/@me/settings-proto/1", {
-						headers: {
-							Authorization: token,
+		function configureSocket() {
+			socket = new WebSocket("wss://gateway.discord.gg/?v=9&encoding=json");
+			socket!.onopen = async () => {
+				sendOp(
+					GatewayOpcodes.Identify,
+					{
+						token: token,
+						capabilities: allCapabilities,
+						properties: {
+							os: "Linux",
+							browser: "Chrome",
+							device: "",
+							system_locale: "en-GB",
+							browser_user_agent:
+								"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+							browser_version: "119.0.0.0",
+							os_version: "",
+							referrer: "",
+							referring_domain: "",
+							referrer_current: "",
+							referring_domain_current: "",
+							release_channel: "stable",
+							client_build_number: 245648,
+							client_event_source: null,
 						},
-					})
-				).json()
-			).settings;
-			setState({
-				...state,
-				userSettings: PreloadedUserSettings.fromBase64(res),
-			});
-		};
-		socket!.onmessage = (event) => {
-			if (!socket) return;
-			const data = JSON.parse(event.data.toString()) as GatewayReceivePayload;
-			BrowserWindow.getAllWindows().forEach((window) => {
-				listeners.forEach((id) => {
-					window.webContents.send(`${id}-data`, JSON.stringify(data));
+						presence: {
+							status: "unknown",
+							since: 0,
+							activities: [],
+							afk: false,
+						},
+						compress: false,
+						client_state: {
+							guild_versions: {},
+							highest_last_message_id: "0",
+							read_state_version: 0,
+							user_guild_settings_version: -1,
+							user_settings_version: -1,
+							private_channels_version: "0",
+							api_code_version: 0,
+						},
+					} as any,
+					socket!,
+				);
+				const res = (
+					await (
+						await fetch(
+							"https://discord.com/api/v9/users/@me/settings-proto/1",
+							{
+								headers: {
+									Authorization: token,
+								},
+							},
+						)
+					).json()
+				).settings;
+				setState({
+					...state,
+					userSettings: PreloadedUserSettings.fromBase64(res),
 				});
-			});
-			console.log(data.op, data.t);
-			switch (data.op) {
-				case GatewayOpcodes.Hello: {
-					setInterval(() => {
-						sendOp(GatewayOpcodes.Heartbeat, null, socket!);
-					}, data.d.heartbeat_interval - 1000);
-					break;
-				}
-				case GatewayOpcodes.Dispatch: {
-					switch (data.t) {
-						case "READY": {
-							writeFileSync("ready.json", JSON.stringify(data.d, null, 4));
-							const d = data.d as any;
-							setState({
-								...state,
-								ready: {
-									...state?.ready,
-									...d,
-								},
-							});
-							// redirect the webcontents of win
-							win?.loadURL(pathToHash("/home"));
-							const token = (
-								state?.ready.connected_accounts.find(
-									(a) => a.type === "spotify",
-								) as any
-							)?.access_token;
-							if (!token) break;
+			};
+			socket!.onmessage = (event) => {
+				if (!socket) return;
+				const data = JSON.parse(event.data.toString()) as GatewayReceivePayload;
+				BrowserWindow.getAllWindows().forEach((window) => {
+					listeners.forEach((id) => {
+						window.webContents.send(`${id}-data`, JSON.stringify(data));
+					});
+				});
+				console.log(data.op, data.t);
+				switch (data.op) {
+					case GatewayOpcodes.Hello: {
+						setInterval(() => {
+							sendOp(GatewayOpcodes.Heartbeat, null, socket!);
+						}, data.d.heartbeat_interval - 1000);
+						break;
+					}
+					case GatewayOpcodes.Dispatch: {
+						switch (data.t) {
+							case "READY": {
+								writeFileSync("ready.json", JSON.stringify(data.d, null, 4));
+								const d = data.d as any;
+								setState({
+									...state,
+									ready: {
+										...state?.ready,
+										...d,
+									},
+								});
+								// redirect the webcontents of win
+								win?.loadURL(pathToHash("/home"));
+								const token = (
+									state?.ready.connected_accounts.find(
+										(a) => a.type === "spotify",
+									) as any
+								)?.access_token;
+								if (!token) break;
 
-							break;
-						}
-						case "READY_SUPPLEMENTAL" as any: {
-							const d = data.d as any;
-							writeFileSync(
-								"ready_supplemental.json",
-								JSON.stringify(d, null, 4),
-							);
-							setState({
-								...state,
-								ready: {
-									...d,
-									...state?.ready,
-								},
-							});
-							break;
-						}
-						case "PRESENCE_UPDATE": {
-							writeFileSync("presence.json", JSON.stringify(data.d, null, 4));
-							break;
+								break;
+							}
+							case "READY_SUPPLEMENTAL" as any: {
+								const d = data.d as any;
+								writeFileSync(
+									"ready_supplemental.json",
+									JSON.stringify(d, null, 4),
+								);
+								setState({
+									...state,
+									ready: {
+										...d,
+										...state?.ready,
+									},
+								});
+								break;
+							}
+							case "PRESENCE_UPDATE": {
+								writeFileSync("presence.json", JSON.stringify(data.d, null, 4));
+								break;
+							}
 						}
 					}
+					default: {
+						// unimplemented
+					}
 				}
-				default: {
-					// unimplemented
-				}
-			}
-		};
+			};
+			socket!.onclose = () => {
+				// re-open the gateway
+				configureSocket();
+			};
+		}
+		configureSocket();
 	});
 	ipcMain.on("send-op", (_e, data: string) => {
 		socket?.send(data);
@@ -508,21 +518,7 @@ function createWindow(): void {
 			},
 		]),
 	);
-	win = mainWindow;
-}
-
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
-	// Set app user model id for windows
-	electronApp.setAppUserModelId("com.electron");
-
-	// Default open or close DevTools by F12 in development
-	// and ignore CommandOrControl + R in production.
-	// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-
-	ctxMenu = new BrowserWindow({
+	const menu = new BrowserWindow({
 		minWidth: 0,
 		minHeight: 0,
 		width: 0,
@@ -540,10 +536,25 @@ app.whenReady().then(() => {
 			contextIsolation: false,
 		},
 	});
-	enable(ctxMenu.webContents);
-	ctxMenu.setAlwaysOnTop(true, "status");
-	ctxMenu.setOpacity(0);
-	ctxMenu.show();
+	enable(menu.webContents);
+	menu.setAlwaysOnTop(true, "status");
+	menu.setOpacity(0);
+	menu.show();
+	ctxMenu = menu;
+	win = mainWindow;
+}
+
+// This method will be called when Electron has finished
+// initialization and is ready to create browser windows.
+// Some APIs can only be used after this event occurs.
+app.whenReady().then(() => {
+	// Set app user model id for windows
+	electronApp.setAppUserModelId("com.electron");
+
+	// Default open or close DevTools by F12 in development
+	// and ignore CommandOrControl + R in production.
+	// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+
 	createWindow();
 	app.on("activate", function () {
 		// On macOS it's common to re-create a window in the app when the

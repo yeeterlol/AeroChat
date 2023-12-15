@@ -160,6 +160,22 @@
 	margin-left: calc(-1em - 4px);
 }
 
+.messageContainer:has(.nudge) {
+	margin-left: 0;
+}
+
+.messageContainer:has(.nudge)::before {
+	content: "";
+	display: none;
+}
+
+.messagesContainer > div:has(.nudge) > .messageUsername {
+	display: none;
+}
+.messageContainer:has(.nudge) > span {
+	display: block;
+}
+
 .message {
 	margin-left: 3px;
 	overflow: hidden;
@@ -547,4 +563,18 @@
 	padding-right: 11px;
 	padding-left: 1px;
 	margin-left: -8px;
+}
+
+.imageButton {
+	padding: 2px;
+	border-radius: 2px;
+}
+
+.imageButton:hover {
+	outline: solid thin #b0b1b2;
+}
+
+.imageButton:active {
+	outline: solid thin #727272;
+	box-shadow: inset 0px 0px 4px 0px #00000067;
 }

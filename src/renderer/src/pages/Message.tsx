@@ -25,9 +25,16 @@ import { useSearchParams } from "react-router-dom";
 import {
 	addDispatchListener,
 	contactCard,
+	contextMenu,
 	removeGatewayListener,
 } from "@renderer/util/ipc";
-import { Friend, IGuild } from "../../../shared/types";
+import {
+	ContextMenuItem,
+	ContextMenuItemType,
+	ContextMenuStyle,
+	Friend,
+	IGuild,
+} from "../../../shared/types";
 import typingIcon from "@renderer/assets/message/typing.png";
 import { sendOp } from "../../../shared/gateway";
 import { PermissionFlagsBits } from "discord-api-types/v10";
@@ -45,6 +52,7 @@ const remote = window.require(
 ) as typeof import("@electron/remote");
 import speen from "@renderer/assets/login/speen.png";
 import Fuse from "fuse.js";
+import nudgeButton from "@renderer/assets/message/nudge.png";
 
 function isGuildChannel(type: ChannelType): type is GuildChannelType {
 	return Object.keys(ChannelType)
@@ -92,11 +100,41 @@ type ReplacementRule = {
 	replacement: React.ReactNode | ((match: RegExpExecArray) => React.ReactNode);
 };
 
+function ImageButton(
+	props: React.DetailedHTMLProps<
+		React.HTMLAttributes<HTMLDivElement>,
+		HTMLDivElement
+	> & {
+		image: string;
+	},
+) {
+	return (
+		<div {...props} className={styles.imageButton}>
+			<img src={props.image} />
+		</div>
+	);
+}
+
 function parseMessage(
 	message: APIMessage,
 	rules: ReplacementRule[],
+	prevMessage?: APIMessage,
 ): React.ReactNode {
 	const msg = message.content;
+	if (msg === "[nudge]") {
+		return (
+			<div className={styles.nudge}>
+				{prevMessage && prevMessage.content !== "[nudge]" && (
+					<div className={styles.nudgeDivider} />
+				)}
+				<div>
+					{message.author.global_name || message.author.username} just sent you
+					a nudge.
+				</div>
+				<div className={styles.nudgeDivider} />
+			</div>
+		);
+	}
 	const tokens: React.ReactNode[] = [];
 	let lastIndex = 0;
 	// message.sticker_items?.forEach((s) => {
@@ -225,6 +263,7 @@ function generateTyping(...usernames: string[]): React.JSX.Element {
 
 function MessagePage() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
+	const [replyId, setReplyId] = useState<string | undefined>();
 	const [messageContainer, setMessageContainer] =
 		useState<HTMLDivElement | null>();
 	const [params] = useSearchParams();
@@ -441,6 +480,21 @@ function MessagePage() {
 		if (!channelId) return;
 		const tempId = generateNonce() + generateNonce();
 		const nonce = generateNonce();
+		const requestBody: any = {
+			content: message,
+			nonce,
+		};
+		const msg = messages.find((m) => m.id === replyId);
+		if (msg) {
+			requestBody.message_reference = {
+				message_id: msg.id,
+				channel_id: msg.channel_id,
+				guild_id: state?.ready?.guilds.find((g) =>
+					g.channels.map((g) => g.id).includes(msg.channel_id),
+				)?.id,
+			};
+			setReplyId(undefined);
+		}
 		setMessages([
 			...messages,
 			{
@@ -459,16 +513,14 @@ function MessagePage() {
 				tts: false,
 				type: 1,
 				nonce,
+				referenced_message: msg,
 			},
 		]);
 		const res = await apiReq(
 			`/channels/${channelId}/messages`,
 			"POST",
 			state?.token || "",
-			{
-				content: message,
-				nonce,
-			},
+			requestBody,
 		);
 		if (res.status === 200) {
 			setMessages((msgs) => {
@@ -481,9 +533,29 @@ function MessagePage() {
 			setMessages(messages.filter((msg) => msg.id !== tempId));
 		}
 	}
+	function rand(min: number, max: number) {
+		return Math.floor(Math.random() * (max - min + 1)) + min;
+	}
 	useEffect(() => {
 		const id = addDispatchListener(GatewayDispatchEvents.MessageCreate, (d) => {
 			if (d.channel_id !== channelId) return;
+			console.log(d.content);
+			if (d.content === "[nudge]") {
+				const window = remote.getCurrentWindow();
+				const windowPos = window.getPosition();
+				window.setMovable(false);
+				const interval = setInterval(() => {
+					window.setPosition(
+						windowPos[0] + rand(-10, 10),
+						windowPos[1] + rand(-10, 10),
+					);
+				}, 25);
+				setTimeout(() => {
+					window.setMovable(true);
+					clearInterval(interval);
+					window.setPosition(windowPos[0], windowPos[1]);
+				}, 2000);
+			}
 			if (d.author.id === state?.ready?.user?.id && d.nonce) {
 				setMessages((msgs) => {
 					let newMsgs = [...msgs];
@@ -950,6 +1022,8 @@ function MessagePage() {
 												display:
 													messages[i - 1]?.author.id === m.author.id &&
 													messages[i - 1]?.attachments.length === 0 &&
+													messages[i - 1]?.content !== "[nudge]" &&
+													!!!m.referenced_message &&
 													new Date(m.timestamp).getTime() -
 														new Date(messages[i - 1]?.timestamp).getTime() <=
 														7 * 60 * 1000
@@ -1035,11 +1109,39 @@ function MessagePage() {
 												.toUpperCase()})`}
 											:
 										</div>
-										<div className={styles.messageContainer}>
+										<div
+											onContextMenu={(e) => {
+												const mousePos = remote.screen.getCursorScreenPoint();
+												contextMenu(
+													[
+														{
+															label: "Reply",
+															click() {
+																setReplyId(m.id);
+															},
+															type: ContextMenuItemType.Item,
+														},
+														// copy
+														{
+															label: "Copy",
+															click() {
+																remote.clipboard.writeText(m.content);
+															},
+															type: ContextMenuItemType.Item,
+														},
+													],
+													mousePos.x,
+													mousePos.y,
+													undefined,
+													ContextMenuStyle.Modern,
+												);
+											}}
+											className={styles.messageContainer}
+										>
 											<span
 												style={{ opacity: m.id.length > 26 ? 0.5 : 1 }}
-												contentEditable
-												suppressContentEditableWarning // the user shouldn't be able to edit the message, we only want the caret
+												// contentEditable
+												// suppressContentEditableWarning // the user shouldn't be able to edit the message, we only want the caret
 												onKeyDown={(e) => {
 													if (e.metaKey || e.ctrlKey) return;
 													e.preventDefault();
@@ -1048,108 +1150,115 @@ function MessagePage() {
 												className={styles.message}
 												id={m.id}
 											>
-												{parseMessage(m, [
-													{
-														// match <@user-id>
-														pattern: /<@(\d+?)>/gm,
-														replacement(match) {
-															const user = m.mentions.find(
-																(mention) => mention.id === match[1],
-															);
-															if (!user) return match[0];
-															return (
-																<a
-																	onClick={(e) => {
-																		e.preventDefault();
-																		e.stopPropagation();
-																		if (guild)
-																			sendOp(
-																				14 as any,
-																				{
-																					guild_id: guild.id,
-																					members: [user.id],
-																				} as any,
+												{parseMessage(
+													m,
+													[
+														{
+															// match <@user-id>
+															pattern: /<@(\d+?)>/gm,
+															replacement(match) {
+																const user = m.mentions.find(
+																	(mention) => mention.id === match[1],
+																);
+																if (!user) return match[0];
+																return (
+																	<a
+																		onClick={(e) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																			if (guild)
+																				sendOp(
+																					14 as any,
+																					{
+																						guild_id: guild.id,
+																						members: [user.id],
+																					} as any,
+																				);
+																			const window = remote.getCurrentWindow();
+																			const windowPos =
+																				window.getContentBounds();
+																			const usernameContainer =
+																				document.getElementById(
+																					m.id,
+																				) as HTMLDivElement;
+																			const bounds =
+																				usernameContainer.getBoundingClientRect();
+																			contactCard(
+																				user,
+																				windowPos.x + bounds.left,
+																				windowPos.y +
+																					bounds.top +
+																					bounds.height,
 																			);
-																		const window = remote.getCurrentWindow();
-																		const windowPos = window.getContentBounds();
-																		const usernameContainer =
-																			document.getElementById(
-																				m.id,
-																			) as HTMLDivElement;
-																		const bounds =
-																			usernameContainer.getBoundingClientRect();
-																		contactCard(
-																			user,
-																			windowPos.x + bounds.left,
-																			windowPos.y + bounds.top + bounds.height,
-																		);
-																	}}
-																	href="#"
-																>
-																	@{user.global_name || user.username}
-																</a>
-															);
+																		}}
+																		href="#"
+																	>
+																		@{user.global_name || user.username}
+																	</a>
+																);
+															},
 														},
-													},
-													{
-														// match <#channel-id>
-														pattern: /<#(\d+?)>/gm,
-														replacement(match) {
-															const name = channels.find(
-																(c) => c.properties.id === match[1],
-															)?.properties?.name;
-															return (
-																<a
-																	onClick={(e) => {
-																		e.preventDefault();
-																		e.stopPropagation();
-																		setChannelId(match[1]);
-																	}}
-																	href="#"
-																>
-																	#{name}
-																</a>
-															);
+														{
+															// match <#channel-id>
+															pattern: /<#(\d+?)>/gm,
+															replacement(match) {
+																const name = channels.find(
+																	(c) => c.properties.id === match[1],
+																)?.properties?.name;
+																return (
+																	<a
+																		onClick={(e) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																			setChannelId(match[1]);
+																		}}
+																		href="#"
+																	>
+																		#{name}
+																	</a>
+																);
+															},
 														},
-													},
-													{
-														pattern:
-															/(<|)(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/g,
-														replacement(match) {
-															// remove < and > from the match at the beginning and end if they exist
-															return (
-																<a
-																	href="#"
-																	onClick={(e) => {
-																		e.preventDefault();
-																		e.stopPropagation();
-																		remote
-																			.require("electron")
-																			.shell.openExternal(match[0]);
-																	}}
-																>
-																	{match[0].replace(/^(<)|(>)$/g, "")}
-																</a>
-															);
+														{
+															pattern:
+																/(<|)(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/g,
+															replacement(match) {
+																// remove < and > from the match at the beginning and end if they exist
+																return (
+																	<a
+																		href="#"
+																		onClick={(e) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																			remote
+																				.require("electron")
+																				.shell.openExternal(match[0]);
+																		}}
+																	>
+																		{match[0].replace(/^(<)|(>)$/g, "")}
+																	</a>
+																);
+															},
 														},
-													},
-													{
-														pattern: /<(a|):.+?:\d+>/gm,
-														replacement(match) {
-															const { name, url } = parseEmoji(match[0]);
-															return (
-																<img
-																	style={{
-																		width: 20,
-																		height: 20,
-																	}}
-																	src={url}
-																	alt={name}
-																/>
-															);
+														{
+															pattern: /<(a|):.+?:\d+>/gm,
+															replacement(match) {
+																const { name, url } = parseEmoji(match[0]);
+																return (
+																	<img
+																		style={{
+																			width: 20,
+																			height: 20,
+																		}}
+																		src={url}
+																		alt={name}
+																	/>
+																);
+															},
 														},
-													},
-												])}
+													],
+													messages.at(i - 1),
+												)}
 											</span>
 										</div>
 									</div>
@@ -1199,6 +1308,39 @@ function MessagePage() {
 								placeholder={
 									canSendChannel ? "You can't chat here." : undefined
 								}
+								onContextMenu={() => {
+									if (canSendChannel) return;
+									const mousePos = remote.screen.getCursorScreenPoint();
+									contextMenu(
+										[
+											{
+												label: "Paste",
+												click() {
+													const input = inputRef.current;
+													if (!input) return;
+													input.focus();
+													input.value += remote.clipboard.readText();
+												},
+												type: ContextMenuItemType.Item,
+											},
+											...(replyId
+												? [
+														{
+															label: "Cancel Reply",
+															click() {
+																setReplyId(undefined);
+															},
+															type: ContextMenuItemType.Item,
+														} as ContextMenuItem,
+												  ]
+												: []),
+										],
+										mousePos.x,
+										mousePos.y,
+										undefined,
+										ContextMenuStyle.Modern,
+									);
+								}}
 								onKeyDown={(e) => {
 									if (e.key === "Enter" && !e.shiftKey) {
 										e.preventDefault();
@@ -1333,23 +1475,18 @@ function MessagePage() {
 							></textarea>
 
 							<div className={styles.inputToolbar}>
+								<ImageButton
+									onClick={() => {
+										sendMessage("[nudge]");
+									}}
+									image={nudgeButton}
+								/>
 								{/* <ImageButton
 									className="emoji-button"
 									onClick={() => {
 										setEmoji((emoji) => !emoji);
 									}}
 									image={images.find((i) => i.includes("smile.png")) || ""}
-								/>
-								<ImageButton
-									onClick={() => {
-										win?.broadcast("send-websocket", "MESSAGE", {
-											messageType: MessageType.NUDGE_REQUEST,
-											to: user.id,
-										} as ClientMessage);
-									}}
-									image={`${
-										import.meta.env.BASE_URL
-									}ui/wlm/icons/messenger/nudge.png`}
 								/>
 								<ImageButton
 									className="emoji-button"

@@ -20,6 +20,7 @@ import {
 	APIRole,
 	GatewayGuildMembersChunkDispatch,
 	GatewayGuildMembersChunkDispatchData,
+	StickerFormatType,
 } from "discord-api-types/v9";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -36,6 +37,7 @@ import {
 	IGuild,
 	State,
 } from "../../../shared/types";
+import uEmojiParser from "universal-emoji-parser";
 import typingIcon from "@renderer/assets/message/typing.png";
 import { sendOp } from "../../../shared/gateway";
 import { PermissionFlagsBits } from "discord-api-types/v10";
@@ -55,6 +57,8 @@ import speen from "@renderer/assets/login/speen.png";
 import Fuse from "fuse.js";
 import nudgeButton from "@renderer/assets/message/nudge.png";
 import nudgeAudio from "@renderer/assets/audio/nudge.mp3";
+import { Player } from "@lottiefiles/react-lottie-player";
+import { toShort } from "emojione";
 
 function isGuildChannel(type: ChannelType): type is GuildChannelType {
 	return Object.keys(ChannelType)
@@ -95,6 +99,72 @@ function parseEmoji(emoji: string): { name: string; url: string } {
 		.split(":")[2]
 		.replace(">", "")}${animated ? ".gif" : ".webp"}`;
 	return { name, url };
+}
+
+function useEmoji() {
+	// ../assets/emoji/**/*.{png,gif,webp}
+	// const [emoji, setEmoji] = useState<{ name: string; url: string }[]>([]);
+	// useEffect(() => {
+	// 	(async () => {
+	// 		const glob = import.meta.glob("../assets/emoji/*");
+	// 		const entries = Object.entries(glob);
+
+	// 		const arr = await Promise.all(
+	// 			entries.map(async ([name, grabImg]) => ({
+	// 				name: name.split("/").at(-1)!.replace(".png", ""),
+	// 				url: ((await grabImg()) as any).default as string,
+	// 			})),
+	// 		);
+	// 		setEmoji(arr);
+	// 	})();
+	// }, []);
+	// return emoji;
+
+	// CONTEXT:
+	// the above code works for when the files are in a single directory.
+	// however the client wants categories, which are sorted as "../assets/emoji/Category/*"
+	// the state should be an array of categories, each with an array of emoji
+	// the emoji should be an object with a name and url
+
+	const [emoji, setEmoji] = useState<
+		{ catName: string; emojis: { name: string; url: string }[] }[]
+	>([]);
+	useEffect(() => {
+		(async () => {
+			const glob = import.meta.glob("../assets/emoji/**/*");
+			const entries = Object.entries(glob);
+			console.log(entries);
+			// step 1: create an array of categories
+			const categories: {
+				catName: string;
+				emojis: { name: string; url: string }[];
+			}[] = [];
+			entries.forEach(([name, grabImg]) => {
+				const catName = name.split("/").at(-2)!;
+				if (catName.endsWith(".png")) return;
+				if (categories.find((c) => c.catName === catName)) return;
+				categories.push({
+					catName,
+					emojis: [],
+				});
+			});
+			// step 2: add the emojis to the categories
+			const arr = await Promise.all(
+				entries.map(async ([name, grabImg]) => ({
+					name: name,
+					url: ((await grabImg()) as any).default as string,
+				})),
+			);
+			arr.forEach((e) => {
+				const data = { ...e };
+				data.name = data.name.split("/").at(-1)!.replace(".png", "");
+				const catName = e.name.split("/").at(-2)!;
+				categories.find((c) => c.catName === catName)?.emojis.push(data);
+			});
+			setEmoji(categories);
+		})();
+	}, []);
+	return emoji;
 }
 
 type ReplacementRule = {
@@ -147,49 +217,49 @@ function parseMessage(
 	}
 	const tokens: React.ReactNode[] = [];
 	let lastIndex = 0;
-	// message.sticker_items?.forEach((s) => {
-	// 	switch (s.format_type) {
-	// 		case StickerFormatType.Lottie: {
-	// 			tokens.push(
-	// 				<Player
-	// 					autoplay
-	// 					loop
-	// 					className={styles.sticker}
-	// 					src={`https://discord.com/stickers/${s.id}.json`}
-	// 				/>,
-	// 			);
-	// 			break;
-	// 		}
-	// 		case StickerFormatType.PNG: {
-	// 			tokens.push(
-	// 				<img
-	// 					className={styles.sticker}
-	// 					src={`https://media.discordapp.net/stickers/${s.id}.png`}
-	// 				/>,
-	// 			);
-	// 			break;
-	// 		}
-	// 		case StickerFormatType.APNG: {
-	// 			tokens.push(
-	// 				<img
-	// 					className={styles.sticker}
-	// 					src={`https://media.discordapp.net/stickers/${s.id}.png`}
-	// 				/>,
-	// 			);
-	// 			break;
-	// 		}
-	// 		case StickerFormatType.GIF: {
-	// 			tokens.push(
-	// 				<img
-	// 					style={{ width: 128, height: 128, display: "block" }}
-	// 					src={`https://media.discordapp.net/stickers/${s.id}.gif`}
-	// 				/>,
-	// 			);
-	// 			break;
-	// 		}
-	// 	}
-	// 	tokens.push(<br />);
-	// });
+	message.sticker_items?.forEach((s) => {
+		switch (s.format_type) {
+			case StickerFormatType.Lottie: {
+				tokens.push(
+					<Player
+						autoplay
+						loop
+						className={styles.sticker}
+						src={`https://discord.com/stickers/${s.id}.json`}
+					/>,
+				);
+				break;
+			}
+			case StickerFormatType.PNG: {
+				tokens.push(
+					<img
+						className={styles.sticker}
+						src={`https://media.discordapp.net/stickers/${s.id}.png`}
+					/>,
+				);
+				break;
+			}
+			case StickerFormatType.APNG: {
+				tokens.push(
+					<img
+						className={styles.sticker}
+						src={`https://media.discordapp.net/stickers/${s.id}.png`}
+					/>,
+				);
+				break;
+			}
+			case StickerFormatType.GIF: {
+				tokens.push(
+					<img
+						style={{ width: 128, height: 128, display: "block" }}
+						src={`https://media.discordapp.net/stickers/${s.id}.gif`}
+					/>,
+				);
+				break;
+			}
+		}
+		tokens.push(<br />);
+	});
 	rules.forEach(({ pattern, replacement }) => {
 		let match: RegExpExecArray | null;
 		while ((match = pattern.exec(msg)) !== null) {
@@ -282,6 +352,7 @@ function MessagePage() {
 	const [channel, setChannel] = useState<
 		APITextChannel | APIDMChannel | APINewsChannel
 	>();
+	const [emojiOpen, setEmojiOpen] = useState(false);
 	let shouldAllowTyping = true;
 	let typingTimeout: NodeJS.Timeout | undefined;
 	const [channels, setChannels] = useState<
@@ -314,6 +385,7 @@ function MessagePage() {
 			timeout: NodeJS.Timeout;
 		}[]
 	>([]);
+	const emoji = useEmoji();
 	const [guild, setGuild] = useState<APIGuild | IGuild | undefined>();
 	useEffect(() => {
 		const id = addDispatchListener(
@@ -549,7 +621,6 @@ function MessagePage() {
 	useEffect(() => {
 		const id = addDispatchListener(GatewayDispatchEvents.MessageCreate, (d) => {
 			if (d.channel_id !== channelId) return;
-			console.log(d.content);
 			if (d.content === "[nudge]") {
 				const audio = new Audio(nudgeAudio);
 				audio.play();
@@ -1268,6 +1339,34 @@ function MessagePage() {
 																);
 															},
 														},
+														{
+															// Emoji_Presentation
+															pattern: /\p{Emoji_Presentation}/gu,
+															replacement(matches) {
+																// grab emoji name
+																// use toShort to replace all unicode emojis with their shortcodes
+																const match = toShort(matches[0]).replaceAll(
+																	":",
+																	"",
+																);
+																const foundEmoji = emoji
+																	.map((e) => e.emojis)
+																	.flat()
+																	.find((e) => e.name === match);
+																if (!foundEmoji) return matches[0];
+																return (
+																	<span>
+																		<img
+																			style={{
+																				marginBottom: -4,
+																			}}
+																			src={foundEmoji.url}
+																			alt={foundEmoji.name}
+																		/>
+																	</span>
+																);
+															},
+														},
 													],
 													messages.at(i - 1),
 													state,
@@ -1488,6 +1587,58 @@ function MessagePage() {
 							></textarea>
 
 							<div className={styles.inputToolbar}>
+								<ImageButton
+									image={
+										emoji
+											.map((e) => e.emojis)
+											.flat()
+											.find((e) => e.name === "slight_smile")?.url || ""
+									}
+									onClick={() => {
+										console.log(emoji);
+										const mousePos = remote.screen.getCursorScreenPoint();
+										contextMenu(
+											// 	emoji.map((e) => ({
+											// 		label: `:${e.name}:`,
+											// 		type: ContextMenuItemType.Item,
+											// 		click() {
+											// 			if (!inputRef.current) return;
+											// 			inputRef.current.focus();
+											// 			inputRef.current.value += ` ${e.name} `;
+											// 		},
+											// 		icon: e.url,
+											// 	})),
+											emoji.map((e) => ({
+												label: e.catName,
+												type: ContextMenuItemType.Item,
+												click() {
+													contextMenu(
+														e.emojis.map((e) => ({
+															label: `:${e.name}:`,
+															type: ContextMenuItemType.Item,
+															click() {
+																if (!inputRef.current) return;
+																inputRef.current.focus();
+																inputRef.current.value +=
+																	uEmojiParser.parseToUnicode(`:${e.name}:`);
+															},
+															icon: e.url,
+														})),
+														mousePos.x,
+														mousePos.y,
+														undefined,
+														ContextMenuStyle.Modern,
+													);
+												},
+												icon: e.emojis[0].url,
+											})),
+											mousePos.x,
+											mousePos.y,
+											undefined,
+											ContextMenuStyle.Modern,
+										);
+									}}
+								/>
 								<ImageButton
 									onClick={() => {
 										sendMessage("[nudge]");

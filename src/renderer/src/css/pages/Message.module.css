@@ -566,8 +566,13 @@
 }
 
 .imageButton {
-	padding: 2px;
+	height: 24px;
+	width: 24px;
+	padding: 1px;
 	border-radius: 2px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .imageButton:hover {

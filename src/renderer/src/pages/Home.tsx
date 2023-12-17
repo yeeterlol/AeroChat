@@ -124,12 +124,12 @@ function Notification({
 			// import meta glob the icons
 			const glob = import.meta.glob("../assets/home/notification/*.png");
 			// convert into {name: string; url: string;}[]
-			const icons = (
-				await Promise.all(Object.values(glob).map((v) => v()))
-			).map((v: any) => ({
-				name: v.default.split("/").at(-1).replace(".png", ""),
-				url: v.default,
-			}));
+			const icons = await Promise.all(
+				Object.entries(glob).map(async ([key, val]) => ({
+					name: key.split("/").at(-1)!.replace(".png", ""),
+					url: ((await val()) as any).default,
+				})),
+			);
 			setIcons(icons);
 		}
 		fetchIcons();

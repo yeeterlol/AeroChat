@@ -63,8 +63,7 @@ const Store = remote.require(
 ) as typeof import("electron-store");
 import receiveAudio from "@renderer/assets/audio/type.mp3";
 import semver from "semver";
-import BBCode from "@bbob/react";
-import presetReact from "@bbob/preset-react";
+import sanitizeHtml from "sanitize-html";
 
 function calcWidth(text: string, offset: number = 1): number {
 	const body = document.querySelector("body");
@@ -152,7 +151,7 @@ function Notification({
 					src={icons.find((i) => i.name === notification.type)?.url}
 				/>
 				<span className={styles.contentContainer}>
-					<BBCode plugins={[presetReact()]}>{notification.message}</BBCode>
+					{sanitizeHtml(notification.message)}
 				</span>
 				<div
 					onClick={() => setSeen((s) => [...s, notification.date])}

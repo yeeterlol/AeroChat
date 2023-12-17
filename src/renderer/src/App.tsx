@@ -28,7 +28,6 @@ import CommandLink from "./components/CommandLink";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
-import discord from "@renderer/util/discord";
 
 function WindowsLogo() {
 	return (

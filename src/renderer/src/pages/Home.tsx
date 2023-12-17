@@ -5,6 +5,7 @@ import {
 	apiReq,
 	getActivityText,
 	hasParentWithClass,
+	joinClasses,
 } from "@renderer/util";
 import PfpBorder from "@renderer/components/PfpBorder";
 import {
@@ -61,6 +62,9 @@ const Store = remote.require(
 	"electron-store",
 ) as typeof import("electron-store");
 import receiveAudio from "@renderer/assets/audio/type.mp3";
+import semver from "semver";
+import BBCode from "@bbob/react";
+import presetReact from "@bbob/preset-react";
 
 function calcWidth(text: string, offset: number = 1): number {
 	const body = document.querySelector("body");
@@ -105,6 +109,60 @@ function calculateCaretPosition(
 	return caretPos + 1;
 }
 
+function Notification({
+	notifications,
+}: {
+	notifications: HomeNotification[];
+}) {
+	const store = new Store();
+	const [icons, setIcons] = useState<{ name: string; url: string }[]>([]);
+	const [seen, setSeen] = useState<Date[]>(
+		Object.values(store.get("seenNotifications") || []),
+	);
+	useEffect(() => {
+		async function fetchIcons() {
+			// import meta glob the icons
+			const glob = import.meta.glob("../assets/home/notification/*.png");
+			// convert into {name: string; url: string;}[]
+			const icons = (
+				await Promise.all(Object.values(glob).map((v) => v()))
+			).map((v: any) => ({
+				name: v.default.split("/").at(-1).replace(".png", ""),
+				url: v.default,
+			}));
+			setIcons(icons);
+		}
+		fetchIcons();
+	}, [notifications]);
+	useEffect(() => {
+		store.set("seenNotifications", seen);
+	}, [seen]);
+	const version = remote.app.getVersion();
+	const notification = notifications.find((n) => {
+		const satifies = n.targets ? semver.satisfies(version, n.targets) : true;
+		return satifies && !seen.includes(n.date);
+	});
+	return notification ? (
+		<div className={styles.notificationContainer}>
+			<div
+				className={joinClasses(styles.notification, styles[notification.type])}
+			>
+				<img
+					className={styles.icon}
+					src={icons.find((i) => i.name === notification.type)?.url}
+				/>
+				<span className={styles.contentContainer}>
+					<BBCode plugins={[presetReact()]}>{notification.message}</BBCode>
+				</span>
+				<div
+					onClick={() => setSeen((s) => [...s, notification.date])}
+					className={styles.close}
+				/>
+			</div>
+		</div>
+	) : null;
+}
+
 export function Dropdown({
 	color,
 	header,
@@ -141,6 +199,7 @@ export function Contact(
 		user: APIUser;
 		status: Friend | GuildPresence;
 		guild?: boolean;
+		groupchat?: boolean;
 	},
 ) {
 	const p = { ...props, user: undefined, status: undefined, guild: undefined };
@@ -163,7 +222,11 @@ export function Contact(
 				pfp={
 					props?.user?.avatar
 						? `https://cdn.discordapp.com/${
-								props.guild ? "icons" : "avatars"
+								props.guild
+									? "icons"
+									: props.groupchat
+									  ? "channel-icons"
+									  : "avatars"
 						  }/${props?.user?.id}/${props?.user?.avatar}${
 								props.format || ".png"
 						  }`
@@ -171,7 +234,7 @@ export function Contact(
 				}
 				variant="small"
 				stateInitial={props?.status?.status as unknown as PresenceUpdateStatus}
-				guild={props.guild}
+				guild={props.guild || props.groupchat}
 			/>
 			<div className={styles.contactInfo}>
 				<div className={styles.contactUsername}>
@@ -185,10 +248,34 @@ export function Contact(
 	);
 }
 
+/**
+ * A notification to be displayed on the home page
+ */
+interface HomeNotification {
+	/**
+	 * The type of notification
+	 */
+	type: "information" | "warning" | "error";
+	/**
+	 * The notification's contents
+	 */
+	message: string;
+	/**
+	 * The date the notification was sent
+	 */
+	date: Date;
+	/**
+	 * The targeted version(s) which the notification is for
+	 * @example targets: ">=1.0.0-rc.2"
+	 */
+	targets?: string;
+}
+
 function Home() {
 	const [input, setInput] = useState<HTMLInputElement | null>(null);
 	const [ad, setAd] = useState<HTMLDivElement | null>(null);
 	const { state, setState } = useContext(Context);
+	const [notifications, setNotifications] = useState<HomeNotification[]>([]);
 	function contactContextMenu(
 		user: APIUser,
 		e: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -272,7 +359,20 @@ function Home() {
 	}
 	const [paperSrc] = useState("");
 	useEffect(() => {
-		console.log(state.userSettings);
+		async function getNotifications() {
+			const res = await fetch(
+				`https://gist.github.com/not-nullptr/26108f2ac8fcb8a24965a148fcf17363/raw?bust=${Date.now()}`,
+			);
+			const json = await res.json();
+			setNotifications(json);
+			console.log(json);
+		}
+		// grab notifications every 1 minute
+		const interval = setInterval(getNotifications, 1000 * 60);
+		getNotifications();
+		return () => {
+			clearInterval(interval);
+		};
 	}, []);
 	function setStatus(status: PresenceUpdateStatus) {
 		let mutState = { ...state };
@@ -595,6 +695,10 @@ function Home() {
 			})
 			.flat()
 			.filter((g) => !!g.guilds) || [];
+	const groupChats =
+		state?.ready?.private_channels?.filter(
+			(c) => c.type === ChannelType.GroupDM,
+		) || [];
 	const navigate = useNavigate();
 	return !state.ready?.user?.id ? (
 		<>
@@ -714,6 +818,20 @@ function Home() {
 										{
 											type: ContextMenuItemType.Item,
 											label: "Options...",
+											click() {
+												createWindow({
+													customProps: {
+														url: "/options",
+													},
+													width: 550,
+													height: 400,
+													minWidth: 366,
+													minHeight: 248,
+													icon: remote.nativeImage.createFromPath(
+														"resources/icon.ico",
+													),
+												});
+											},
 										},
 									],
 									windowPos.x + bounds.left,
@@ -808,6 +926,7 @@ function Home() {
 						/>
 					</div>
 				</div>
+				<Notification notifications={notifications} />
 				<div className={styles.contactsContainer}>
 					<div className={styles.contacts}>
 						<Dropdown
@@ -845,6 +964,46 @@ function Home() {
 									key={c.user?.id}
 									status={c.status}
 									user={c.user}
+								/>
+							))}
+						</Dropdown>
+						<Dropdown header="Group Chats" info={`(${groupChats?.length})`}>
+							{groupChats.map((c) => (
+								<Contact
+									onDoubleClick={() => {
+										createWindow({
+											customProps: {
+												url: `/message?channelId=${c.id}`,
+											},
+											width: 550,
+											height: 400,
+											minWidth: 366,
+											minHeight: 248,
+											icon: remote.nativeImage.createFromPath(
+												"resources/icon-chat.ico",
+											),
+										});
+									}}
+									key={c.id}
+									user={
+										{
+											id: c.id,
+											avatar: c?.icon,
+											global_name:
+												c?.name ||
+												c?.recipient_ids
+													.map(
+														(id) =>
+															state.ready.users.find((u) => u.id === id)
+																?.global_name ||
+															state.ready.users.find((u) => u.id === id)
+																?.username,
+													)
+													.join(", "),
+										} as any
+									}
+									status={PresenceUpdateStatus.Online as any}
+									groupchat
 								/>
 							))}
 						</Dropdown>
@@ -969,10 +1128,10 @@ function Home() {
 							))}
 						</Dropdown>
 					</div>
-					<div className={styles.dividerAlt} />
-					<div ref={setAd} className={styles.ad} />
 				</div>
 			</div>
+			<div className={styles.dividerAlt} />
+			<div ref={setAd} className={styles.ad} />
 		</div>
 	);
 }

@@ -295,7 +295,7 @@
 .content {
 	display: flex;
 	flex-direction: column;
-	height: calc(100% - 56px);
+	height: calc(100% - 180px);
 }
 
 .padded {
@@ -365,7 +365,7 @@
 	overflow-y: auto;
 	width: 100%;
 	box-sizing: border-box;
-	height: 100%;
+	height: calc(100% - 8px);
 	margin-top: 8px;
 	padding: 0px 8px 0px 8px;
 	position: relative;
@@ -484,7 +484,10 @@
 }
 
 .contactsContainer {
-	height: calc(100% - 162px);
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	height: 0px;
 }
 
 .dividerAlt {
@@ -572,4 +575,73 @@
 	opacity: 0.4;
 	margin-top: 2px;
 	margin-left: -1px;
+}
+
+.notificationContainer {
+	width: calc(100% - 2px);
+	box-sizing: border-box;
+	padding: 4px;
+}
+
+.notification {
+	display: flex;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 4px;
+	text-shadow: 0px 0px 0.5px #0000003e;
+	border-radius: 4px;
+	margin-top: 2px;
+	margin-bottom: -8px;
+	position: relative;
+}
+
+.notification.info {
+	border: solid thin #c7d9e4;
+	background: linear-gradient(to bottom, #f8fbff, #eef8ff);
+}
+
+.notification.warning {
+	border: solid thin #e3e4c7;
+	background: linear-gradient(to bottom, #ffffc9, #fdffc3);
+}
+
+.notification.error {
+	border: solid thin #e4c7c7;
+	background: linear-gradient(to bottom, #ffe0e0, #fdc6c6);
+}
+
+.notification > .icon {
+	margin-right: 6px;
+	height: fit-content;
+}
+
+.notification > .close {
+	margin-left: auto;
+	margin-right: -4px;
+}
+
+.notification > .close {
+	background-image: url("@renderer/assets/contact-card/close.png");
+	width: 12px;
+	height: 12px;
+	filter: brightness(0.7);
+	position: absolute;
+	top: 4px;
+	right: 12px;
+}
+
+.notification > .close:hover {
+	filter: brightness(1);
+	background-image: url("@renderer/assets/contact-card/close-hover.png");
+}
+
+.notification > .contentContainer {
+	width: calc(100% - 36px);
+	height: 100%;
+	display: table;
+}
+
+.contentContainer > span {
+	display: table-cell;
+	vertical-align: middle;
 }

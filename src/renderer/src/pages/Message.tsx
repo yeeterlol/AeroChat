@@ -21,6 +21,7 @@ import {
 	GatewayGuildMembersChunkDispatch,
 	GatewayGuildMembersChunkDispatchData,
 	StickerFormatType,
+	APIGroupDMChannel,
 } from "discord-api-types/v9";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -78,15 +79,20 @@ function generateNonce() {
 	return result;
 }
 
-function getPfp(user: APIUser | APIGuild | IGuild | undefined) {
+function getPfp(
+	user: APIUser | APIGuild | IGuild | APIGroupDMChannel | undefined,
+) {
 	if (!user) return defaultPfp;
+	if ("recipients" in user) {
+		return `https://cdn.discordapp.com/channel-icons/${user.id}/${user.icon}.png?size=256`;
+	}
 	if ("icon" in user) {
 		return `https://cdn.discordapp.com/icons/${user.id}/${user.icon}.webp?size=256`;
 	}
 	if ("properties" in user) {
 		return `https://cdn.discordapp.com/avatars/${user.id}/${user.properties.icon}.png?size=256`;
 	}
-	if (user.avatar) {
+	if ("avatar" in user) {
 		return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`;
 	}
 	return defaultPfp;
@@ -350,7 +356,7 @@ function MessagePage() {
 	const channelParam = params.get("channelId");
 	const [channelId, setChannelId] = useState(channelParam);
 	const [channel, setChannel] = useState<
-		APITextChannel | APIDMChannel | APINewsChannel
+		APITextChannel | APIDMChannel | APINewsChannel | APIGroupDMChannel
 	>();
 	const [emojiOpen, setEmojiOpen] = useState(false);
 	let shouldAllowTyping = true;
@@ -420,7 +426,10 @@ function MessagePage() {
 	useEffect(() => {
 		if (!channel) return;
 		let data: any = {};
-		if (channel.type === ChannelType.DM) {
+		if (
+			channel.type === ChannelType.DM ||
+			channel.type === ChannelType.GroupDM
+		) {
 			data.channel_id = channel.id;
 		} else if ("guild_id" in channel) {
 			data.guild_id = channel.guild_id;
@@ -619,45 +628,69 @@ function MessagePage() {
 		return Math.floor(Math.random() * (max - min + 1)) + min;
 	}
 	useEffect(() => {
-		const id = addDispatchListener(GatewayDispatchEvents.MessageCreate, (d) => {
-			if (d.channel_id !== channelId) return;
-			if (d.content === "[nudge]") {
-				const audio = new Audio(nudgeAudio);
-				audio.play();
-				const window = remote.getCurrentWindow();
-				const windowPos = window.getPosition();
-				window.setMovable(false);
-				const interval = setInterval(() => {
-					window.setPosition(
-						windowPos[0] + rand(-10, 10),
-						windowPos[1] + rand(-10, 10),
-					);
-				}, 25);
-				setTimeout(() => {
-					window.setMovable(true);
-					clearInterval(interval);
-					window.setPosition(windowPos[0], windowPos[1]);
-				}, 2000);
-			}
-			if (d.author.id === state?.ready?.user?.id && d.nonce) {
+		const ids = [
+			addDispatchListener(GatewayDispatchEvents.MessageCreate, (d) => {
+				if (d.channel_id !== channelId) return;
+				if (d.content === "[nudge]") {
+					const audio = new Audio(nudgeAudio);
+					audio.play();
+					const window = remote.getCurrentWindow();
+					const windowPos = window.getPosition();
+					const windowSize = window.getSize();
+					window.setMovable(false);
+					const interval = setInterval(() => {
+						window.setPosition(
+							windowPos[0] + rand(-10, 10),
+							windowPos[1] + rand(-10, 10),
+						);
+						window.setSize(windowSize[0], windowSize[1]);
+					}, 25);
+					setTimeout(() => {
+						window.setMovable(true);
+						clearInterval(interval);
+						window.setPosition(windowPos[0], windowPos[1]);
+					}, 2000);
+				}
+				if (d.author.id === state?.ready?.user?.id && d.nonce) {
+					setMessages((msgs) => {
+						let newMsgs = [...msgs];
+						newMsgs = newMsgs.filter((msg) => msg.nonce !== d.nonce);
+						newMsgs.push(d);
+						return [...newMsgs];
+					});
+				}
+				let typingMut = [...typing];
+				const typingUser = typingMut.find((t) => t.id === d.author.id);
+				if (typingUser) {
+					clearTimeout(typingUser.timeout);
+					typingMut = typingMut.filter((t) => t.id !== d.author.id);
+				}
+				setTyping(typingMut);
+				if (d.author.id !== state?.ready?.user?.id)
+					setMessages([...messages, d]);
+			}),
+			addDispatchListener(GatewayDispatchEvents.MessageUpdate, (d) => {
+				if (d.channel_id !== channelId) return;
 				setMessages((msgs) => {
 					let newMsgs = [...msgs];
-					newMsgs = newMsgs.filter((msg) => msg.nonce !== d.nonce);
-					newMsgs.push(d);
+					const oldMsg = newMsgs.find((m) => m.id === d.id);
+					if (!oldMsg) return [...newMsgs];
+					newMsgs = newMsgs.filter((msg) => msg.id !== d.id);
+					newMsgs.push({ ...oldMsg, ...d });
 					return [...newMsgs];
 				});
-			}
-			let typingMut = [...typing];
-			const typingUser = typingMut.find((t) => t.id === d.author.id);
-			if (typingUser) {
-				clearTimeout(typingUser.timeout);
-				typingMut = typingMut.filter((t) => t.id !== d.author.id);
-			}
-			setTyping(typingMut);
-			if (d.author.id !== state?.ready?.user?.id) setMessages([...messages, d]);
-		});
+			}),
+			addDispatchListener(GatewayDispatchEvents.MessageDelete, (d) => {
+				if (d.channel_id !== channelId) return;
+				const msg = document.getElementById(d.id);
+				if (!msg) return;
+				msg.classList.add(styles.deleted);
+			}),
+		];
 		return () => {
-			removeGatewayListener(id);
+			for (const id of ids) {
+				removeGatewayListener(id);
+			}
 		};
 	}, [channelId, messages, typing]);
 	// if (!userId || !recepient.user || !recepient.presence) return <></>;
@@ -724,6 +757,13 @@ function MessagePage() {
 			} else {
 				document.title = `${channel.name}  <${guild.name}>`;
 			}
+		} else if (channel?.type === ChannelType.GroupDM) {
+			document.title =
+				channel?.name ||
+				channel?.recipients
+					?.map((u) => u.global_name || u.username)
+					.join(", ") ||
+				"Group DM";
 		}
 	}, [channel, recepient, guild]);
 	const userSearch = new Fuse(users, {
@@ -1006,28 +1046,67 @@ function MessagePage() {
 				)}
 				<div className={styles.contentContainer}>
 					{!guild ? (
-						<div className={styles.pfpContainer}>
-							<div className={styles.recepientPfp}>
-								<PfpBorder
-									pfp={getPfp(recepient?.user || guild)}
-									variant="large"
-									stateInitial={
-										recepient?.user
-											? (recepient?.presence?.status as any) ||
-											  PresenceUpdateStatus.Offline
-											: PresenceUpdateStatus.Idle
-									}
-									guild={!!guild}
-								/>
+						channel?.type === ChannelType.GroupDM ? (
+							(() => {
+								const c = channel as APIGroupDMChannel;
+								return (
+									<div className={styles.memberList}>
+										<img src={lilGuy} className={styles.lilGuy} />
+										<div className={styles.members}>
+											{c.recipients
+												?.sort((a, b) =>
+													(a.global_name || a.username).localeCompare(
+														b.global_name || b.username,
+													),
+												)
+												.map((r) => (
+													<Contact
+														key={r.id}
+														status={
+															state?.ready?.merged_presences?.friends?.find(
+																(p) => p.user_id === r.id,
+															) ||
+															state?.ready?.merged_presences?.guilds
+																?.flat()
+																?.find((p) => p.user_id === r.id) || {
+																activities: [],
+																client_status: {},
+																status: PresenceUpdateStatus.Offline as any,
+																user: r as any,
+																user_id: r.id,
+															}
+														}
+														user={r}
+													/>
+												))}
+										</div>
+									</div>
+								);
+							})()
+						) : (
+							<div className={styles.pfpContainer}>
+								<div className={styles.recepientPfp}>
+									<PfpBorder
+										pfp={getPfp(recepient?.user || guild || (channel as any))}
+										variant="large"
+										stateInitial={
+											recepient?.user
+												? (recepient?.presence?.status as any) ||
+												  PresenceUpdateStatus.Offline
+												: PresenceUpdateStatus.Idle
+										}
+										guild={!!guild}
+									/>
+								</div>
+								<div className={styles.ownPfp}>
+									<PfpBorder
+										pfp={getPfp(state?.ready?.user)}
+										variant="large"
+										stateInitial={myPresence.status as any}
+									/>
+								</div>
 							</div>
-							<div className={styles.ownPfp}>
-								<PfpBorder
-									pfp={getPfp(state?.ready?.user)}
-									variant="large"
-									stateInitial={myPresence.status as any}
-								/>
-							</div>
-						</div>
+						)
 					) : (
 						<div className={styles.channelsContainer}>
 							<img src={lilGuy} className={styles.lilGuy} />
@@ -1120,7 +1199,7 @@ function MessagePage() {
 												onClick={(e) => {
 													e.preventDefault();
 													e.stopPropagation();
-													if (guild)
+													if (guild && channel?.type !== ChannelType.GroupDM)
 														sendOp(
 															14 as any,
 															{

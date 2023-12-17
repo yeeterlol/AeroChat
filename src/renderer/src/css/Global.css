@@ -52,6 +52,11 @@
 	font-style: normal;
 }
 
+@font-face {
+	font-family: "Logo";
+	src: url("@renderer/assets/fonts/logos.ttf") format("truetype");
+}
+
 /* maddie (nullptr)'s cool ass native stuff below :3 */
 
 body {
@@ -270,4 +275,54 @@ button:disabled {
 			rgba(111, 202, 240, 1) 50%,
 			rgba(108, 196, 233, 1) 100%
 		);
+}
+
+kbd {
+	background: radial-gradient(
+			50% 50% at bottom center,
+			rgba(0, 153, 255, 0.958) 0%,
+			rgba(28, 45, 174, 0) 100%
+		),
+		linear-gradient(to bottom, rgb(84, 151, 251) 0%, rgb(28, 45, 174) 100%);
+	border: solid thin #707070;
+	border-radius: 3px;
+	box-shadow: inset 0px 0px 0px 1px var(--aero-white);
+	color: white;
+	padding: 0px 4px;
+}
+
+kbd,
+kbd * {
+	font-family: "Consolas", "Courier New", monospace;
+}
+
+kbd.active {
+	background: radial-gradient(
+			50% 50% at bottom center,
+			rgb(0, 255, 234) 0%,
+			rgba(28, 45, 174, 0) 100%
+		),
+		linear-gradient(to bottom, rgb(84, 223, 251) 0%, rgb(0, 98, 255) 100%);
+	box-shadow: inset 0px 0px 0px 1px #ffffffe8;
+}
+
+.error {
+	box-sizing: border-box;
+	padding: 12px;
+}
+
+.error h1:first-child {
+	margin-top: 0;
+}
+
+.error ol {
+	padding: 20px;
+	padding-top: 0;
+	width: calc(100% - 12px);
+}
+
+.meta > .windows-logo {
+	width: 6pt;
+	height: 6pt;
+	fill: white;
 }

@@ -177,6 +177,7 @@
 }
 
 .message {
+	transition: 0.25s color linear;
 	margin-left: 3px;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -582,4 +583,32 @@
 .imageButton:active {
 	outline: solid thin #727272;
 	box-shadow: inset 0px 0px 4px 0px #00000067;
+}
+
+.memberList {
+	width: 170px;
+	height: calc(100% - 32px);
+	position: absolute;
+	box-sizing: border-box;
+	padding: 0px 8px;
+}
+
+.members {
+	overflow-y: auto;
+	height: calc(100% - 86px);
+}
+
+.members > div {
+	margin-top: 4px;
+	margin-left: 2px;
+	width: calc(100% - 12px);
+}
+
+.members > div {
+	padding: 0 !important;
+	padding-right: 8px !important;
+}
+
+.deleted {
+	color: rgb(187, 0, 0);
 }

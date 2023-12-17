@@ -212,6 +212,8 @@ function createWindow(): void {
 	// Create the browser window.
 	const mainWindow = new BrowserWindow(defaultOptions);
 
+	// DwmExtendFrameIntoClientArea
+
 	main.enable(mainWindow.webContents);
 	// mainWindow.on("close", (e) => {
 	// 	if (ctxMenu) {
@@ -420,37 +422,44 @@ function createWindow(): void {
 		) => {
 			showContextMenu(id, menu, x, y, offsetWidth, style, vertical, horizontal);
 			ipcMain.once(`${id}-close`, (_, selectedId) => {
+				if (e.sender.isDestroyed()) return;
 				e.sender.send(`${id}-close`, selectedId);
 			});
 			e.sender.once("blur", () => {
 				ctxMenu?.setIgnoreMouseEvents(true);
 				ctxMenu?.setOpacity(0);
+				if (e.sender.isDestroyed()) return;
 				e.sender.send(`${id}-close`);
 			});
 			ipcMain.once("close-ctx", (_, href: string) => {
 				if (href.includes("context-menu")) return;
 				ctxMenu?.setIgnoreMouseEvents(true);
 				ctxMenu?.setOpacity(0);
+				if (e.sender.isDestroyed()) return;
 				e.sender.send(`${id}-close`);
 			});
 			BrowserWindow.fromWebContents(e.sender)?.once("move", () => {
 				ctxMenu?.setIgnoreMouseEvents(true);
 				ctxMenu?.setOpacity(0);
+				if (e.sender.isDestroyed()) return;
 				e.sender.send(`${id}-close`);
 			});
 			BrowserWindow.fromWebContents(e.sender)?.once("resize", () => {
 				ctxMenu?.setIgnoreMouseEvents(true);
 				ctxMenu?.setOpacity(0);
+				if (e.sender.isDestroyed()) return;
 				e.sender.send(`${id}-close`);
 			});
 			BrowserWindow.fromWebContents(e.sender)?.once("minimize", () => {
 				ctxMenu?.setIgnoreMouseEvents(true);
 				ctxMenu?.setOpacity(0);
+				if (e.sender.isDestroyed()) return;
 				e.sender.send(`${id}-close`);
 			});
 			BrowserWindow.fromWebContents(e.sender)?.once("maximize", () => {
 				ctxMenu?.setIgnoreMouseEvents(true);
 				ctxMenu?.setOpacity(0);
+				if (e.sender.isDestroyed()) return;
 				e.sender.send(`${id}-close`);
 			});
 		},

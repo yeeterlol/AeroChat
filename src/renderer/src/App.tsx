@@ -28,6 +28,7 @@ import CommandLink from "./components/CommandLink";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
+import discord from "@renderer/util/discord";
 
 function WindowsLogo() {
 	return (
@@ -360,7 +361,7 @@ function App(): JSX.Element {
 				);
 				if (!friend) {
 					mutState.ready.merged_presences?.friends.push(d as any);
-					setState(mutState);
+					setReactState(mutState);
 					return;
 				}
 				mutState.ready.merged_presences.friends =
@@ -418,24 +419,13 @@ function App(): JSX.Element {
 				}
 				mutState.ready.merged_presences.friends.push(finalFriend as any);
 				if (mutState === reactState) return;
-				setState(mutState);
+				setReactState(mutState);
 			}),
 		];
 		return () => {
 			ids.forEach((id) => removeGatewayListener(id));
 		};
 	}, [reactState]);
-	useEffect(() => {
-		(async () => {
-			if (!reactState?.ready?.sessions) return;
-			const session = reactState.ready.sessions[0];
-			const window = remote.getCurrentWindow();
-			window.setOverlayIcon(
-				remote.nativeImage.createFromPath(`resources/${session.status}.ico`),
-				session.status,
-			);
-		})();
-	}, [reactState?.ready?.sessions]);
 	return (
 		<ErrorBoundary fallback={<Error />}>
 			<Context.Provider value={{ state: reactState, setState }}>

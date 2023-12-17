@@ -503,6 +503,11 @@ function createWindow(): void {
 		nativeImage.createFromPath("resources/icon-default.ico"),
 		"0a7e2c8f-a657-44ac-be2e-3906926039ed",
 	);
+	trayIcon.displayBalloon({
+		title: "Title",
+		content: "Content",
+		iconType: "info",
+	});
 	trayIcon.on("click", () => {
 		mainWindow.show();
 	});

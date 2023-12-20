@@ -154,6 +154,7 @@ function Notification({
 					className={styles.contentContainer}
 					dangerouslySetInnerHTML={{
 						__html: sanitizeHtml(notification.message),
+						// this is vulnerable to xss but im the only one who can edit the notifications
 					}}
 				/>
 				<div

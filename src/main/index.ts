@@ -382,8 +382,11 @@ function createWindow(): void {
 	});
 	ipcMain.on("join-voice", async (_e, guildId: string, channelId: string) => {
 		voice?.openVoiceConnection(guildId, channelId);
-		// show an async alert and end the voice connection when the alert is closed
-		// dialog
+		trayIcon!.displayBalloon({
+			title: "Voice",
+			content: "Voice connection has been established.",
+			iconType: "info",
+		});
 		await dialog.showMessageBox(win!, {
 			message: "Voice connection",
 			title: "Windows Live Messenger",
@@ -394,6 +397,12 @@ function createWindow(): void {
 			buttons: ["Disconnect"],
 		});
 		voice?.closeVoiceConnection();
+		trayIcon!.removeBalloon();
+		trayIcon!.displayBalloon({
+			title: "Voice",
+			content: "Voice connection has been closed.",
+			iconType: "info",
+		});
 	});
 	ipcMain.on("close-gateway", () => {
 		socket?.close();

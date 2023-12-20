@@ -22,12 +22,14 @@ import {
 	GatewayGuildMembersChunkDispatchData,
 	StickerFormatType,
 	APIGroupDMChannel,
+	APIGuildVoiceChannel,
 } from "discord-api-types/v9";
 import { useSearchParams } from "react-router-dom";
 import {
 	addDispatchListener,
 	contactCard,
 	contextMenu,
+	joinVoiceChannel,
 	removeGatewayListener,
 } from "@renderer/util/ipc";
 import {
@@ -60,6 +62,7 @@ import nudgeButton from "@renderer/assets/message/nudge.png";
 import nudgeAudio from "@renderer/assets/audio/nudge.mp3";
 import { Player } from "@lottiefiles/react-lottie-player";
 import { toShort } from "emojione";
+import musicalNote from "@renderer/assets/emoji/Concepts/musical_note.png";
 
 function isGuildChannel(type: ChannelType): type is GuildChannelType {
 	return Object.keys(ChannelType)
@@ -362,7 +365,12 @@ function MessagePage() {
 	let shouldAllowTyping = true;
 	let typingTimeout: NodeJS.Timeout | undefined;
 	const [channels, setChannels] = useState<
-		Channel<APITextChannel | APIGuildCategoryChannel | APINewsChannel>[]
+		Channel<
+			| APIGuildVoiceChannel
+			| APITextChannel
+			| APIGuildCategoryChannel
+			| APINewsChannel
+		>[]
 	>([]);
 	const { state } = useContext(Context);
 	const [messages, setMessages] = useState<APIMessage[]>([]);
@@ -1132,12 +1140,24 @@ function MessagePage() {
 													(c) =>
 														(c.properties.type === ChannelType.GuildText ||
 															c.properties.type ===
-																ChannelType.GuildAnnouncement) &&
+																ChannelType.GuildAnnouncement ||
+															c.properties.type === ChannelType.GuildVoice) &&
 														c.properties.parent_id === cat.properties.id,
 												)
 												.map((c) => (
 													<div
-														onClick={() => setChannelId(c.properties.id)}
+														onClick={() => {
+															if (
+																c.properties.type === ChannelType.GuildVoice
+															) {
+																joinVoiceChannel(
+																	"properties" in guild
+																		? guild.properties.id
+																		: guild.id,
+																	c.properties.id,
+																);
+															} else setChannelId(c.properties.id);
+														}}
 														key={c.properties.id}
 														className={joinClasses(
 															styles.channel,
@@ -1146,7 +1166,32 @@ function MessagePage() {
 																: "",
 														)}
 													>
-														#{c.properties.name}
+														{c.properties.type === ChannelType.GuildVoice ? (
+															<div
+																style={{
+																	display: "flex",
+																	alignItems: "center",
+																}}
+															>
+																<img
+																	style={{
+																		marginLeft: -10,
+																	}}
+																	width="12"
+																	src={musicalNote}
+																/>
+																<div
+																	style={{
+																		marginBottom: 1,
+																		marginLeft: 4,
+																	}}
+																>
+																	{c.properties.name}
+																</div>
+															</div>
+														) : (
+															`#${c.properties.name}`
+														)}
 													</div>
 												))}
 										</Dropdown>

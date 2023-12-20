@@ -1,4 +1,4 @@
-import { keyMap } from "@renderer/App";
+import { keyMap } from "@renderer/util";
 import styles from "@renderer/css/pages/Options.module.css";
 import { useEffect } from "react";
 const Store = window.require(

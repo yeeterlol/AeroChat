@@ -115,7 +115,7 @@ function Notification({
 }) {
 	const store = new Store();
 	const [icons, setIcons] = useState<{ name: string; url: string }[]>([]);
-	const [seen, setSeen] = useState<Date[]>(
+	const [seen, setSeen] = useState<number[]>(
 		Object.values(store.get("seenNotifications") || []),
 	);
 	useEffect(() => {
@@ -150,9 +150,12 @@ function Notification({
 					className={styles.icon}
 					src={icons.find((i) => i.name === notification.type)?.url}
 				/>
-				<span className={styles.contentContainer}>
-					{sanitizeHtml(notification.message)}
-				</span>
+				<span
+					className={styles.contentContainer}
+					dangerouslySetInnerHTML={{
+						__html: sanitizeHtml(notification.message),
+					}}
+				/>
 				<div
 					onClick={() => setSeen((s) => [...s, notification.date])}
 					className={styles.close}
@@ -262,7 +265,7 @@ interface HomeNotification {
 	/**
 	 * The date the notification was sent
 	 */
-	date: Date;
+	date: number;
 	/**
 	 * The targeted version(s) which the notification is for
 	 * @example targets: ">=1.0.0-rc.2"
@@ -363,6 +366,36 @@ function Home() {
 				`https://gist.github.com/not-nullptr/26108f2ac8fcb8a24965a148fcf17363/raw?bust=${Date.now()}`,
 			);
 			const json = await res.json();
+			const seen = Object.values(
+				new Store().get("seenNotifications") || {},
+			) as number[];
+			/*
+						const trayIcon: Electron.CrossProcessExports.Tray =
+			remote.getGlobal("trayIcon");
+		trayIcon.displayBalloon({
+			title: "Windows Live Messenger",
+			content: "A new notification has arrived. Open the home page to read it.",
+			iconType: "info",
+		});
+			*/
+			// check if theres a new notification we havent seen yet
+			const newNotification = json.find(
+				(n: HomeNotification) =>
+					!seen.includes(n.date) &&
+					(n.targets
+						? semver.satisfies(remote.app.getVersion(), n.targets)
+						: true),
+			);
+			if (newNotification) {
+				const trayIcon: Electron.CrossProcessExports.Tray =
+					remote.getGlobal("trayIcon");
+				trayIcon.displayBalloon({
+					title: "Windows Live Messenger",
+					content:
+						"A new notification has arrived. Open the home page to read it.",
+					iconType: "info",
+				});
+			}
 			setNotifications(json);
 			console.log(json);
 		}

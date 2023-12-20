@@ -6,6 +6,7 @@ import {
 	nativeImage,
 	Menu,
 	Tray,
+	dialog,
 } from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
@@ -27,6 +28,7 @@ import {
 import WebSocket from "ws";
 import { writeFileSync } from "fs";
 import { PreloadedUserSettings } from "discord-protos";
+import { VoiceConnection } from "./util/Voice";
 
 function pathToHash(path: string) {
 	if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
@@ -82,6 +84,8 @@ let win: BrowserWindow | null;
 let ctxMenu: BrowserWindow | null;
 let interval: NodeJS.Timeout | null;
 let trayIcon: Tray | null;
+let token: string = "";
+let voice: VoiceConnection | null;
 
 async function showContextMenu(
 	id: string,
@@ -249,7 +253,8 @@ function createWindow(): void {
 	} else {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
-	ipcMain.on("start-gateway", (_e, token: string) => {
+	ipcMain.on("start-gateway", (_e, newToken: string) => {
+		token = newToken;
 		function configureSocket() {
 			socket = new WebSocket("wss://gateway.discord.gg/?v=9&encoding=json");
 			socket!.onopen = async () => {
@@ -330,7 +335,6 @@ function createWindow(): void {
 					case GatewayOpcodes.Dispatch: {
 						switch (data.t) {
 							case "READY": {
-								writeFileSync("ready.json", JSON.stringify(data.d, null, 4));
 								const d = data.d as any;
 								setState({
 									...state,
@@ -339,23 +343,13 @@ function createWindow(): void {
 										...d,
 									},
 								});
+								voice = new VoiceConnection(token, d.user.id, socket!);
 								// redirect the webcontents of win
 								win?.loadURL(pathToHash("/home"));
-								const token = (
-									state?.ready.connected_accounts.find(
-										(a) => a.type === "spotify",
-									) as any
-								)?.access_token;
-								if (!token) break;
-
 								break;
 							}
 							case "READY_SUPPLEMENTAL" as any: {
 								const d = data.d as any;
-								writeFileSync(
-									"ready_supplemental.json",
-									JSON.stringify(d, null, 4),
-								);
 								setState({
 									...state,
 									ready: {
@@ -385,6 +379,21 @@ function createWindow(): void {
 	});
 	ipcMain.on("send-op", (_e, data: string) => {
 		socket?.send(data);
+	});
+	ipcMain.on("join-voice", async (_e, guildId: string, channelId: string) => {
+		voice?.openVoiceConnection(guildId, channelId);
+		// show an async alert and end the voice connection when the alert is closed
+		// dialog
+		await dialog.showMessageBox(win!, {
+			message: "Voice connection",
+			title: "Windows Live Messenger",
+			detail:
+				"Voice connection has been established. Click Disconnect to end the voice session.",
+			type: "info",
+			noLink: true,
+			buttons: ["Disconnect"],
+		});
+		voice?.closeVoiceConnection();
 	});
 	ipcMain.on("close-gateway", () => {
 		socket?.close();
@@ -499,15 +508,7 @@ function createWindow(): void {
 		win.hide();
 	});
 
-	trayIcon = new Tray(
-		nativeImage.createFromPath("resources/icon-default.ico"),
-		"0a7e2c8f-a657-44ac-be2e-3906926039ed",
-	);
-	trayIcon.displayBalloon({
-		title: "Title",
-		content: "Content",
-		iconType: "info",
-	});
+	trayIcon = new Tray(nativeImage.createFromPath("resources/icon-default.ico"));
 	trayIcon.on("click", () => {
 		mainWindow.show();
 	});
@@ -532,6 +533,7 @@ function createWindow(): void {
 			},
 		]),
 	);
+	global.trayIcon = trayIcon;
 	const menu = new BrowserWindow({
 		minWidth: 0,
 		minHeight: 0,

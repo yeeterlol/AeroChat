@@ -122,3 +122,7 @@ export async function contextMenu(
 export function contactCard(user: APIUser, x?: number, y?: number) {
 	ipcRenderer.send("contact-card", user, x, y);
 }
+
+export function joinVoiceChannel(guildId: string, channelId: string) {
+	ipcRenderer.send("join-voice", guildId, channelId);
+}

@@ -1,4 +1,3 @@
-import { RelationshipTypes } from "detritus-client/lib/constants";
 import {
 	GatewayDispatchEvents,
 	GatewayDispatchPayload,
@@ -7,6 +6,7 @@ import {
 	GatewaySendPayload,
 } from "discord-api-types/v9";
 import WebSocket from "ws";
+import { RelationshipTypes } from "../types";
 const { ipcRenderer } = require("electron");
 
 export enum DispatchEventsCustom {

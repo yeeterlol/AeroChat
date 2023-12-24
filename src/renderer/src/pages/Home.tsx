@@ -714,7 +714,7 @@ function Home() {
 	// 			.search(search)
 	// 			.map((s) => s.item)
 	// 	: [...folders, ...noFolders];
-	const guilds =
+	let guilds =
 		state.userSettings?.guildFolders?.folders
 			.map((folder) => {
 				const guilds = folder.guildIds.map(
@@ -728,6 +728,28 @@ function Home() {
 			})
 			.flat()
 			.filter((g) => !!g.guilds) || [];
+	guilds = [
+		{
+			folder: undefined as any,
+			isFolder: false,
+			guilds: state.ready.guilds
+				.filter(
+					(g) =>
+						!guilds
+							.map((g) => g.guilds)
+							.flat()
+							.map((g) => g.id)
+							.includes(g.id),
+					// sort by joined_at, which we need to parse into a number
+				)
+				.sort((a, b) => {
+					const aDate = new Date(a.joined_at || 0).getTime();
+					const bDate = new Date(b.joined_at || 0).getTime();
+					return aDate - bDate;
+				}),
+		},
+		...guilds,
+	];
 	const groupChats =
 		state?.ready?.private_channels?.filter(
 			(c) => c.type === ChannelType.GroupDM,

@@ -342,6 +342,9 @@ function createWindow(): void {
 										...state?.ready,
 										...d,
 									},
+									userSettings: PreloadedUserSettings.fromBase64(
+										d.user_settings_proto,
+									),
 								});
 								voice = new VoiceConnection(token, d.user.id, socket!);
 								// redirect the webcontents of win

@@ -1,4 +1,4 @@
-appId: com.nullptr.wlm-09-discord
+appId: com.nullptr.aerochat
 productName: "Windows Live Messenger"
 directories:
   buildResources: build

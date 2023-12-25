@@ -126,6 +126,10 @@ export class VoiceConnection {
 
 				this.interval = setInterval(() => {
 					log(chalk.green("Voice Gateway"), "Heartbeat sent!");
+					if (!this.voiceGateway) {
+						this.closeVoiceConnection();
+						clearInterval(this.interval!);
+					}
 					this.voiceGateway!.send(
 						JSON.stringify({
 							op: 3,

@@ -23,6 +23,7 @@ import {
 	StickerFormatType,
 	APIGroupDMChannel,
 	APIGuildVoiceChannel,
+	GatewayVoiceState,
 } from "discord-api-types/v9";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -39,6 +40,7 @@ import {
 	Friend,
 	IGuild,
 	State,
+	Status,
 } from "../../../shared/types";
 import uEmojiParser from "universal-emoji-parser";
 import typingIcon from "@renderer/assets/message/typing.png";
@@ -63,6 +65,11 @@ import nudgeAudio from "@renderer/assets/audio/nudge.mp3";
 import { Player } from "@lottiefiles/react-lottie-player";
 import { toShort } from "emojione";
 import musicalNote from "@renderer/assets/emoji/Concepts/musical_note.png";
+const { ipcRenderer } = window.require("electron/renderer");
+import onlineSmall from "@renderer/assets/message/active.png";
+import dndSmall from "@renderer/assets/message/dnd.png";
+import idleSmall from "@renderer/assets/message/idle.png";
+import offlineSmall from "@renderer/assets/message/invisible.png";
 
 function isGuildChannel(type: ChannelType): type is GuildChannelType {
 	return Object.keys(ChannelType)
@@ -373,6 +380,28 @@ function MessagePage() {
 		>[]
 	>([]);
 	const { state } = useContext(Context);
+	function getSmallIcon(user: APIUser) {
+		const presence =
+			user.id === state?.ready?.user?.id
+				? state?.ready?.sessions[0]
+				: state?.ready?.merged_presences?.friends.find(
+						(f) => f.user_id === user.id,
+				  ) ||
+				  state?.ready?.merged_presences?.guilds
+						?.flat()
+						?.find((p) => p.user_id === user.id);
+		switch (presence?.status) {
+			case Status.Online:
+				return onlineSmall;
+			case Status.Idle:
+				return idleSmall;
+			case Status.DND:
+				return dndSmall;
+			case Status.Offline:
+				return offlineSmall;
+		}
+		return onlineSmall;
+	}
 	const [messages, setMessages] = useState<APIMessage[]>([]);
 	const [open, setOpen] = useState(false);
 	const [users, setUsers] = useState<
@@ -384,6 +413,20 @@ function MessagePage() {
 		NonNullable<GatewayGuildMembersChunkDispatchData["presences"]>
 	>([]);
 	const [search, setSearch] = useState("");
+	const [voiceStates, setVoiceStates] = useState<GatewayVoiceState[]>(
+		ipcRenderer
+			.sendSync("get-voice-states")
+			.filter((v) => v.guild_id === (channel as any)?.guild_id),
+	);
+	useEffect(() => {
+		function onVoice(e: any, data: GatewayVoiceState[]) {
+			setVoiceStates(data);
+		}
+		ipcRenderer.on("voice-state-update", onVoice);
+		return () => {
+			ipcRenderer.off("voice-state-update", onVoice);
+		};
+	}, []);
 	async function fetchMessages() {
 		if (!channelId) return;
 		const messages = (
@@ -517,6 +560,7 @@ function MessagePage() {
 		const memberReady = DiscordUtil.getMembership(guild);
 		if (!memberReady) throw new Error("member not found??");
 		const member = new Member(memberReady);
+		// sort by position but push voice channels to the bottom
 		const channels = guild.channels
 			.map((c) => new Channel(c as any))
 			.filter((c) =>
@@ -525,7 +569,12 @@ function MessagePage() {
 					PermissionFlagsBits.ViewChannel,
 				),
 			)
-			.sort((a, b) => a.properties.position - b.properties.position);
+			.sort((a, b) => a.properties.position - b.properties.position)
+			.sort((a, b) => {
+				if (a.properties.type === ChannelType.GuildVoice) return 1;
+				if (b.properties.type === ChannelType.GuildVoice) return -1;
+				return a.properties.position - b.properties.position;
+			});
 		setChannels(channels);
 	}, [guild]);
 	const recepient =
@@ -1146,52 +1195,85 @@ function MessagePage() {
 												)
 												.map((c) => (
 													<div
-														onClick={() => {
-															if (
-																c.properties.type === ChannelType.GuildVoice
-															) {
-																joinVoiceChannel(
-																	"properties" in guild
-																		? guild.properties.id
-																		: guild.id,
-																	c.properties.id,
-																);
-															} else setChannelId(c.properties.id);
-														}}
-														key={c.properties.id}
-														className={joinClasses(
-															styles.channel,
-															channelId === c.properties.id
-																? styles.selected
-																: "",
-														)}
+														className={
+															c.properties.type === ChannelType.GuildVoice &&
+															voiceStates
+																.filter((v) => v.channel_id === c.properties.id)
+																.filter((v) => !!v.member && !!v.member.user)
+																.length > 0
+																? styles.voiceConnected
+																: ""
+														}
 													>
-														{c.properties.type === ChannelType.GuildVoice ? (
-															<div
-																style={{
-																	display: "flex",
-																	alignItems: "center",
-																}}
-															>
-																<img
-																	style={{
-																		marginLeft: -10,
-																	}}
-																	width="12"
-																	src={musicalNote}
-																/>
+														<div
+															onClick={() => {
+																if (
+																	c.properties.type === ChannelType.GuildVoice
+																) {
+																	joinVoiceChannel(
+																		"properties" in guild
+																			? guild.properties.id
+																			: guild.id,
+																		c.properties.id,
+																	);
+																} else setChannelId(c.properties.id);
+															}}
+															key={c.properties.id}
+															className={joinClasses(
+																styles.channel,
+																channelId === c.properties.id
+																	? styles.selected
+																	: "",
+															)}
+														>
+															{c.properties.type === ChannelType.GuildVoice ? (
 																<div
 																	style={{
-																		marginBottom: 1,
-																		marginLeft: 4,
+																		display: "flex",
+																		alignItems: "center",
 																	}}
 																>
-																	{c.properties.name}
+																	<img
+																		style={{
+																			marginLeft: -10,
+																		}}
+																		width="12"
+																		src={musicalNote}
+																	/>
+																	<div
+																		style={{
+																			marginBottom: 1,
+																			marginLeft: 4,
+																		}}
+																	>
+																		{c.properties.name}
+																	</div>
 																</div>
-															</div>
-														) : (
-															`#${c.properties.name}`
-														)}
+															) : (
+																`#${c.properties.name}`
+															)}
+														</div>
+														<div className={styles.voiceUsers}>
+															{c.properties.type === ChannelType.GuildVoice &&
+																voiceStates
+																	.filter(
+																		(v) => v.channel_id === c.properties.id,
+																	)
+																	.filter((v) => !!v.member && !!v.member.user)
+																	.map((v) => (
+																		<div className={styles.voiceUser}>
+																			<img
+																				src={getSmallIcon(v.member!.user!)}
+																			/>
+																			<span>
+																				{v.member?.nick ||
+																					v.member?.user?.global_name ||
+																					v.member?.user?.username ||
+																					"Unknown User"}
+																			</span>
+																		</div>
+																	))}
+														</div>
 													</div>
 												))}
 										</Dropdown>

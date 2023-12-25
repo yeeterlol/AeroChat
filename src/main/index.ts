@@ -24,6 +24,7 @@ import {
 	APIUser,
 	GatewayOpcodes,
 	GatewayReceivePayload,
+	GatewayVoiceState,
 } from "discord-api-types/v9";
 import WebSocket from "ws";
 import { writeFileSync } from "fs";
@@ -86,6 +87,14 @@ let interval: NodeJS.Timeout | null;
 let trayIcon: Tray | null;
 let token: string = "";
 let voice: VoiceConnection | null;
+let voiceStates: GatewayVoiceState[] = [];
+
+function setVoiceStates(newVoiceStates: GatewayVoiceState[]) {
+	voiceStates = newVoiceStates;
+	BrowserWindow.getAllWindows().forEach((window) => {
+		window.webContents.send("voice-state-update", voiceStates);
+	});
+}
 
 async function showContextMenu(
 	id: string,
@@ -360,7 +369,21 @@ function createWindow(): void {
 										...state?.ready,
 									},
 								});
+								setVoiceStates(d.guilds.map((g) => g.voice_states).flat());
 								break;
+							}
+							case "VOICE_STATE_UPDATE": {
+								const d = data.d;
+								const statesMut = [...voiceStates];
+								const index = statesMut.findIndex(
+									(s) => s.user_id === d.user_id,
+								);
+								if (index !== -1) {
+									statesMut[index] = d;
+								} else {
+									statesMut.push(d);
+								}
+								setVoiceStates(statesMut);
 							}
 							case "PRESENCE_UPDATE": {
 								writeFileSync("presence.json", JSON.stringify(data.d, null, 4));
@@ -382,6 +405,9 @@ function createWindow(): void {
 	});
 	ipcMain.on("send-op", (_e, data: string) => {
 		socket?.send(data);
+	});
+	ipcMain.on("get-voice-states", (_e) => {
+		_e.returnValue = voiceStates;
 	});
 	ipcMain.on("join-voice", async (_e, guildId: string, channelId: string) => {
 		voice?.openVoiceConnection(guildId, channelId);

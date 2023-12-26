@@ -6,6 +6,9 @@ import { OpusEncoder } from "@discordjs/opus";
 import chalk from "chalk";
 import Speaker from "speaker";
 import Microphone from "node-microphone";
+import { is } from "@electron-toolkit/utils";
+import { join } from "path";
+import { copyFileSync } from "fs";
 
 class RTPTimeStamp {
 	private clockFrequency: number;
@@ -33,10 +36,20 @@ class RTPTimeStamp {
 	}
 }
 
+if (!is.dev) {
+	copyFileSync(
+		join(__dirname, "..", "..", "resources", "bin", "sox.exe"),
+		join(__dirname, "..", "..", "..", "sox.exe"),
+	);
+}
+
 const stream = new Microphone({
 	rate: (48000 / 2) as any, // due to a bug, rate is multiplied by 4. this outputs 192khz which we need to fix later
 	bitwidth: 16,
 	channels: 1,
+	binary: is.dev
+		? "resources/bin/sox.exe"
+		: join(__dirname, "..", "..", "..", "sox.exe"),
 }).startRecording();
 
 function log(prefix: string, ...message: any[]) {

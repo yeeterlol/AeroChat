@@ -718,12 +718,12 @@ function Home() {
 		state.userSettings?.guildFolders?.folders
 			.map((folder) => {
 				const guilds = folder.guildIds.map(
-					(g) => state.ready.guilds.find((h) => h.id === g.toString())!,
+					(g) => state.ready.guilds?.find((h) => h.id === g.toString())!,
 				);
 				return {
 					folder: folder,
-					guilds: guilds.filter((g) => !!g),
-					isFolder: guilds.length !== 1,
+					guilds: guilds?.filter((g) => !!g),
+					isFolder: guilds?.length !== 1,
 				};
 			})
 			.flat()
@@ -1066,11 +1066,11 @@ function Home() {
 							header="Servers"
 							info={`(${guilds?.map((g) => g.guilds).length})`}
 						>
-							{guilds.map((f) =>
+							{guilds?.map((f) =>
 								f.isFolder ? (
 									<Dropdown
 										header={f.folder.name?.value || "Unnamed folder"}
-										info={`(${f.guilds.length})`}
+										info={`(${f.guilds?.length})`}
 										color={
 											"#" +
 												f.folder.color?.value.toString(16).padStart(6, "0") ||
@@ -1122,7 +1122,7 @@ function Home() {
 											))}
 									</Dropdown>
 								) : (
-									f.guilds.map((c) => (
+									f.guilds?.map((c) => (
 										<Contact
 											// style={{
 											// 	display: search

@@ -30,6 +30,7 @@ import WebSocket from "ws";
 import { writeFileSync } from "fs";
 import { PreloadedUserSettings } from "discord-protos";
 import { VoiceConnection } from "./util/Voice";
+import path from "path";
 
 function pathToHash(path: string) {
 	if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
@@ -225,7 +226,15 @@ function createWindow(): void {
 	// Create the browser window.
 	const mainWindow = new BrowserWindow(defaultOptions);
 
-	// DwmExtendFrameIntoClientArea
+	if (process.defaultApp) {
+		if (process.argv.length >= 2) {
+			app.setAsDefaultProtocolClient("aerochat", process.execPath, [
+				path.resolve(process.argv[1]),
+			]);
+		}
+	} else {
+		app.setAsDefaultProtocolClient("aerochat");
+	}
 
 	main.enable(mainWindow.webContents);
 	// mainWindow.on("close", (e) => {
@@ -385,10 +394,6 @@ function createWindow(): void {
 								}
 								setVoiceStates(statesMut);
 							}
-							case "PRESENCE_UPDATE": {
-								writeFileSync("presence.json", JSON.stringify(data.d, null, 4));
-								break;
-							}
 						}
 					}
 					default: {
@@ -434,7 +439,6 @@ function createWindow(): void {
 		});
 	});
 	ipcMain.on("close-gateway", () => {
-		socket?.close();
 		socket = null;
 	});
 
@@ -601,6 +605,31 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+	app.quit();
+} else {
+	app.on("second-instance", (event, commandLine, workingDirectory) => {
+		// Someone tried to run a second instance, we should focus our window.
+		if (win) {
+			if (win.isMinimized()) win.restore();
+			win.focus();
+		}
+		const url = commandLine.pop()?.split(":/")[1]; //ie /guilds/1234567890
+		if (!url) return;
+		if (url.startsWith("/guild/")) {
+			const guildId = url.split("/")[2];
+			win?.webContents.send("open-guild", guildId);
+		}
+		if (url.startsWith("/dm/")) {
+			const userId = url.split("/")[2];
+			win?.webContents.send("open-dm", userId);
+		}
+	});
+}
+
 app.whenReady().then(() => {
 	// Set app user model id for windows
 	electronApp.setAppUserModelId("com.electron");

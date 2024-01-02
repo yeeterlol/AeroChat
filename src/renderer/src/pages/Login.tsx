@@ -30,7 +30,9 @@ const SecurePassword = ({
 	mask = "*",
 	placeholder = "",
 	className = "",
+	id,
 }: {
+	id: string;
 	value: string;
 	onChange: (value: string) => void;
 	mask?: string;
@@ -56,6 +58,7 @@ const SecurePassword = ({
 
 	return (
 		<input
+			id={id}
 			value={mask.repeat(value.length)}
 			onKeyDown={(e) => {
 				// prevent arrow keys from moving the cursor
@@ -114,7 +117,7 @@ function Login(): JSX.Element {
 	const [saveToken, setSaveToken] = useState(false);
 	const [autoLogin, setAutoLogin] = useState(false);
 	const [clicked, setClicked] = useState(false);
-	const [token, setToken] = useState(
+	const [password, setPassword] = useState(
 		remote.safeStorage.isEncryptionAvailable()
 			? store.get("token")
 				? remote.safeStorage.decryptString(
@@ -123,8 +126,10 @@ function Login(): JSX.Element {
 				: ""
 			: "",
 	);
-	const [userInfo, setUserInfo] = useState<IUser>();
+	const [email, setEmail] = useState("");
 	const [checkedAutoLogin, setCheckedAutoLogin] = useState(false);
+	const [error, setError] = useState("");
+	const [captcha, setCaptcha] = useState(false);
 	const { state, setState } = useContext(Context);
 	useEffect(() => {
 		if (checkedAutoLogin) return;
@@ -148,57 +153,6 @@ function Login(): JSX.Element {
 	useEffect(() => {
 		store.set("autoLogin", autoLogin);
 	}, [autoLogin]);
-	useEffect(() => {
-		if (isTokenPotentiallyValid(token)) {
-			setUserInfo({
-				global_name: "Loading...",
-			} as any);
-			(async () => {
-				const req = await fetch(`https://discord.com/api/v9/users/@me`, {
-					headers: {
-						Authorization: token,
-					},
-				});
-				const res = (await req.json()) as IUser;
-				if (res.id) {
-					if (pfpRef.current) {
-						let url = res?.avatar
-							? `https://cdn.discordapp.com/avatars/${res.id}/${res.avatar}.png?size=256`
-							: pfp;
-						pfpRef.current.style.setProperty("--data-url", `url(${url})`);
-						const vibrant = Vibrant.from(url);
-						const color = await vibrant.getPalette();
-						pfpRef.current.style.setProperty(
-							"--background",
-							`url(${hexToPixelImage(color.DarkMuted?.hex || "#000")})`,
-						);
-					}
-				} else {
-					setUserInfo(undefined);
-					if (pfpRef.current) {
-						pfpRef.current.style.setProperty(
-							"--background",
-							`url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2P4DwQACfsD/Z8fLAAAAAAASUVORK5CYII=")`,
-						);
-						pfpRef.current.style.setProperty("--data-url", `url(${pfp})`);
-					}
-				}
-				setUserInfo(res);
-			})();
-		} else {
-			setUserInfo(undefined);
-			if (pfpRef.current) {
-				pfpRef.current.style.setProperty(
-					"--background",
-					`url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2P4DwQACfsD/Z8fLAAAAAAASUVORK5CYII=")`,
-				);
-				pfpRef.current.style.setProperty("--data-url", `url(${pfp})`);
-			}
-		}
-	}, [token]);
-	useEffect(() => {
-		console.log(remote.getCurrentWindow().getSize());
-	}, []);
 	return (
 		<div className={styles.window}>
 			<div className={styles.pfp} ref={pfpRef} />
@@ -226,50 +180,41 @@ function Login(): JSX.Element {
 						display: clicked ? "none" : undefined,
 					}}
 				>
-					<SecurePassword
-						placeholder="Enter your token"
-						value={token}
-						onChange={(e) => setToken(e)}
-					/>
-					{token !== "" ? (
-						userInfo?.id ? (
-							<div>
-								This token will sign you in as:{" "}
-								<b>{userInfo?.global_name || userInfo?.username}</b>
-								<div className={styles.footer}>
-									Your token will be securely encrypted on disk for future
-									logins.
-								</div>
-							</div>
-						) : userInfo?.username || userInfo?.global_name ? (
-							<div>Verifying...</div>
-						) : (
-							<div>
-								<b>Error:</b> The token you entered is invalid.
-								<div
-									style={{
-										marginTop: 8,
-									}}
-								>
-									<a
-										target="_blank"
-										href="https://www.androidauthority.com/get-discord-token-3149920/"
-									>
-										How do I get my Discord token?
-									</a>
-								</div>
-							</div>
-						)
-					) : (
-						<div>
-							<a
-								target="_blank"
-								href="https://www.androidauthority.com/get-discord-token-3149920/"
-							>
-								How do I get my Discord token?
-							</a>
-						</div>
+					{!captcha && (
+						<input
+							style={{
+								marginBottom: 2,
+							}}
+							type="email"
+							placeholder="Email"
+							onChange={(e) => setEmail(e.currentTarget.value)}
+						/>
 					)}
+					<SecurePassword
+						id="token"
+						placeholder={captcha ? "Token" : "Password"}
+						value={password}
+						onChange={(e) => setPassword(e)}
+					/>
+					{error && <div className={styles.error}>{error}</div>}
+					{/* (userInfo?.id ? (
+					<div>
+						This token will sign you in as:{" "}
+						<b>{userInfo?.global_name || userInfo?.username}</b>
+						<div className={styles.footer}>
+							Your token will be securely encrypted on disk for future logins.
+						</div>
+					</div>
+					) ) : (
+					<div>
+						<a
+							target="_blank"
+							href="https://www.androidauthority.com/get-discord-token-3149920/"
+						>
+							How do I get my Discord token?
+						</a>
+					</div>
+					) */}
 					<div className={styles.checkInput}>
 						<input
 							disabled={clicked || !remote.safeStorage.isEncryptionAvailable()}
@@ -293,7 +238,7 @@ function Login(): JSX.Element {
 								e.preventDefault();
 								e.stopPropagation();
 								store.delete("token");
-								setToken("");
+								setPassword("");
 								(
 									document.getElementById("save-token") as HTMLInputElement
 								).checked = false;
@@ -331,30 +276,90 @@ function Login(): JSX.Element {
 						display: clicked ? undefined : "none",
 					}}
 				/>
-				<button
-					onClick={() => {
-						if (clicked) {
-							closeGateway();
-							setState({} as any);
-							setClicked(false);
-						} else {
-							startGateway(token);
-							setState({ ...state, token });
-							setClicked(true);
-							const save = (
-								document.getElementById("save-token") as HTMLInputElement
-							)?.checked;
-							if (save) {
-								store.set("token", remote.safeStorage.encryptString(token));
+				{captcha ? (
+					<button
+						onClick={() => {
+							if (clicked) {
+								closeGateway();
+								setState({} as any);
+								setClicked(false);
 							} else {
-								store.delete("token");
+								const token = password;
+								startGateway(token);
+								setState({ ...state, token });
+								setClicked(true);
+								const save = (
+									document.getElementById("save-token") as HTMLInputElement
+								)?.checked;
+								if (save) {
+									store.set("token", remote.safeStorage.encryptString(token));
+								} else {
+									store.delete("token");
+								}
 							}
+						}}
+						disabled={!password}
+						className={styles.signIn}
+					>
+						Sign in
+					</button>
+				) : (
+					<button
+						disabled={
+							!email || !password || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
 						}
-					}}
-					className={styles.signIn}
-				>
-					{clicked ? "Cancel" : "Sign in"}
-				</button>
+						onClick={async () => {
+							if (clicked) {
+								closeGateway();
+								setState({} as any);
+								setClicked(false);
+							} else {
+								const res = await (
+									await fetch("https://discord.com/api/v9/auth/login", {
+										headers: {
+											"Content-Type": "application/json",
+										},
+										method: "POST",
+										body: JSON.stringify({
+											email,
+											password,
+										}),
+									})
+								).json();
+								console.log(res);
+								let token = res.token;
+								if (res.code === 50035) {
+									setError("Invalid email or password.");
+									return;
+								}
+								if (!token) {
+									setCaptcha(true);
+									(document.getElementById("token") as HTMLInputElement).value =
+										"";
+									setPassword("");
+									setError(
+										"Unfortunately, a captcha was presented to you; please login with your token instead.",
+									);
+									return;
+								}
+								startGateway(token);
+								setState({ ...state, token });
+								setClicked(true);
+								const save = (
+									document.getElementById("save-token") as HTMLInputElement
+								)?.checked;
+								if (save) {
+									store.set("token", remote.safeStorage.encryptString(token));
+								} else {
+									store.delete("token");
+								}
+							}
+						}}
+						className={styles.signIn}
+					>
+						{clicked ? "Cancel" : "Sign in"}
+					</button>
+				)}
 			</div>
 			<div className={styles.windowFooter}>
 				<a href="https://discord.gg/2KJhWjRV85" target="_blank">

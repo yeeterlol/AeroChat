@@ -1,6 +1,8 @@
 import {
 	APIChannel,
+	APIGuild,
 	APITextChannel,
+	APIUser,
 	PermissionFlagsBits,
 } from "discord-api-types/v9";
 import {
@@ -10,9 +12,16 @@ import {
 	State,
 	PermissionOverwrite,
 } from "../../../shared/types";
+import { getState } from "@renderer/util/ipc";
+const remote = window.require(
+	"@electron/remote",
+) as typeof import("@electron/remote");
+const path = window.require("path") as typeof import("path");
+const fs = window.require("fs") as typeof import("fs");
+const toIco = window.require("to-ico") as typeof import("to-ico");
 
 export class DiscordUtil {
-	static state: State;
+	static state: State = getState();
 	static updateState(state: State) {
 		this.state = state;
 	}
@@ -40,6 +49,48 @@ export class DiscordUtil {
 	}
 	static getDateById(id?: string | null): number | undefined {
 		return id ? Number(BigInt(id) >> 22n) + 1420070400000 : undefined;
+	}
+	static getUserById(id: string) {
+		return this.state?.ready?.users.find((u) => u.id === id);
+	}
+	static getGuildById(id: string) {
+		return this.state?.ready?.guilds.find((g) => g.id === id);
+	}
+	static async getAvatarPath(user: APIUser | APIGuild | undefined) {
+		if (!user) return;
+		const url =
+			("avatar" in user
+				? user.avatar
+					? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
+					: `https://cdn.discordapp.com/embed/avatars/${
+							Number(user.discriminator) % 5
+					  }.png`
+				: `https://cdn.discordapp.com/icons/${user.id}/${user.icon}.png`) +
+			"?size=16";
+		const temp = remote.app.getPath("temp");
+		const avatarPath = path.join(temp, `avatar-${user.id}.ico`);
+		const data = await fetch(url);
+		const canvas = new OffscreenCanvas(16, 16);
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return;
+		const img = await createImageBitmap(await data.blob());
+		ctx.drawImage(img, 0, 0, 16, 16);
+		ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+		ctx.lineWidth = 2;
+		ctx.beginPath();
+		ctx.moveTo(0, 0);
+		ctx.lineTo(16, 0);
+		ctx.lineTo(16, 16);
+		ctx.lineTo(0, 16);
+		ctx.lineTo(0, 0);
+		ctx.stroke();
+		ctx.clip();
+
+		const buffer = await toIco(
+			Buffer.from(await (await canvas.convertToBlob()).arrayBuffer()),
+		);
+		fs.writeFileSync(avatarPath, buffer);
+		return avatarPath;
 	}
 }
 

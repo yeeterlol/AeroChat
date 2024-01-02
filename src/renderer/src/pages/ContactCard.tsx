@@ -65,7 +65,7 @@ function ContactCard() {
 			(state?.ready?.merged_presences?.friends?.find(
 				(m) => m.user_id === user.id,
 			) as any) ||
-				state?.ready?.merged_presences.guilds
+				state?.ready?.merged_presences?.guilds
 					.flat()
 					.find((p) => p.user_id === user.id),
 		);

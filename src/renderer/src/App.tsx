@@ -28,6 +28,9 @@ import CommandLink from "./components/CommandLink";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
+const Store = window.require(
+	"electron-store",
+) as typeof import("electron-store");
 
 function Error() {
 	const win = remote.getCurrentWindow();
@@ -94,6 +97,7 @@ function Error() {
 
 function App(): JSX.Element {
 	// on ctrl + shift + i
+	const store = new Store();
 	useEffect(() => {
 		(async () => {
 			[
@@ -218,87 +222,45 @@ function App(): JSX.Element {
 			addDispatchListener(GatewayDispatchEvents.PresenceUpdate, (d) => {
 				const mutState = { ...reactState };
 				if (d.guild_id) {
-					if (!mutState.ready.merged_presences?.guilds) return;
+					if (!mutState.ready?.merged_presences?.guilds) return;
 					const guildIndex = mutState.ready.guilds.findIndex(
 						(g) => g.id === d.guild_id,
 					);
 					if (guildIndex === -1) return;
-					const guild = mutState.ready.merged_presences.guilds[guildIndex];
+					const guild = mutState.ready?.merged_presences?.guilds[guildIndex];
 					const memberIndex = guild.findIndex((m) => m.user_id === d.user.id);
 					if (memberIndex !== -1)
-						mutState.ready.merged_presences.guilds[guildIndex].splice(
+						mutState.ready?.merged_presences?.guilds[guildIndex].splice(
 							memberIndex,
 							1,
 						);
 					const { user, ...rest } = d;
-					mutState.ready.merged_presences.guilds[guildIndex].push({
+					mutState.ready?.merged_presences?.guilds[guildIndex].push({
 						...(rest as any),
 						user_id: d.user.id,
 					});
 				}
 				if (!mutState?.ready?.merged_presences?.friends) return;
-				let friend = mutState.ready.merged_presences.friends.find(
+				let friend = mutState.ready?.merged_presences?.friends.find(
 					(f) => (f.user?.id || f.user_id) === d.user.id,
 				);
 				if (!friend) {
-					mutState.ready.merged_presences?.friends.push(d as any);
+					mutState.ready?.merged_presences?.friends.push(d as any);
 					setReactState(mutState);
 					return;
 				}
-				mutState.ready.merged_presences.friends =
-					mutState.ready.merged_presences.friends.filter(
-						(f) => (f.user_id || f.user?.id) !== d.user.id,
-					);
+				if (mutState.ready?.merged_presences?.friends)
+					mutState.ready.merged_presences.friends =
+						mutState.ready?.merged_presences?.friends.filter(
+							(f) => (f.user_id || f.user?.id) !== d.user.id,
+						);
 				const finalFriend = {
 					status: d.status || friend.status,
 					activities: d.activities || friend.activities,
 					client_status: d.client_status || friend.client_status,
 					user_id: d.user.id,
 				};
-				if (
-					finalFriend.status !== PresenceUpdateStatus.Offline &&
-					friend?.status === Status.Offline
-				) {
-					const a = reactState?.ready?.relationships?.map((r) =>
-						reactState.ready.users.find((u) => u.id === r.id),
-					);
-					const user = a?.find((u) => u?.id === d.user.id);
-					const primary = remote.screen.getPrimaryDisplay();
-					// use work area size to get bottom right
-					const { width, height, monX, monY } = {
-						...primary.workAreaSize,
-						monX: primary.bounds.x,
-						monY: primary.bounds.y,
-					};
-					const { x, y } = {
-						x: width - 200 - 28 + monX,
-						y: height - 115 - 28 + monY,
-					};
-					createWindow({
-						customProps: {
-							url: `/notification?title=${encodeURIComponent(
-								`${user?.global_name || user?.username} has just signed in.`,
-							)}&img=${encodeURIComponent(
-								user?.avatar
-									? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
-									: defaultPfp,
-							)}`,
-							alwaysOnTopValue: "status",
-						},
-						minWidth: 0,
-						minHeight: 0,
-						x,
-						y,
-						width: 200,
-						height: 115,
-						frame: false,
-						resizable: false,
-						transparent: true,
-						focusable: false,
-						backgroundColor: undefined,
-					});
-				}
-				mutState.ready.merged_presences.friends.push(finalFriend as any);
+				mutState.ready?.merged_presences?.friends.push(finalFriend as any);
 				if (mutState === reactState) return;
 				setReactState(mutState);
 			}),

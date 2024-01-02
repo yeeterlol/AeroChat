@@ -11,6 +11,8 @@ import PfpBorder from "@renderer/components/PfpBorder";
 import {
 	APIChannel,
 	APIDMChannel,
+	APIGuild,
+	APITextChannel,
 	APIUser,
 	ChannelType,
 	GatewayDispatchEvents,
@@ -64,6 +66,9 @@ const Store = remote.require(
 import receiveAudio from "@renderer/assets/audio/type.mp3";
 import semver from "semver";
 import sanitizeHtml from "sanitize-html";
+const { ipcRenderer } = window.require("electron");
+
+const store = new Store();
 
 function calcWidth(text: string, offset: number = 1): number {
 	const body = document.querySelector("body");
@@ -113,7 +118,6 @@ function Notification({
 }: {
 	notifications: HomeNotification[];
 }) {
-	const store = new Store();
 	const [icons, setIcons] = useState<{ name: string; url: string }[]>([]);
 	const [seen, setSeen] = useState<number[]>(
 		Object.values(store.get("seenNotifications") || []),
@@ -320,6 +324,29 @@ function Home() {
 		);
 	}
 	async function doubleClick(data: APIUser | APIChannel) {
+		if ("avatar" in data) {
+			let frequentUsers: { [key: string]: number } =
+				store.get("frequentUsers") || ({} as any);
+			frequentUsers = {
+				...frequentUsers,
+				[data.id]: (frequentUsers[data.id] || 0) + 1,
+			};
+			store.set("frequentUsers", frequentUsers);
+		} else {
+			const guild = state?.ready?.guilds?.find((g) =>
+				g.channels.map((c) => c.id).includes(data.id),
+			);
+			if (!guild) return console.log(guild);
+			let frequentGuilds: { [key: string]: number } =
+				store.get("frequentGuilds") || ({} as any);
+			frequentGuilds = {
+				...frequentGuilds,
+				[guild.id]: (frequentGuilds[guild.id] || 0) + 1,
+			};
+			console.log(frequentGuilds);
+			store.set("frequentGuilds", frequentGuilds);
+		}
+
 		function openMessageWindow(id: string) {
 			createWindow({
 				customProps: {
@@ -362,6 +389,34 @@ function Home() {
 	}
 	const [paperSrc] = useState("");
 	useEffect(() => {
+		ipcRenderer.on("open-guild", (e, id: string) => {
+			const guild = DiscordUtil.getGuildById(id);
+			if (!guild) return;
+			const memberReady = DiscordUtil.getMembership(guild);
+			if (!memberReady) throw new Error("member not found??");
+			const member = new Member(memberReady);
+			const channels = guild.channels
+				.filter((c) => c.type === ChannelType.GuildText)
+				.sort((a, b) => a.position - b.position)
+				.map((c) => new Channel(c as any));
+			const channel = channels.find((c) =>
+				hasPermission(
+					computePermissions(member, c),
+					PermissionFlagsBits.ViewChannel,
+				),
+			);
+			console.log(channel);
+			if (!channel) return;
+			doubleClick(channel.properties);
+		});
+		ipcRenderer.on("open-dm", async (e, userId: string) => {
+			doubleClick(state?.ready?.users?.find((u) => u.id === userId)!);
+		});
+		return () => {
+			ipcRenderer.removeAllListeners("open-guild");
+		};
+	}, []);
+	useEffect(() => {
 		async function getNotifications() {
 			const res = await fetch(
 				`https://gist.github.com/not-nullptr/26108f2ac8fcb8a24965a148fcf17363/raw?bust=${Date.now()}`,
@@ -403,8 +458,77 @@ function Home() {
 		// grab notifications every 1 minute
 		const interval = setInterval(getNotifications, 1000 * 60);
 		getNotifications();
+		const fn = async () => {
+			const jumpList: Electron.JumpListCategory[] = [];
+			let listOfDmedUsers: { [key: string]: number } =
+				store.get("frequentUsers") || ({} as any);
+			let listOfGuilds: { [key: string]: number } =
+				store.get("frequentGuilds") || ({} as any);
+			if (Object.keys(listOfDmedUsers).length) {
+				listOfDmedUsers = Object.fromEntries(
+					Object.entries(listOfDmedUsers)
+						.sort(([, a], [, b]) => b - a)
+						.slice(0, 5),
+				);
+				console.log(JSON.parse(JSON.stringify(listOfDmedUsers)));
+				jumpList.push({
+					name: "Frequent Users",
+					items: await Promise.all(
+						Object.entries(listOfDmedUsers).map(
+							async ([id, count]): Promise<Electron.JumpListItem> => {
+								const user = DiscordUtil.getUserById(id);
+								const avatar = await DiscordUtil.getAvatarPath(user);
+								return {
+									type: "task",
+									args: "",
+									description: `Opens a DM with ${DiscordUtil.getUserById(id)
+										?.username}`,
+
+									program: `aerochat://dm/${id}`,
+									iconPath: avatar || "",
+									iconIndex: 0,
+									title: user?.global_name || user?.username || "Unknown",
+								};
+							},
+						),
+					),
+				});
+			}
+			if (Object.keys(listOfGuilds).length) {
+				listOfGuilds = Object.fromEntries(
+					Object.entries(listOfGuilds)
+						.sort(([, a], [, b]) => b - a)
+						.slice(0, 5),
+				);
+				jumpList.push({
+					name: "Frequent Guilds",
+					items: await Promise.all(
+						Object.entries(listOfGuilds).map(
+							async ([id, count]): Promise<Electron.JumpListItem> => {
+								const guild = DiscordUtil.getGuildById(id);
+								const icon = await DiscordUtil.getAvatarPath(
+									guild?.properties as any,
+								);
+								return {
+									type: "task",
+									description: `Opens ${guild?.properties?.name}`,
+									program: `aerochat://guild/${id}`,
+									iconPath: icon || "",
+									iconIndex: 0,
+									title: guild?.properties?.name || "Unknown",
+								};
+							},
+						),
+					),
+				});
+			}
+			remote.app.setJumpList(jumpList);
+		};
+		fn();
+		const frequent = setInterval(fn, 1000);
 		return () => {
 			clearInterval(interval);
+			clearInterval(frequent);
 		};
 	}, []);
 	function setStatus(status: PresenceUpdateStatus) {
@@ -844,7 +968,6 @@ function Home() {
 												.hostname()})`,
 											type: ContextMenuItemType.Item,
 											click() {
-												const store = new Store();
 												closeGateway();
 												store.set("token", null);
 												store.set("autoLogin", null);

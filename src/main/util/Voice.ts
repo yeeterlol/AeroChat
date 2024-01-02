@@ -9,6 +9,8 @@ import Microphone from "node-microphone";
 import { is } from "@electron-toolkit/utils";
 import { join } from "path";
 import { copyFileSync } from "fs";
+import { app } from "electron";
+import { WriteStream } from "tty";
 
 class RTPTimeStamp {
 	private clockFrequency: number;
@@ -43,14 +45,18 @@ if (!is.dev) {
 	);
 }
 
-const stream = new Microphone({
-	rate: (48000 / 2) as any, // due to a bug, rate is multiplied by 4. this outputs 192khz which we need to fix later
-	bitwidth: 16,
-	channels: 1,
-	binary: is.dev
-		? "resources/bin/sox.exe"
-		: join(__dirname, "..", "..", "..", "sox.exe"),
-}).startRecording();
+let stream: WriteStream | null;
+
+if (app.hasSingleInstanceLock()) {
+	stream = new Microphone({
+		rate: (48000 / 2) as any, // due to a bug, rate is multiplied by 4. this outputs 192khz which we need to fix later
+		bitwidth: 16,
+		channels: 1,
+		binary: is.dev
+			? "resources/bin/sox.exe"
+			: join(__dirname, "..", "..", "..", "sox.exe"),
+	}).startRecording();
+}
 
 function log(prefix: string, ...message: any[]) {
 	const bracket = chalk.gray("[") + prefix + chalk.gray("]");
@@ -306,7 +312,7 @@ export class VoiceConnection {
 
 					return stereoDataBuffer;
 				}
-				stream.on("data", async (rawData: Buffer) => {
+				stream?.on("data", async (rawData: Buffer) => {
 					if (!this.voiceGateway || !this.udpSocket) return;
 					function calculateAverageVolume(pcmData: Buffer) {
 						let sum = 0;

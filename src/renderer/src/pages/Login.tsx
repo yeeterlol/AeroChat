@@ -153,6 +153,17 @@ function Login(): JSX.Element {
 	useEffect(() => {
 		store.set("autoLogin", autoLogin);
 	}, [autoLogin]);
+	useEffect(() => {
+		const timeout = setTimeout(() => {
+			setClicked(false);
+			closeGateway();
+			setState({} as any);
+			setError(
+				"We were unable to sign you in. Please make sure you token/email and password are correct.",
+			);
+		}, 10000);
+		return () => clearTimeout(timeout);
+	}, [clicked]);
 	return (
 		<div className={styles.window}>
 			<div className={styles.pfp} ref={pfpRef} />
@@ -194,7 +205,16 @@ function Login(): JSX.Element {
 						id="token"
 						placeholder={captcha ? "Token" : "Password"}
 						value={password}
-						onChange={(e) => setPassword(e)}
+						onChange={(e) => {
+							setPassword(e);
+							if (captcha) {
+								if (isTokenPotentiallyValid(e)) {
+									setError("");
+								} else {
+									setError("Invalid token.");
+								}
+							}
+						}}
 					/>
 					{error && <div className={styles.error}>{error}</div>}
 					{/* (userInfo?.id ? (
@@ -298,7 +318,7 @@ function Login(): JSX.Element {
 								}
 							}
 						}}
-						disabled={!password}
+						disabled={!password || !isTokenPotentiallyValid(password)}
 						className={styles.signIn}
 					>
 						Sign in

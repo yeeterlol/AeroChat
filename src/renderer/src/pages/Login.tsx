@@ -126,10 +126,13 @@ function Login(): JSX.Element {
 				: ""
 			: "",
 	);
+	const [mfaCode, setMfaCode] = useState("");
 	const [email, setEmail] = useState("");
 	const [checkedAutoLogin, setCheckedAutoLogin] = useState(false);
 	const [error, setError] = useState("");
 	const [captcha, setCaptcha] = useState(false);
+	const [ticket, setTicket] = useState("");
+	const [mfa, setMfa] = useState(false);
 	const { state, setState } = useContext(Context);
 	useEffect(() => {
 		if (checkedAutoLogin) return;
@@ -155,12 +158,14 @@ function Login(): JSX.Element {
 	}, [autoLogin]);
 	useEffect(() => {
 		const timeout = setTimeout(() => {
+			if (!clicked) return;
 			setClicked(false);
 			closeGateway();
 			setState({} as any);
 			setError(
 				"We were unable to sign you in. Please make sure you token/email and password are correct.",
 			);
+			setPassword("");
 		}, 10000);
 		return () => clearTimeout(timeout);
 	}, [clicked]);
@@ -216,6 +221,16 @@ function Login(): JSX.Element {
 							}
 						}}
 					/>
+					{mfa && (
+						<input
+							style={{
+								marginTop: 2,
+							}}
+							type="number"
+							placeholder="MFA Code"
+							onChange={(e) => setMfaCode(e.currentTarget.value)}
+						/>
+					)}
 					{error && <div className={styles.error}>{error}</div>}
 					{/* (userInfo?.id ? (
 					<div>
@@ -334,21 +349,44 @@ function Login(): JSX.Element {
 								setState({} as any);
 								setClicked(false);
 							} else {
-								const res = await (
-									await fetch("https://discord.com/api/v9/auth/login", {
-										headers: {
-											"Content-Type": "application/json",
-										},
-										method: "POST",
-										body: JSON.stringify({
-											email,
-											password,
-										}),
-									})
-								).json();
-								console.log(res);
-								let token = res.token;
-								if (res.code === 50035) {
+								let res: any;
+								let token: string = "";
+								if (mfa) {
+									res = await (
+										await fetch("https://discord.com/api/v9/auth/mfa/totp", {
+											headers: {
+												"Content-Type": "application/json",
+											},
+											method: "POST",
+											body: JSON.stringify({
+												code: mfaCode,
+												ticket,
+											}),
+										})
+									).json();
+									token = res.token;
+								} else {
+									res = await (
+										await fetch("https://discord.com/api/v9/auth/login", {
+											headers: {
+												"Content-Type": "application/json",
+											},
+											method: "POST",
+											body: JSON.stringify({
+												email,
+												password,
+											}),
+										})
+									).json();
+								}
+								if (res?.mfa) {
+									setMfa(true);
+									setTicket(res.ticket);
+									setCaptcha(false);
+									setError("");
+									return;
+								}
+								if (res?.code === 50035) {
 									setError("Invalid email or password.");
 									return;
 								}

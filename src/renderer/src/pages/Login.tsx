@@ -126,6 +126,7 @@ function Login(): JSX.Element {
 				: ""
 			: "",
 	);
+	const [confirmed, setConfirmed] = useState(store.get("confirmed") || false);
 	const [mfaCode, setMfaCode] = useState("");
 	const [email, setEmail] = useState("");
 	const [checkedAutoLogin, setCheckedAutoLogin] = useState(false);
@@ -152,6 +153,9 @@ function Login(): JSX.Element {
 			setClicked(true);
 		}
 	}, [checkedAutoLogin, state]);
+	useEffect(() => {
+		store.set("confirmed", true);
+	}, []);
 	const pfpRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
 		store.set("autoLogin", autoLogin);
@@ -182,7 +186,7 @@ function Login(): JSX.Element {
 						display: clicked ? "none" : undefined,
 					}}
 				>
-					Sign in with your Discord token. Don't have an account?{" "}
+					Sign in with your Discord account. Don't have an account?{" "}
 					<a href="https://discord.com/login" target="_blank">
 						Create one.
 					</a>
@@ -190,6 +194,13 @@ function Login(): JSX.Element {
 				{/* <div className={styles.hero}>
 					Sign in with your Windows Live ID. Don't have one? Sign up.
 				</div> */}
+				{!confirmed && (
+					<div className={styles.warning}>
+						By using AeroChat, you accept a small (but non-zero) risk that your
+						account may be banned. With this in mind, AeroChat has not had any
+						users banned from Discord.
+					</div>
+				)}
 				<div
 					className={styles.form}
 					style={{

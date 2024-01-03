@@ -181,3 +181,8 @@
 	font-size: 10px;
 	color: rgb(170, 52, 52);
 }
+
+.warning {
+	margin-top: 8px;
+	color: rgb(192, 86, 16);
+}

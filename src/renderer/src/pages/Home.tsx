@@ -444,7 +444,6 @@ function Home() {
 			);
 			const canRecieve = state.ready.sessions.every((val) => val.status != "dnd");
 			if (newNotification && canRecieve) {
-				console.log(state)
 				const trayIcon: Electron.CrossProcessExports.Tray =
 					remote.getGlobal("trayIcon");
 				trayIcon.displayBalloon({

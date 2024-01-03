@@ -194,7 +194,7 @@ function Login(): JSX.Element {
 				{/* <div className={styles.hero}>
 					Sign in with your Windows Live ID. Don't have one? Sign up.
 				</div> */}
-				{!confirmed && (
+				{!confirmed && !clicked && (
 					<div className={styles.warning}>
 						By using AeroChat, you accept a small (but non-zero) risk that your
 						account may be banned. With this in mind, AeroChat has not had any

@@ -11,23 +11,29 @@
 	background: linear-gradient(
 		180deg,
 		rgba(228, 241, 247, 1) 0%,
-		rgba(255, 255, 255, 1) 25%,
-		rgba(255, 255, 255, 1) 75%,
-		#c2d8ef 100%
+		rgba(255, 255, 255, 1) 50%,
+		#c4e3f0 100%
 	);
 	width: 100vw;
 	height: 100vh;
 }
 
 .background {
+	position: relative;
 	height: 82px;
 	width: 100%;
+	box-shadow: inset 0px 22px 5px -20px rgba(0, 0, 0, 0.438);
+}
+
+.bgImage {
 	background: url(@renderer/assets/login/bg-top.png), #3dafe4;
 	background-position: top left;
 	background-size:
 		100% 100%,
 		100% 100%;
-	box-shadow: inset 0px 22px 5px -20px rgba(0, 0, 0, 0.438);
+	position: absolute;
+	width: 100%;
+	height: 100%;
 }
 
 .paper {
@@ -67,12 +73,20 @@
 .topInfo {
 	display: flex;
 	align-items: center;
+	position: relative;
 }
 
 .userInfo {
 	margin-top: -12px;
 	margin-left: 4px;
 	width: calc(100% - 150px);
+}
+
+.mail {
+	padding: 0 !important;
+	position: absolute;
+	bottom: 2px;
+	right: 2px;
 }
 
 .usernameContainer {
@@ -127,20 +141,14 @@
 		0px 0px 5px rgb(255, 255, 255);
 }
 
+.usernameStatus {
+	margin-left: 8px;
+}
+
 .message {
 	color: #333333;
-	text-shadow:
-		0px 0px 3px rgb(255, 255, 255),
-		0px 0px 4px rgb(255, 255, 255),
-		0px 0px 5px rgb(255, 255, 255);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 	margin-top: 2px;
 	transform: translateX(-2px);
-	background: none;
-	border: none;
-	outline: none;
 	padding-left: 2px;
 	max-width: 100%;
 	width: fit-content;
@@ -148,8 +156,21 @@
 	cursor: default;
 }
 
+.message > input {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	background: none;
+	border: none;
+	outline: none;
+	text-shadow:
+		0px 0px 3px rgb(255, 255, 255),
+		0px 0px 4px rgb(255, 255, 255),
+		0px 0px 5px rgb(255, 255, 255);
+}
+
 .message:hover,
-.message:focus {
+.message:has(input:focus) {
 	background: linear-gradient(
 		180deg,
 		rgba(236, 247, 255, 0.568) 0%,
@@ -170,7 +191,7 @@
 	color: #444;
 }
 
-.message::selection {
+.message > input::selection {
 	text-shadow: none;
 }
 
@@ -313,6 +334,15 @@
 	padding: 0px 12px;
 	box-sizing: border-box;
 	width: 100%;
+	display: flex;
+	align-items: center;
+}
+
+.searchButtons {
+	margin-left: 6px;
+	margin-right: -6px;
+	display: flex;
+	gap: 4px;
 }
 
 .search {
@@ -644,4 +674,67 @@
 .contentContainer > span {
 	display: table-cell;
 	vertical-align: middle;
+}
+
+.imageButton {
+	width: fit-content;
+	height: fit-content;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 2px;
+	padding: 4px;
+}
+
+.imageButton * {
+	-webkit-user-drag: none;
+}
+
+.imageButton:active,
+.imageButton:hover {
+	box-shadow: inset 0px 0px 0px 1px rgba(255, 255, 255, 0.75);
+	outline: solid thin rgba(0, 0, 0, 0.5);
+	background: linear-gradient(
+		to bottom,
+		rgba(255, 255, 255, 0.5),
+		rgba(203, 203, 203, 0.5),
+		rgba(255, 255, 255, 0.5)
+	);
+}
+
+.imageButton:hover:active {
+	box-shadow: inset 0px 3px 8px 0px rgba(0, 0, 0, 0.5);
+	outline: solid thin #4e5356;
+	background: none;
+}
+
+.bottom {
+	margin-bottom: -88px;
+	display: flex;
+	flex-direction: column;
+}
+
+.newsWidget {
+	box-sizing: border-box;
+	padding: 8px 16px;
+	min-height: 84px;
+}
+
+.newsWidget > h1 {
+	color: #355a88;
+	margin: 0;
+}
+
+.newsWidget > p {
+	margin-top: 4px;
+}
+
+.aboveAd {
+	filter: saturate(0.8) brightness(1.1);
+	margin-bottom: 6px;
+	box-sizing: border-box;
+	padding: 8px 12px;
+	margin-top: -8px;
+	display: flex;
+	gap: 8px;
 }

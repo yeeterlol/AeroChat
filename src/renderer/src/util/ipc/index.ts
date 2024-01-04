@@ -4,6 +4,7 @@ import {
 	GatewayDispatchEvents,
 	GatewayOpcodes,
 	GatewayReceivePayload,
+	PresenceUpdateStatus,
 } from "discord-api-types/v9";
 import {
 	DispatchData,
@@ -125,4 +126,21 @@ export function contactCard(user: APIUser, x?: number, y?: number) {
 
 export function joinVoiceChannel(guildId: string, channelId: string) {
 	ipcRenderer.send("join-voice", guildId, channelId);
+}
+
+// behold, the most lenient typing you've ever seen
+export function getUserStatus(presence?: PresenceUpdateStatus | null) {
+	switch (presence) {
+		case PresenceUpdateStatus.Online:
+			return "Available";
+		case PresenceUpdateStatus.Idle:
+			return "Away";
+		case PresenceUpdateStatus.DoNotDisturb:
+			return "Busy";
+		case PresenceUpdateStatus.Offline:
+			return "Offline";
+		case PresenceUpdateStatus.Invisible:
+			return "Appear offline";
+	}
+	return "Unknown";
 }

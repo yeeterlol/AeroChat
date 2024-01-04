@@ -223,48 +223,6 @@ export default function PfpBorder({
 		firstRender,
 	]);
 	useEffect(() => {
-		if (guild) return;
-		// preload images
-		const cache = document.createElement("CACHE");
-		cache.style.position = "absolute";
-		cache.style.zIndex = "-1000";
-		cache.style.opacity = "0";
-		document.body.appendChild(cache);
-		function preloadImage(url: string) {
-			const img = new Image();
-			img.src = url;
-			img.style.position = "absolute";
-			cache.appendChild(img);
-		}
-		["active", "dnd", "idle"].forEach(async (state) => {
-			preloadImage(
-				// await importDefault(`../assets/borders/${variant}/${state}-static.png`),
-				(await import(`../assets/borders/${variant}/${state}-static.png`))
-					.default,
-			);
-			preloadImage(
-				// await importDefault(
-				// 	`../assets/borders/${variant}/${state}-animated-from.png`,
-				// ),
-				(
-					await import(
-						`../assets/borders/${variant}/${state}-animated-from.png`
-					)
-				).default,
-			);
-			preloadImage(
-				// await importDefault(
-				// 	`../assets/borders/${variant}/${state}-animated-to.png`,
-				// ),
-				(await import(`../assets/borders/${variant}/${state}-animated-to.png`))
-					.default,
-			);
-		});
-		return () => {
-			document.body.removeChild(cache);
-		};
-	}, [variant]);
-	useEffect(() => {
 		if (guild) {
 			import(`@renderer/assets/borders/${variant}/invisible-static.png`).then(
 				(m) => {

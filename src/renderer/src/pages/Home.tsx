@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import styles from "@renderer/css/pages/Home.module.css";
 import {
 	Context,
@@ -45,6 +45,7 @@ import {
 	contactCard,
 	contextMenu,
 	createWindow,
+	getUserStatus,
 	removeGatewayListener,
 } from "@renderer/util/ipc";
 const remote = window.require(
@@ -67,8 +68,90 @@ import receiveAudio from "@renderer/assets/audio/type.mp3";
 import semver from "semver";
 import sanitizeHtml from "sanitize-html";
 const { ipcRenderer } = window.require("electron");
-
 const store = new Store();
+import dropdown from "@renderer/assets/ui-elements/dropdown/point_down.png";
+
+interface News {
+	date: number;
+	body: string;
+}
+
+function NewsWidget() {
+	const [news, setNews] = useState<News[]>([]);
+	const [index, setIndex] = useState(0);
+	const pRef = useRef<HTMLParagraphElement>(null);
+	useEffect(() => {
+		const fetchNews = async () => {
+			const res = await fetch(
+				`https://gist.github.com/not-nullptr/62b1fdeb4533c905b8145bc076af108e/raw?bust=${Date.now()}`,
+			);
+			const json = await res.json();
+			setIndex((i) => {
+				let newIndex = (i + 1) % json.length;
+				setNews((news) => {
+					if (json[newIndex].body !== news[i]?.body) {
+						if (pRef.current) {
+							pRef.current.animate(
+								[
+									{
+										opacity: 0,
+									},
+									{
+										opacity: 0.6,
+									},
+								],
+								{
+									duration: 250,
+									fill: "forwards",
+									easing: "steps(4, end)",
+								},
+							);
+						}
+					}
+					return json;
+				});
+				return newIndex;
+			});
+		};
+		fetchNews();
+		const interval = setInterval(fetchNews, 1000 * 15);
+		return () => {
+			clearInterval(interval);
+		};
+	}, []);
+	return (
+		<div className={styles.newsWidget}>
+			<h1>What's new</h1>
+			<p ref={pRef} dangerouslySetInnerHTML={{ __html: news[index]?.body }} />
+		</div>
+	);
+}
+
+function ImageButton({
+	onClick,
+	className,
+	type,
+}: {
+	onClick?: () => void;
+	className?: string;
+	type: string;
+}) {
+	const [img, setImg] = useState("");
+	useEffect(() => {
+		(async () => {
+			const img = await import(`@renderer/assets/home/icons/${type}.png`);
+			setImg(img.default);
+		})();
+	}, [type]);
+	return (
+		<div
+			onClick={onClick}
+			className={`${styles.imageButton} ${className || ""}`}
+		>
+			<img src={img} />
+		</div>
+	);
+}
 
 function calcWidth(text: string, offset: number = 1): number {
 	const body = document.querySelector("body");
@@ -280,7 +363,7 @@ interface HomeNotification {
 
 function Home() {
 	const [input, setInput] = useState<HTMLInputElement | null>(null);
-	const [ad, setAd] = useState<HTMLDivElement | null>(null);
+	const adRef = useRef<HTMLDivElement>(null);
 	const { state, setState } = useContext(Context);
 	const [notifications, setNotifications] = useState<HomeNotification[]>([]);
 	function contactContextMenu(
@@ -569,7 +652,7 @@ function Home() {
 		};
 	});
 	useEffect(() => {
-		if (!ad) return;
+		if (!adRef.current) return;
 		let interval: NodeJS.Timeout;
 		(async () => {
 			const ads = (
@@ -581,11 +664,11 @@ function Home() {
 					)
 				).map((v) => (v as any).default) as string[]
 			).map((v) => v.replace("/@fs", ""));
-			ad!.style.backgroundImage = `url(${
+			adRef.current!.style.backgroundImage = `url(${
 				ads[generateRandBetween(0, ads.length - 1, lastAd)]
 			}`;
 			interval = setInterval(() => {
-				ad.style.backgroundImage = `url(${
+				adRef.current!.style.backgroundImage = `url(${
 					ads[generateRandBetween(0, ads.length - 1, lastAd)]
 				})`;
 			}, 20000);
@@ -593,7 +676,7 @@ function Home() {
 		return () => {
 			if (interval) clearInterval(interval);
 		};
-	}, [ad]);
+	}, []);
 	// useEffect(() => {
 	// 	if (!editingStatus) return;
 	// 	inputRef.current?.focus();
@@ -904,6 +987,21 @@ function Home() {
 					// }, 450);
 				}}
 			>
+				<div
+					className={styles.bgImage}
+					// style={{
+					// 	backgroundImage: state?.ready?.user?.banner
+					// 		? `url(https://cdn.discordapp.com/banners/${state.ready.user.id}/${state.ready.user.banner}.png?size=480)`
+					// 		: undefined,
+					// 	opacity: state?.ready?.user?.banner ? "0.75" : undefined,
+					// 	WebkitMask: state?.ready?.user?.banner
+					// 		? "linear-gradient(to bottom, #fff, #000)"
+					// 		: undefined,
+					// 	mask: state?.ready?.user?.banner
+					// 		? "linear-gradient(to bottom, #fff, #000)"
+					// 		: undefined,
+					// }}
+				/>
 				<img src={paperSrc} className={styles.paper} />
 				<div className={styles.topInfo}>
 					<PfpBorder
@@ -1023,73 +1121,82 @@ function Home() {
 						>
 							<span className={styles.username}>
 								{state.ready.user.global_name || state.ready.user.username}
+								<span className={styles.usernameStatus}>
+									({getUserStatus(userStatus?.status as any)})
+								</span>
 							</span>
-							{/* <img src={dropdown} /> */}
+							<img src={dropdown} />
 						</div>
-						<input
-							ref={setInput}
+						<div
 							className={styles.message}
-							defaultValue={status?.state}
-							contentEditable={true}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
-									e.currentTarget.blur();
-								}
-							}}
-							onChange={(e) => {
-								e.currentTarget.style.width = `${calcWidth(
-									e.currentTarget.value,
-								)}px`;
-							}}
-							onFocus={(e) => {
-								e.currentTarget.placeholder = "";
-								e.currentTarget.style.width = `${calcWidth(
-									e.currentTarget.value || e.currentTarget.placeholder,
-								)}px`;
-							}}
-							// defaultValue={liveState.statusMessage || ""}
-							onBlur={(e) => {
-								const statusMessage = e.currentTarget.value;
-								localStorage.setItem("statusMessage", statusMessage);
-								e.currentTarget.placeholder = "Share a quick message";
-								e.currentTarget.style.width = `${calcWidth(
-									e.currentTarget.value || e.currentTarget.placeholder,
-								)}px`;
-								sendOp(GatewayOpcodes.PresenceUpdate, {
-									status: PresenceUpdateStatus.Online,
-									since: 0,
-									activities: [
-										{
-											name: "Custom Status",
-											type: 4,
-											state: statusMessage,
-											emoji: null,
-										} as any,
-									],
-									afk: false,
-								});
-							}}
-							onMouseDown={(e) => {
-								if (document.activeElement === e.currentTarget) return;
-								e.preventDefault();
-							}}
-							onMouseUp={(e) => {
-								const target = e.currentTarget;
-								if (document.activeElement === target) return;
+							style={{ display: "flex", alignItems: "center" }}
+						>
+							<input
+								ref={setInput}
+								defaultValue={status?.state}
+								contentEditable={true}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.currentTarget.blur();
+									}
+								}}
+								onChange={(e) => {
+									e.currentTarget.style.width = `${calcWidth(
+										e.currentTarget.value,
+									)}px`;
+								}}
+								onFocus={(e) => {
+									e.currentTarget.placeholder = "";
+									e.currentTarget.style.width = `${calcWidth(
+										e.currentTarget.value || e.currentTarget.placeholder,
+									)}px`;
+								}}
+								// defaultValue={liveState.statusMessage || ""}
+								onBlur={(e) => {
+									const statusMessage = e.currentTarget.value;
+									localStorage.setItem("statusMessage", statusMessage);
+									e.currentTarget.placeholder = "Share a quick message";
+									e.currentTarget.style.width = `${calcWidth(
+										e.currentTarget.value || e.currentTarget.placeholder,
+									)}px`;
+									sendOp(GatewayOpcodes.PresenceUpdate, {
+										status: PresenceUpdateStatus.Online,
+										since: 0,
+										activities: [
+											{
+												name: "Custom Status",
+												type: 4,
+												state: statusMessage,
+												emoji: null,
+											} as any,
+										],
+										afk: false,
+									});
+								}}
+								onMouseDown={(e) => {
+									if (document.activeElement === e.currentTarget) return;
+									e.preventDefault();
+								}}
+								onMouseUp={(e) => {
+									const target = e.currentTarget;
+									if (document.activeElement === target) return;
 
-								e.preventDefault();
-								target.focus();
+									e.preventDefault();
+									target.focus();
 
-								const mouseX = e.clientX;
-								const text = target.value;
-								const caretPos = calculateCaretPosition(target, mouseX, text);
+									const mouseX = e.clientX;
+									const text = target.value;
+									const caretPos = calculateCaretPosition(target, mouseX, text);
 
-								if (target.setSelectionRange) {
-									target.setSelectionRange(caretPos, caretPos);
-								}
-							}}
-						/>
+									if (target.setSelectionRange) {
+										target.setSelectionRange(caretPos, caretPos);
+									}
+								}}
+							/>
+							<img style={{ marginRight: 4 }} src={dropdown} />
+						</div>
 					</div>
+					<ImageButton className={styles.mail} type="mail" />
 				</div>
 			</div>
 			<div className={styles.divider} />
@@ -1102,6 +1209,14 @@ function Home() {
 							className={styles.search}
 							placeholder="Search contacts or the Web..."
 						/>
+						<div className={styles.searchButtons}>
+							<ImageButton type="add-friend" />
+							<ImageButton type="windows" />
+							<ImageButton
+								type="help"
+								onClick={() => window.open("https://aerochat.live", "_blank")}
+							/>
+						</div>
 					</div>
 				</div>
 				<Notification notifications={notifications} />
@@ -1307,9 +1422,25 @@ function Home() {
 						</Dropdown>
 					</div>
 				</div>
+				<div className={styles.bottom}>
+					<div className={styles.divider} />
+					<NewsWidget />
+					<div className={styles.dividerAlt} />
+					<div className={styles.aboveAd}>
+						<ImageButton
+							onClick={() => window.open("https://www.msn.com", "_blank")}
+							type="msn"
+						/>
+						<ImageButton
+							onClick={() =>
+								window.open("https://discord.gg/nP9SxVQGnu", "_blank")
+							}
+							type="discord"
+						/>
+					</div>
+					<div ref={adRef} className={styles.ad} />
+				</div>
 			</div>
-			<div className={styles.dividerAlt} />
-			<div ref={setAd} className={styles.ad} />
 		</div>
 	);
 }

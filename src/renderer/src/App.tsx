@@ -223,7 +223,7 @@ function App(): JSX.Element {
 				const mutState = { ...reactState };
 				if (d.guild_id) {
 					if (!mutState.ready?.merged_presences?.guilds) return;
-					const guildIndex = mutState.ready.guilds.findIndex(
+					const guildIndex = mutState.ready?.guilds.findIndex(
 						(g) => g.id === d.guild_id,
 					);
 					if (guildIndex === -1) return;

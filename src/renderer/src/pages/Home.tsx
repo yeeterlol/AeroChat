@@ -80,38 +80,43 @@ function NewsWidget() {
 	const [news, setNews] = useState<News[]>([]);
 	const [index, setIndex] = useState(0);
 	const pRef = useRef<HTMLParagraphElement>(null);
+	function changeIndexBy(amount: number) {
+		setIndex((i) => {
+			let newIndex = i + amount;
+			if (newIndex < 0) newIndex = news.length - 1;
+			if (newIndex >= news.length) newIndex = 0;
+			setNews((news) => {
+				if (news[newIndex].body !== news[i]?.body) {
+					if (pRef.current) {
+						pRef.current.animate(
+							[
+								{
+									opacity: 0,
+								},
+								{
+									opacity: 0.6,
+								},
+							],
+							{
+								duration: 250,
+								fill: "forwards",
+								easing: "steps(4, end)",
+							},
+						);
+					}
+				}
+				return news;
+			});
+			return newIndex;
+		});
+	}
 	useEffect(() => {
 		const fetchNews = async () => {
 			const res = await fetch(
 				`https://gist.github.com/not-nullptr/62b1fdeb4533c905b8145bc076af108e/raw?bust=${Date.now()}`,
 			);
 			const json = await res.json();
-			setIndex((i) => {
-				let newIndex = (i + 1) % json.length;
-				setNews((news) => {
-					if (json[newIndex].body !== news[i]?.body) {
-						if (pRef.current) {
-							pRef.current.animate(
-								[
-									{
-										opacity: 0,
-									},
-									{
-										opacity: 0.6,
-									},
-								],
-								{
-									duration: 250,
-									fill: "forwards",
-									easing: "steps(4, end)",
-								},
-							);
-						}
-					}
-					return json;
-				});
-				return newIndex;
-			});
+			setNews(json);
 		};
 		fetchNews();
 		const interval = setInterval(fetchNews, 1000 * 15);
@@ -119,10 +124,22 @@ function NewsWidget() {
 			clearInterval(interval);
 		};
 	}, []);
+	useEffect(() => {
+		const interval = setInterval(() => {
+			changeIndexBy(1);
+		}, 1000 * 10);
+		return () => {
+			clearInterval(interval);
+		};
+	}, []);
 	return (
 		<div className={styles.newsWidget}>
 			<h1>What's new</h1>
-			<p ref={pRef} dangerouslySetInnerHTML={{ __html: news[index]?.body }} />
+			{news.length ? (
+				<p ref={pRef} dangerouslySetInnerHTML={{ __html: news[index]?.body }} />
+			) : (
+				<p>Loading...</p>
+			)}
 		</div>
 	);
 }
@@ -525,7 +542,9 @@ function Home() {
 						? semver.satisfies(remote.app.getVersion(), n.targets)
 						: true),
 			);
-			const canReceive = state.ready.sessions.every((val) => val.status != "dnd");
+			const canReceive = state.ready.sessions.every(
+				(val) => val.status != "dnd",
+			);
 			if (newNotification && canReceive) {
 				const trayIcon: Electron.CrossProcessExports.Tray =
 					remote.getGlobal("trayIcon");
@@ -887,7 +906,7 @@ function Home() {
 	// 		?.map((f) => ({
 	// 			properties: f,
 	// 			guilds: f.guildIds.map(
-	// 				(g) => state.ready.guilds.find((h) => h.id === g.toString()) as Guild,
+	// 				(g) => state.ready?.guilds.find((h) => h.id === g.toString()) as Guild,
 	// 			),
 	// 		}))
 	// 		?.sort((a, b) =>
@@ -903,7 +922,7 @@ function Home() {
 	// 		?.map((f) => ({
 	// 			properties: f,
 	// 			guilds: f.guildIds.map(
-	// 				(g) => state.ready.guilds.find((h) => h.id === g.toString()) as Guild,
+	// 				(g) => state.ready?.guilds.find((h) => h.id === g.toString()) as Guild,
 	// 			),
 	// 		})) || [];
 	// const guilds = search
@@ -926,7 +945,7 @@ function Home() {
 		state.userSettings?.guildFolders?.folders
 			.map((folder) => {
 				const guilds = folder.guildIds.map(
-					(g) => state.ready.guilds?.find((h) => h.id === g.toString())!,
+					(g) => state.ready?.guilds?.find((h) => h.id === g.toString())!,
 				);
 				return {
 					folder: folder,
@@ -940,7 +959,7 @@ function Home() {
 		{
 			folder: undefined as any,
 			isFolder: false,
-			guilds: state.ready.guilds
+			guilds: state.ready?.guilds
 				.filter(
 					(g) =>
 						!guilds

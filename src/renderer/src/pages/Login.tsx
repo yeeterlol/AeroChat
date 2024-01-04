@@ -113,19 +113,25 @@ interface IUser {
 
 const store = new Store();
 
+function tryGetToken(): string {
+	try {
+		return remote.safeStorage.isEncryptionAvailable()
+			? store.get("token")
+				? remote.safeStorage.decryptString(
+						Buffer.from((store.get("token") as any) || ""),
+				  )
+				: ""
+			: "";
+	} catch {
+		return "";
+	}
+}
+
 function Login(): JSX.Element {
 	const [saveToken, setSaveToken] = useState(false);
 	const [autoLogin, setAutoLogin] = useState(false);
 	const [clicked, setClicked] = useState(false);
-	const [password, setPassword] = useState(
-		remote.safeStorage.isEncryptionAvailable()
-			? store.get("token")
-				? remote.safeStorage.decryptString(
-						Buffer.from((store.get("token") as any)?.data || ""),
-				  )
-				: ""
-			: "",
-	);
+	const [password, setPassword] = useState("");
 	const [confirmed, setConfirmed] = useState(store.get("confirmed") || false);
 	const [mfaCode, setMfaCode] = useState("");
 	const [email, setEmail] = useState("");
@@ -144,10 +150,8 @@ function Login(): JSX.Element {
 			setSaveToken(true);
 			setAutoLogin(true);
 			// we need to get and decrypt the token ourselves from the store
-			if (!remote.safeStorage.isEncryptionAvailable()) return;
-			const token = remote.safeStorage.decryptString(
-				Buffer.from((store.get("token") as any)?.data || ""),
-			);
+			const token = tryGetToken();
+			console.log(token);
 			startGateway(token);
 			setState({ ...state, token });
 			setClicked(true);

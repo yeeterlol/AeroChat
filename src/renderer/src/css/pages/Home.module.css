@@ -717,7 +717,32 @@
 .newsWidget {
 	box-sizing: border-box;
 	padding: 8px 16px;
-	min-height: 84px;
+	padding-bottom: 4px;
+	max-height: 84px;
+	overflow: hidden;
+	overflow-y: auto;
+	--mask: linear-gradient(
+		transparent,
+		black 18px,
+		black calc(100% - 18px),
+		transparent 100%
+	);
+	mask-image: var(--mask), linear-gradient(black, black);
+	-webkit-mask-image: var(--mask), linear-gradient(black, black);
+	-webkit-mask-size:
+		calc(100% - 16px) 100%,
+		18px 100%;
+	mask-size:
+		calc(100% - 16px) 100%,
+		18px 100%;
+	-webkit-mask-position:
+		0 0,
+		100% 0;
+	mask-position:
+		0 0,
+		100% 0;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
 }
 
 .newsWidget > h1 {

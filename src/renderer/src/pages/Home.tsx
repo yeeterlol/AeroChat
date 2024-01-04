@@ -380,7 +380,6 @@ interface HomeNotification {
 
 function Home() {
 	const [input, setInput] = useState<HTMLInputElement | null>(null);
-	const adRef = useRef<HTMLDivElement>(null);
 	const { state, setState } = useContext(Context);
 	const [notifications, setNotifications] = useState<HomeNotification[]>([]);
 	function contactContextMenu(
@@ -658,6 +657,8 @@ function Home() {
 		setState(mutState);
 	}
 	let lastAd = -1;
+	const [ads, setAds] = useState<string[]>([]);
+	const [ad, setAd] = useState("");
 	useEffect(() => {
 		function mouseDown(e: MouseEvent) {
 			if (e.button !== 0) return;
@@ -672,41 +673,41 @@ function Home() {
 		};
 	});
 	useEffect(() => {
-		if (!adRef.current) return;
 		let interval: NodeJS.Timeout;
-		let ads: string[] = [];
 		(async () => {
-			ads = (
-				(
-					await Promise.all(
-						Object.values(import.meta.glob("../assets/home/ads/*.png")).map(
-							(v) => v(),
-						),
-					)
-				).map((v) => (v as any).default) as string[]
-			).map((v) => v.replace("/@fs", ""));
-			adRef.current!.style.backgroundImage = `url(${
-				ads[generateRandBetween(0, ads.length - 1, lastAd)]
-			}`;
-			interval = setInterval(intervalFn, 20000);
+			const glob = import.meta.glob("../assets/home/ads/*.png");
+			setAds(
+				await Promise.all(
+					Object.values(glob).map(async (v) => ((await v()) as any).default),
+				),
+			);
 		})();
-		function intervalFn() {
-			// go to next ad
-			adRef.current!.style.backgroundImage = `url(${
-				ads[generateRandBetween(0, ads.length - 1, lastAd)]
-			})`;
-		}
-		function onClick() {
-			clearInterval(interval);
-			intervalFn();
-			interval = setInterval(intervalFn, 20000);
-		}
-		adRef.current.addEventListener("click", onClick);
-		return () => {
-			if (interval) clearInterval(interval);
-			adRef.current!.removeEventListener("click", onClick);
-		};
+		// function intervalFn() {
+		// 	console.log(adRef.current, ads);
+		// 	if (!adRef.current) return;
+		// 	adRef.current.src = ads[generateRandBetween(0, ads.length - 1, lastAd)];
+		// }
+		// function onClick() {
+		// 	clearInterval(interval);
+		// 	intervalFn();
+		// 	interval = setInterval(intervalFn, 20000);
+		// }
+		// adRef.current.addEventListener("click", onClick);
+		// return () => {
+		// 	if (interval) clearInterval(interval);
+		// 	adRef.current?.removeEventListener("click", onClick);
+		// };
 	}, []);
+	function intervalFn() {
+		setAd(ads[generateRandBetween(0, ads.length - 1, lastAd)]);
+	}
+	useEffect(() => {
+		intervalFn();
+		const interval = setInterval(intervalFn, 20000);
+		return () => {
+			clearInterval(interval);
+		};
+	}, [ads]);
 	// useEffect(() => {
 	// 	if (!editingStatus) return;
 	// 	inputRef.current?.focus();
@@ -1468,7 +1469,7 @@ function Home() {
 							type="discord"
 						/>
 					</div>
-					<div ref={adRef} className={styles.ad} />
+					<img src={ad} onClick={intervalFn} className={styles.ad} />
 				</div>
 			</div>
 		</div>

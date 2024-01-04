@@ -674,8 +674,9 @@ function Home() {
 	useEffect(() => {
 		if (!adRef.current) return;
 		let interval: NodeJS.Timeout;
+		let ads: string[] = [];
 		(async () => {
-			const ads = (
+			ads = (
 				(
 					await Promise.all(
 						Object.values(import.meta.glob("../assets/home/ads/*.png")).map(
@@ -687,14 +688,23 @@ function Home() {
 			adRef.current!.style.backgroundImage = `url(${
 				ads[generateRandBetween(0, ads.length - 1, lastAd)]
 			}`;
-			interval = setInterval(() => {
-				adRef.current!.style.backgroundImage = `url(${
-					ads[generateRandBetween(0, ads.length - 1, lastAd)]
-				})`;
-			}, 20000);
+			interval = setInterval(intervalFn, 20000);
 		})();
+		function intervalFn() {
+			// go to next ad
+			adRef.current!.style.backgroundImage = `url(${
+				ads[generateRandBetween(0, ads.length - 1, lastAd)]
+			})`;
+		}
+		function onClick() {
+			clearInterval(interval);
+			intervalFn();
+			interval = setInterval(intervalFn, 20000);
+		}
+		adRef.current.addEventListener("click", onClick);
 		return () => {
 			if (interval) clearInterval(interval);
+			adRef.current!.removeEventListener("click", onClick);
 		};
 	}, []);
 	// useEffect(() => {

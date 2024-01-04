@@ -71,6 +71,12 @@ const { ipcRenderer } = window.require("electron");
 const store = new Store();
 import dropdown from "@renderer/assets/ui-elements/dropdown/point_down.png";
 
+interface Banner {
+	expiresOn: number;
+	src: string;
+	href: string;
+}
+
 interface News {
 	date: number;
 	body: string;
@@ -461,14 +467,13 @@ function Home() {
 			const guild = state?.ready?.guilds?.find((g) =>
 				g.channels.map((c) => c.id).includes(data.id),
 			);
-			if (!guild) return console.log(guild);
+			if (!guild) return;
 			let frequentGuilds: { [key: string]: number } =
 				store.get("frequentGuilds") || ({} as any);
 			frequentGuilds = {
 				...frequentGuilds,
 				[guild.id]: (frequentGuilds[guild.id] || 0) + 1,
 			};
-			console.log(frequentGuilds);
 			store.set("frequentGuilds", frequentGuilds);
 		}
 
@@ -530,7 +535,6 @@ function Home() {
 					PermissionFlagsBits.ViewChannel,
 				),
 			);
-			console.log(channel);
 			if (!channel) return;
 			doubleClick(channel.properties);
 		});
@@ -581,7 +585,6 @@ function Home() {
 				});
 			}
 			setNotifications(json);
-			console.log(json);
 		}
 		// grab notifications every 1 minute
 		const interval = setInterval(getNotifications, 1000 * 60);
@@ -598,7 +601,6 @@ function Home() {
 						.sort(([, a], [, b]) => b - a)
 						.slice(0, 5),
 				);
-				console.log(JSON.parse(JSON.stringify(listOfDmedUsers)));
 				jumpList.push({
 					name: "Frequent Users",
 					items: await Promise.all(
@@ -683,8 +685,8 @@ function Home() {
 		setState(mutState);
 	}
 	let lastAd = -1;
-	const [ads, setAds] = useState<string[]>([]);
-	const [ad, setAd] = useState("");
+	const [ads, setAds] = useState<Banner[]>([]);
+	const [ad, setAd] = useState<Banner>();
 	useEffect(() => {
 		function mouseDown(e: MouseEvent) {
 			if (e.button !== 0) return;
@@ -699,30 +701,18 @@ function Home() {
 		};
 	});
 	useEffect(() => {
-		let interval: NodeJS.Timeout;
-		(async () => {
-			const glob = import.meta.glob("../assets/home/ads/*.png");
-			setAds(
-				await Promise.all(
-					Object.values(glob).map(async (v) => ((await v()) as any).default),
-				),
-			);
-		})();
-		// function intervalFn() {
-		// 	console.log(adRef.current, ads);
-		// 	if (!adRef.current) return;
-		// 	adRef.current.src = ads[generateRandBetween(0, ads.length - 1, lastAd)];
-		// }
-		// function onClick() {
-		// 	clearInterval(interval);
-		// 	intervalFn();
-		// 	interval = setInterval(intervalFn, 20000);
-		// }
-		// adRef.current.addEventListener("click", onClick);
-		// return () => {
-		// 	if (interval) clearInterval(interval);
-		// 	adRef.current?.removeEventListener("click", onClick);
-		// };
+		async function fetchBanners() {
+			const json: Banner[] = await (
+				await fetch(
+					`https://gist.github.com/not-nullptr/d6d44dde7ce95aeef619e1c1eb944738/raw?bust=${Date.now()}`,
+				)
+			).json();
+			const date = Date.now();
+			setAds(json.filter((b) => b.expiresOn === 0 || b.expiresOn > date));
+		}
+		fetchBanners();
+		// fetch every 10 minutes, (1000 * 60 * 10)ms
+		setInterval(fetchBanners, 1000 * 60 * 10);
 	}, []);
 	function intervalFn() {
 		setAd(ads[generateRandBetween(0, ads.length - 1, lastAd)]);
@@ -1399,7 +1389,6 @@ function Home() {
 																PermissionFlagsBits.ViewChannel,
 															),
 														);
-														console.log(channel);
 														if (!channel) return;
 														doubleClick(channel.properties);
 													}}
@@ -1441,7 +1430,6 @@ function Home() {
 														PermissionFlagsBits.ViewChannel,
 													),
 												);
-												console.log(channel);
 												if (!channel) return;
 												doubleClick(channel.properties);
 											}}
@@ -1495,7 +1483,16 @@ function Home() {
 							type="discord"
 						/>
 					</div>
-					<img src={ad} onClick={intervalFn} className={styles.ad} />
+					<img
+						width={234}
+						height={60}
+						src={ad?.src}
+						onClick={() => {
+							if (!ad?.href || !ad?.href.startsWith("http")) return;
+							window.open(ad.href, "_blank");
+						}}
+						className={styles.ad}
+					/>
 				</div>
 			</div>
 		</div>

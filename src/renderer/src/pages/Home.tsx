@@ -80,6 +80,8 @@ function NewsWidget() {
 	const [news, setNews] = useState<News[]>([]);
 	const [index, setIndex] = useState(0);
 	const pRef = useRef<HTMLParagraphElement>(null);
+	const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
 	function changeIndexBy(amount: number) {
 		setIndex((i) => {
 			let newIndex = i + amount;
@@ -109,7 +111,16 @@ function NewsWidget() {
 			});
 			return newIndex;
 		});
+
+		// Clear the existing interval and start a new one
+		if (intervalRef.current) {
+			clearInterval(intervalRef.current);
+		}
+		intervalRef.current = setInterval(() => {
+			changeIndexBy(1);
+		}, 1000 * 10);
 	}
+
 	useEffect(() => {
 		const fetchNews = async () => {
 			const res = await fetch(
@@ -124,17 +135,33 @@ function NewsWidget() {
 			clearInterval(interval);
 		};
 	}, []);
+
 	useEffect(() => {
-		const interval = setInterval(() => {
+		intervalRef.current = setInterval(() => {
 			changeIndexBy(1);
 		}, 1000 * 10);
 		return () => {
-			clearInterval(interval);
+			if (intervalRef.current) {
+				clearInterval(intervalRef.current);
+			}
 		};
 	}, []);
+
 	return (
 		<div className={styles.newsWidget}>
-			<h1>What's new</h1>
+			<div className={styles.newsHeader}>
+				<h1>What's new</h1>
+				<div className={styles.newsButtons}>
+					<div
+						onClick={() => changeIndexBy(-1)}
+						className={`${styles.newsButton} ${styles.left}`}
+					/>
+					<div
+						onClick={() => changeIndexBy(1)}
+						className={`${styles.newsButton} ${styles.right}`}
+					/>
+				</div>
+			</div>
 			{news.length ? (
 				<p ref={pRef} dangerouslySetInnerHTML={{ __html: news[index]?.body }} />
 			) : (
@@ -143,7 +170,6 @@ function NewsWidget() {
 		</div>
 	);
 }
-
 function ImageButton({
 	onClick,
 	className,

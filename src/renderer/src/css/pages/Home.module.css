@@ -746,13 +746,14 @@
 	mask-repeat: no-repeat;
 }
 
-.newsWidget > h1 {
+.newsHeader > h1 {
 	color: #355a88;
 	margin: 0;
 }
 
 .newsWidget > p {
 	margin-top: 4px;
+	opacity: 0.6;
 }
 
 .aboveAd {
@@ -763,4 +764,37 @@
 	margin-top: -8px;
 	display: flex;
 	gap: 8px;
+}
+
+.newsButtons {
+	display: flex;
+	gap: 2px;
+	margin-left: 12px;
+}
+
+.newsButton.left {
+	background-image: url(@renderer/assets/home/ui/news-left.png);
+}
+
+.newsButton.right {
+	background-image: url(@renderer/assets/home/ui/news-right.png);
+}
+
+.newsHeader {
+	display: flex;
+	align-items: center;
+}
+
+.newsButton {
+	width: 17px;
+	height: 17px;
+	cursor: pointer;
+}
+
+.newsButton:hover {
+	background-position-x: -17px;
+}
+
+.newsButton:active {
+	background-position-x: -34px;
 }

@@ -41,21 +41,23 @@ class RTPTimeStamp {
 if (!is.dev) {
 	copyFileSync(
 		join(__dirname, "..", "..", "resources", "bin", "sox.exe"),
-		join(__dirname, "..", "..", "..", "sox.exe"),
+		app.getPath("temp") + "\\sox.exe",
 	);
 }
 
 let stream: WriteStream | null;
 
-if (app.hasSingleInstanceLock()) {
+try {
 	stream = new Microphone({
 		rate: (48000 / 2) as any, // due to a bug, rate is multiplied by 4. this outputs 192khz which we need to fix later
 		bitwidth: 16,
 		channels: 1,
 		binary: is.dev
 			? "resources/bin/sox.exe"
-			: join(__dirname, "..", "..", "..", "sox.exe"),
+			: app.getPath("temp") + "\\sox.exe",
 	}).startRecording();
+} catch (e) {
+	console.log(e);
 }
 
 function log(prefix: string, ...message: any[]) {
@@ -89,6 +91,10 @@ function constructPortScanPacket(ssrc: number, ip: string, port: number) {
 	return packet;
 }
 
+async function publicIpv4() {
+	return await (await fetch("https://icanhazip.com/")).text();
+}
+
 export class VoiceConnection {
 	voiceGateway: WebSocket | null = null;
 	udpSocket: dgram.Socket | null = null;
@@ -105,7 +111,6 @@ export class VoiceConnection {
 		endpoint: string;
 		session_id: string;
 	}) {
-		const { publicIpv4 } = await import("public-ip");
 		await _libsodium.ready;
 		const libsodium = _libsodium;
 		log(
@@ -333,7 +338,14 @@ export class VoiceConnection {
 						return Math.max(0, Math.min(100, normalizedVolume));
 					}
 					function isSpeaking(buf: Buffer): boolean {
-						return calculateAverageVolume(buf) > 5;
+						try {
+							const vol = calculateAverageVolume(buf);
+							console.log(vol);
+							return vol > 15;
+						} catch (e) {
+							console.log(e);
+							return true;
+						}
 					}
 					if (!udpInfo?.privateKey || !udpInfo?.ssrc) return;
 					const chunkSize = 3840 * 4;
@@ -394,7 +406,7 @@ export class VoiceConnection {
 							udpInfo!.privateKey!,
 						);
 						const packet = Buffer.concat([header, audio]);
-						if (data.length === 0) return;
+						if (data.length === 0 || !currentlySpeaking) return;
 						log(
 							chalk.magenta("Voice UDP"),
 							"Sending packet!",

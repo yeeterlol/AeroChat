@@ -1,6 +1,6 @@
 {
 	"name": "aerochat",
-	"version": "1.0.1-rc.3",
+	"version": "1.0.1-rc.4",
 	"description": "Windows Live Messenger (2009), but for Discord!",
 	"main": "./out/main/index.js",
 	"author": "Madeline, with special thanks to luisl and the Nostalgia '09 team",

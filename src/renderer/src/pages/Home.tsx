@@ -595,25 +595,27 @@ function Home() {
 				);
 				jumpList.push({
 					name: "Frequent Users",
-					items: await Promise.all(
-						Object.entries(listOfDmedUsers).map(
-							async ([id, count]): Promise<Electron.JumpListItem> => {
-								const user = DiscordUtil.getUserById(id);
-								const avatar = await DiscordUtil.getAvatarPath(user);
-								return {
-									type: "task",
-									args: "",
-									description: `Opens a DM with ${DiscordUtil.getUserById(id)
-										?.username}`,
+					items: (
+						await Promise.all(
+							Object.entries(listOfDmedUsers).map(
+								async ([id, count]): Promise<Electron.JumpListItem> => {
+									const user = DiscordUtil.getUserById(id);
+									const avatar = await DiscordUtil.getAvatarPath(user);
+									return {
+										type: "task",
+										args: "",
+										description: `Opens a DM with ${DiscordUtil.getUserById(id)
+											?.username}`,
 
-									program: `aerochat://dm/${id}`,
-									iconPath: avatar || "",
-									iconIndex: 0,
-									title: user?.global_name || user?.username || "Unknown",
-								};
-							},
-						),
-					),
+										program: `aerochat://dm/${id}`,
+										iconPath: avatar || "",
+										iconIndex: 0,
+										title: user?.global_name || user?.username || "Unknown",
+									};
+								},
+							),
+						)
+					).filter((j) => j.title !== "Unknown"),
 				});
 			}
 			if (Object.keys(listOfGuilds).length) {
@@ -624,24 +626,26 @@ function Home() {
 				);
 				jumpList.push({
 					name: "Frequent Guilds",
-					items: await Promise.all(
-						Object.entries(listOfGuilds).map(
-							async ([id, count]): Promise<Electron.JumpListItem> => {
-								const guild = DiscordUtil.getGuildById(id);
-								const icon = await DiscordUtil.getAvatarPath(
-									guild?.properties as any,
-								);
-								return {
-									type: "task",
-									description: `Opens ${guild?.properties?.name}`,
-									program: `aerochat://guild/${id}`,
-									iconPath: icon || "",
-									iconIndex: 0,
-									title: guild?.properties?.name || "Unknown",
-								};
-							},
-						),
-					),
+					items: (
+						await Promise.all(
+							Object.entries(listOfGuilds).map(
+								async ([id, count]): Promise<Electron.JumpListItem> => {
+									const guild = DiscordUtil.getGuildById(id);
+									const icon = await DiscordUtil.getAvatarPath(
+										guild?.properties as any,
+									);
+									return {
+										type: "task",
+										description: `Opens ${guild?.properties?.name}`,
+										program: `aerochat://guild/${id}`,
+										iconPath: icon || "",
+										iconIndex: 0,
+										title: guild?.properties?.name || "Unknown",
+									};
+								},
+							),
+						)
+					).filter((j) => j.title !== "Unknown"),
 				});
 			}
 			remote.app.setJumpList(jumpList);
@@ -1480,6 +1484,7 @@ function Home() {
 						height={60}
 						src={ad?.src}
 						onClick={() => {
+							intervalFn();
 							if (!ad?.href || !ad?.href.startsWith("http")) return;
 							window.open(ad.href, "_blank");
 						}}

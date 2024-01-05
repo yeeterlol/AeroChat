@@ -229,7 +229,7 @@
 	resize: none;
 	box-sizing: border-box;
 	padding: 4px 4px;
-  color:black;
+	color: black;
 }
 
 .error {
@@ -650,4 +650,29 @@
 
 .voiceConnected > div:first-child {
 	transform: translateY(2px);
+}
+
+.attachmentsContainer {
+	margin-top: 12px;
+}
+
+.attachmentsContainer > img {
+	margin-left: 24px;
+	max-width: 192px;
+	max-height: 144px;
+	-webkit-user-drag: none;
+}
+
+.attachmentName {
+	margin-top: 12px;
+}
+
+.attachmentAction {
+	margin-top: 12px;
+	margin-left: 24px;
+	margin-bottom: 4px;
+}
+
+.attachmentAction > a {
+	text-decoration: underline;
 }

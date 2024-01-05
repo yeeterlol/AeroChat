@@ -71,6 +71,18 @@ import dndSmall from "@renderer/assets/message/dnd.png";
 import idleSmall from "@renderer/assets/message/idle.png";
 import offlineSmall from "@renderer/assets/message/invisible.png";
 
+function formatBytes(bytes: number, decimals: number = 2) {
+	if (!+bytes) return "0 Bytes";
+
+	const k = 1000;
+	const dm = decimals < 0 ? 0 : decimals;
+	const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+	return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
 function isGuildChannel(type: ChannelType): type is GuildChannelType {
 	return Object.keys(ChannelType)
 		.filter((k) => k.startsWith("Guild"))
@@ -274,6 +286,7 @@ function parseMessage(
 				break;
 			}
 		}
+
 		tokens.push(<br />);
 	});
 	rules.forEach(({ pattern, replacement }) => {
@@ -292,25 +305,6 @@ function parseMessage(
 
 	tokens.push(msg.slice(lastIndex));
 
-	message.attachments.forEach((a) => {
-		let shouldBreak = false;
-		if (tokens.filter((t) => t).length > 0) shouldBreak = true;
-		tokens.unshift(
-			<a
-				href="#"
-				onClick={(e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					if (!a?.url.startsWith("https://")) return;
-					remote.require("electron").shell.openExternal(a.url);
-				}}
-				target="_blank"
-			>
-				View attachment
-			</a>,
-			shouldBreak ? <br /> : null,
-		);
-	});
 	return tokens;
 }
 
@@ -1306,6 +1300,11 @@ function MessagePage() {
 							{messages.length > 0 ? (
 								messages.map((m, i) => (
 									<div key={m.nonce} className={styles.messageGroup}>
+										{m.attachments.length &&
+										(messages[i - 1]?.author.id !== m.author.id ||
+											messages[i - 1]?.attachments.length === 0) ? (
+											<div className={styles.nudgeDivider} />
+										) : null}
 										<div
 											style={{
 												display:
@@ -1369,7 +1368,7 @@ function MessagePage() {
 											>
 												{m.author.global_name || m.author.username}
 											</a>{" "}
-											says
+											{m.attachments.length ? "sends" : "says"}
 											{m.referenced_message ? (
 												<span
 													style={{
@@ -1398,7 +1397,54 @@ function MessagePage() {
 												.toUpperCase()})`}
 											:
 										</div>
+										{m.attachments.length
+											? m.attachments.map((a) =>
+													m.id.length > 26 ? (
+														<div
+															style={{
+																opacity: 0.5,
+															}}
+														>
+															Uploading...
+														</div>
+													) : (
+														<div className={styles.attachmentsContainer}>
+															<img
+																height={m.id.length > 26 ? 192 : undefined}
+																width={m.id.length > 26 ? 192 : undefined}
+																src={a.proxy_url}
+																alt={a.description}
+															/>
+															<div className={styles.attachmentName}>
+																{a.filename.length > 24
+																	? `${a.filename.substring(
+																			0,
+																			16,
+																	  )} ... ${a.filename.substring(
+																			a.filename.length - 16,
+																	  )}`
+																	: a.filename}{" "}
+																({formatBytes(a.size, 0)})
+															</div>
+															<div className={styles.attachmentAction}>
+																<a
+																	href="#"
+																	onClick={(e) => {
+																		e.preventDefault();
+																		remote.shell.openExternal(a.url);
+																	}}
+																>
+																	Open
+																</a>
+															</div>
+														</div>
+													),
+											  )
+											: null}
 										<div
+											style={{
+												display: !m.content ? "none" : undefined,
+											}}
 											onContextMenu={(e) => {
 												const mousePos = remote.screen.getCursorScreenPoint();
 												contextMenu(
@@ -1579,6 +1625,9 @@ function MessagePage() {
 												)}
 											</span>
 										</div>
+										{m.attachments.length ? (
+											<div className={styles.nudgeDivider} />
+										) : null}
 									</div>
 								))
 							) : (

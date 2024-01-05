@@ -52,6 +52,7 @@ try {
 		rate: (48000 / 2) as any, // due to a bug, rate is multiplied by 4. this outputs 192khz which we need to fix later
 		bitwidth: 16,
 		channels: 1,
+		// custom parameter (see patches)
 		binary: is.dev
 			? "resources/bin/sox.exe"
 			: app.getPath("temp") + "\\sox.exe",

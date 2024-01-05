@@ -31,6 +31,7 @@ import { writeFileSync } from "fs";
 import { PreloadedUserSettings } from "discord-protos";
 import { VoiceConnection } from "./util/Voice";
 import path from "path";
+import { Autoupdater } from "./util/Autoupdater";
 
 function pathToHash(path: string) {
 	if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
@@ -89,6 +90,7 @@ let trayIcon: Tray | null;
 let token: string = "";
 let voice: VoiceConnection | null;
 let voiceStates: GatewayVoiceState[] = [];
+let updateInterval: NodeJS.Timeout | null;
 
 function setVoiceStates(newVoiceStates: GatewayVoiceState[]) {
 	voiceStates = newVoiceStates;
@@ -370,6 +372,7 @@ function createWindow(): void {
 								break;
 							}
 							case "READY_SUPPLEMENTAL" as any: {
+								updateInterval && clearInterval(updateInterval);
 								const d = data.d as any;
 								setState({
 									...state,
@@ -379,6 +382,18 @@ function createWindow(): void {
 									},
 								});
 								setVoiceStates(d.guilds.map((g) => g.voice_states).flat());
+								updateInterval = setTimeout(() => {
+									Autoupdater.checkForUpdates((t) => {
+										if (t === "success") {
+											if (updateInterval) clearInterval(updateInterval);
+										}
+									});
+								}, 60000);
+								Autoupdater.checkForUpdates((t) => {
+									if (t === "success") {
+										if (updateInterval) clearInterval(updateInterval);
+									}
+								});
 								break;
 							}
 							case "VOICE_STATE_UPDATE": {

@@ -554,22 +554,14 @@ function Home() {
 			const seen = Object.values(
 				new Store().get("seenNotifications") || {},
 			) as number[];
-			/*
-						const trayIcon: Electron.CrossProcessExports.Tray =
-			remote.getGlobal("trayIcon");
-		trayIcon.displayBalloon({
-			title: "Windows Live Messenger",
-			content: "A new notification has arrived. Open the home page to read it.",
-			iconType: "info",
-		});
-			*/
 			// check if theres a new notification we havent seen yet
 			const newNotification = json.find(
 				(n: HomeNotification) =>
 					!seen.includes(n.date) &&
 					(n.targets
 						? semver.satisfies(remote.app.getVersion(), n.targets)
-						: true),
+						: true) &&
+					!notifications.find((m) => m.date === n.date),
 			);
 			const canReceive = state.ready.sessions.every(
 				(val) => val.status != "dnd",

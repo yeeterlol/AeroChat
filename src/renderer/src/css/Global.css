@@ -171,16 +171,10 @@ button:not(:disabled):active::after {
 }
 
 button:disabled {
-	opacity: 0.8;
-	color: #444;
+	color: #c1c1c1;
 	border: solid thin #999;
-	background: linear-gradient(
-		180deg,
-		rgba(242, 242, 242, 1) 0%,
-		rgba(235, 235, 235, 1) 40%,
-		rgb(231, 231, 231) 40%,
-		rgba(207, 220, 220, 1) 100%
-	);
+	box-shadow: inset 0px 0px 0px 1px #f8f8f8;
+	background: #f0f0f0;
 }
 
 /* width */
@@ -325,4 +319,34 @@ kbd.active {
 	width: 6pt;
 	height: 6pt;
 	fill: white;
+}
+
+input {
+	border-bottom: solid thin #cbdaec;
+	border-right: solid thin #c0cfe2;
+	border-top: solid thin #abbbd0;
+	border-left: solid thin #c2d0e4;
+	border-radius: 3px;
+	outline: none;
+	font-family: "Segoe UI";
+	font-size: 12px;
+	padding: 2px 4px;
+}
+
+input:hover {
+	border-top: solid thin #5d98c2;
+	border-left: solid thin #b2d3e8;
+	border-right: solid thin #b2d3e8;
+	border-bottom: solid thin #c7e2f1;
+}
+
+input:focus {
+	border-top: solid thin #4380b0;
+	border-left: solid thin #9ac3de;
+	border-right: solid thin #9ac3de;
+	border-bottom: solid thin #b7d9ed;
+}
+
+input::placeholder {
+	font-style: italic;
 }

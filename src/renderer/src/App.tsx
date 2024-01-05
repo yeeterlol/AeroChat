@@ -25,6 +25,7 @@ import ContactCard from "./pages/ContactCard";
 import Options from "./pages/Options";
 import { ErrorBoundary } from "@sentry/react";
 import CommandLink from "./components/CommandLink";
+import AddFriend from "./pages/AddFriend";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -217,58 +218,6 @@ function App(): JSX.Element {
 	useEffect(() => {
 		DiscordUtil.updateState(reactState);
 	}, [reactState]);
-	useEffect(() => {
-		const ids = [
-			addDispatchListener(GatewayDispatchEvents.PresenceUpdate, (d) => {
-				const mutState = { ...reactState };
-				if (d.guild_id) {
-					if (!mutState.ready?.merged_presences?.guilds) return;
-					const guildIndex = mutState.ready?.guilds.findIndex(
-						(g) => g.id === d.guild_id,
-					);
-					if (guildIndex === -1) return;
-					const guild = mutState.ready?.merged_presences?.guilds[guildIndex];
-					const memberIndex = guild.findIndex((m) => m.user_id === d.user.id);
-					if (memberIndex !== -1)
-						mutState.ready?.merged_presences?.guilds[guildIndex].splice(
-							memberIndex,
-							1,
-						);
-					const { user, ...rest } = d;
-					mutState.ready?.merged_presences?.guilds[guildIndex].push({
-						...(rest as any),
-						user_id: d.user.id,
-					});
-				}
-				if (!mutState?.ready?.merged_presences?.friends) return;
-				let friend = mutState.ready?.merged_presences?.friends.find(
-					(f) => (f.user?.id || f.user_id) === d.user.id,
-				);
-				if (!friend) {
-					mutState.ready?.merged_presences?.friends.push(d as any);
-					setReactState(mutState);
-					return;
-				}
-				if (mutState.ready?.merged_presences?.friends)
-					mutState.ready.merged_presences.friends =
-						mutState.ready?.merged_presences?.friends.filter(
-							(f) => (f.user_id || f.user?.id) !== d.user.id,
-						);
-				const finalFriend = {
-					status: d.status || friend.status,
-					activities: d.activities || friend.activities,
-					client_status: d.client_status || friend.client_status,
-					user_id: d.user.id,
-				};
-				mutState.ready?.merged_presences?.friends.push(finalFriend as any);
-				if (mutState === reactState) return;
-				setReactState(mutState);
-			}),
-		];
-		return () => {
-			ids.forEach((id) => removeGatewayListener(id));
-		};
-	}, [reactState]);
 	return (
 		<ErrorBoundary fallback={<Error />}>
 			<Context.Provider value={{ state: reactState, setState }}>
@@ -281,6 +230,7 @@ function App(): JSX.Element {
 						<Route path="/message" element={<Message />} />
 						<Route path="/contact-card" element={<ContactCard />} />
 						<Route path="/options" element={<Options />} />
+						<Route path="/add-friend" element={<AddFriend />} />
 					</Routes>
 				</HashRouter>
 			</Context.Provider>

@@ -182,6 +182,10 @@
 	outline: solid thin #6092a9;
 }
 
+.message > input {
+	border: none !important;
+}
+
 .message:focus {
 	text-overflow: clip;
 }

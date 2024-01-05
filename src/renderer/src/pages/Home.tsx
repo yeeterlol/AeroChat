@@ -70,6 +70,7 @@ import sanitizeHtml from "sanitize-html";
 const { ipcRenderer } = window.require("electron");
 const store = new Store();
 import dropdown from "@renderer/assets/ui-elements/dropdown/point_down.png";
+import { BrowserWindow } from "@electron/remote";
 
 interface Banner {
 	expiresOn: number;
@@ -545,6 +546,58 @@ function Home() {
 			ipcRenderer.removeAllListeners("open-guild");
 		};
 	}, []);
+	useEffect(() => {
+		const ids = [
+			addDispatchListener(GatewayDispatchEvents.PresenceUpdate, (d) => {
+				const mutState = { ...state };
+				if (d.guild_id) {
+					if (!mutState.ready?.merged_presences?.guilds) return;
+					const guildIndex = mutState.ready?.guilds.findIndex(
+						(g) => g.id === d.guild_id,
+					);
+					if (guildIndex === -1) return;
+					const guild = mutState.ready?.merged_presences?.guilds[guildIndex];
+					const memberIndex = guild.findIndex((m) => m.user_id === d.user.id);
+					if (memberIndex !== -1)
+						mutState.ready?.merged_presences?.guilds[guildIndex].splice(
+							memberIndex,
+							1,
+						);
+					const { user, ...rest } = d;
+					mutState.ready?.merged_presences?.guilds[guildIndex].push({
+						...(rest as any),
+						user_id: d.user.id,
+					});
+				}
+				if (!mutState?.ready?.merged_presences?.friends) return;
+				let friend = mutState.ready?.merged_presences?.friends.find(
+					(f) => (f.user?.id || f.user_id) === d.user.id,
+				);
+				if (!friend) {
+					mutState.ready?.merged_presences?.friends.push(d as any);
+					setState(mutState);
+					return;
+				}
+				if (mutState.ready?.merged_presences?.friends)
+					mutState.ready.merged_presences.friends =
+						mutState.ready?.merged_presences?.friends.filter(
+							(f) => (f.user_id || f.user?.id) !== d.user.id,
+						);
+				const finalFriend = {
+					status: d.status || friend.status,
+					activities: d.activities || friend.activities,
+					client_status: d.client_status || friend.client_status,
+					user_id: d.user.id,
+				};
+				mutState.ready?.merged_presences?.friends.push(finalFriend as any);
+				if (mutState === state) return;
+				setState(mutState);
+			}),
+		];
+		return () => {
+			ids.forEach((id) => removeGatewayListener(id));
+		};
+	}, [state]);
 	useEffect(() => {
 		async function getNotifications() {
 			const res = await fetch(
@@ -1203,7 +1256,9 @@ function Home() {
 										e.currentTarget.value || e.currentTarget.placeholder,
 									)}px`;
 									sendOp(GatewayOpcodes.PresenceUpdate, {
-										status: PresenceUpdateStatus.Online,
+										status:
+											(state?.ready?.sessions[0]?.status as any) ||
+											PresenceUpdateStatus.Offline,
 										since: 0,
 										activities: [
 											{
@@ -1253,7 +1308,22 @@ function Home() {
 							placeholder="Search contacts or the Web..."
 						/>
 						<div className={styles.searchButtons}>
-							<ImageButton type="add-friend" />
+							<ImageButton
+								onClick={() => {
+									createWindow({
+										customProps: {
+											url: "/add-friend",
+										},
+										width: 515,
+										height: 478,
+										minWidth: 515,
+										minHeight: 478,
+										maxWidth: 515,
+										maxHeight: 478,
+									});
+								}}
+								type="add-friend"
+							/>
 							<ImageButton type="windows" />
 							<ImageButton
 								type="help"

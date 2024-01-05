@@ -56,33 +56,6 @@
 	padding: 4px;
 }
 
-.window input {
-	border-bottom: solid thin #cbdaec;
-	border-right: solid thin #c0cfe2;
-	border-top: solid thin #abbbd0;
-	border-left: solid thin #c2d0e4;
-	border-radius: 3px;
-	outline: none;
-	font-family: "Segoe UI";
-	font-size: 12px;
-	font-style: italic;
-	padding: 2px 4px;
-}
-
-.window input:hover {
-	border-top: solid thin #5d98c2;
-	border-left: solid thin #b2d3e8;
-	border-right: solid thin #b2d3e8;
-	border-bottom: solid thin #c7e2f1;
-}
-
-.window input:focus {
-	border-top: solid thin #4380b0;
-	border-left: solid thin #9ac3de;
-	border-right: solid thin #9ac3de;
-	border-bottom: solid thin #b7d9ed;
-}
-
 .form input {
 	width: calc(100% - 10px);
 }

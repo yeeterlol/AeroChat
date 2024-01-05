@@ -27,11 +27,13 @@ export async function apiReq<B = any, R = any>(
 	method: "GET" | "POST" | "PATCH" | "DELETE",
 	token: string,
 	body?: B,
+	headers?: { [key: string]: string },
 ): Promise<{ status: number; body: R }> {
 	const res = await fetch(`https://discord.com/api/v9${route}`, {
 		headers: {
 			Authorization: token,
 			"Content-Type": "application/json",
+			...headers,
 		},
 		body: JSON.stringify(body),
 		method,

@@ -67,6 +67,7 @@ export class DiscordUtil {
 					  }.png`
 				: `https://cdn.discordapp.com/icons/${user.id}/${user.icon}.png`) +
 			"?size=16";
+		if (!(user as any).avatar && !(user as any).icon) return;
 		const temp = remote.app.getPath("temp");
 		const avatarPath = path.join(temp, `avatar-${user.id}.ico`);
 		const data = await fetch(url);

@@ -57,6 +57,7 @@
 		"react-router-dom": "^6.18.0",
 		"react-scroll-to-bottom": "^4.2.0",
 		"react-use-websocket": "^4.5.0",
+		"relative-time-format": "^1.1.6",
 		"remark-gfm": "^4.0.0",
 		"sanitize-html": "^2.11.0",
 		"semver": "^7.5.4",

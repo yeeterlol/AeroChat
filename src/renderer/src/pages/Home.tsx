@@ -70,6 +70,9 @@ import sanitizeHtml from "sanitize-html";
 const { ipcRenderer } = window.require("electron");
 const store = new Store();
 import dropdown from "@renderer/assets/ui-elements/dropdown/point_down.png";
+import paperOpen from "@renderer/assets/home/ui/paper-open.png";
+import paperClose from "@renderer/assets/home/ui/paper-close.png";
+import paperStatic from "@renderer/assets/home/ui/paper-static.png";
 
 interface Banner {
 	expiresOn: number;
@@ -93,13 +96,12 @@ var units = {
 
 var rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
-var getRelativeTime = (d1, d2 = new Date()) => {
+var getRelativeTime = (d1: number, d2 = new Date()) => {
 	var elapsed = d1 - d2.getTime();
-
-	// "Math.abs" accounts for both "past" & "future" scenarios
 	for (var u in units)
 		if (Math.abs(elapsed) > units[u] || u == "second")
 			return rtf.format(Math.round(elapsed / units[u]), u as any);
+	return null;
 };
 
 function NewsWidget() {
@@ -443,6 +445,8 @@ interface HomeNotification {
 }
 
 function Home() {
+	let isHovering = false;
+	const [isAnimating, setIsAnimating] = useState(false);
 	const [input, setInput] = useState<HTMLInputElement | null>(null);
 	const { state, setState } = useContext(Context);
 	const [notifications, setNotifications] = useState<HomeNotification[]>([]);
@@ -549,7 +553,7 @@ function Home() {
 			return;
 		}
 	}
-	const [paperSrc] = useState("");
+	const [paperSrc, setPaperSrc] = useState("");
 	useEffect(() => {
 		ipcRenderer.on("open-guild", (e, id: string) => {
 			const guild = DiscordUtil.getGuildById(id);
@@ -1099,19 +1103,10 @@ function Home() {
 			<div
 				className={styles.background}
 				onMouseEnter={() => {
-					// setPaperSrc(paperOpen);
-					// setTimeout(() => {
-					// 	setPaperSrc((p) => {
-					// 		if (p === paperOpen) return paperStatic;
-					// 		return p;
-					// 	});
-					// }, 450);
+					setPaperSrc(paperOpen);
 				}}
 				onMouseLeave={() => {
-					// setPaperSrc(paperClose);
-					// setTimeout(() => {
-					// 	setPaperSrc("");
-					// }, 450);
+					setPaperSrc(paperClose);
 				}}
 			>
 				<div
@@ -1129,7 +1124,25 @@ function Home() {
 					// 		: undefined,
 					// }}
 				/>
-				<img src={paperSrc} className={styles.paper} />
+				<img
+					onClick={() => {
+						createWindow({
+							customProps: {
+								url: "/customize",
+							},
+							width: 535,
+							height: 586,
+							minWidth: 535,
+							minHeight: 586,
+							maxWidth: 535,
+							maxHeight: 586,
+							minimizable: false,
+							maximizable: false,
+						});
+					}}
+					src={paperSrc}
+					className={styles.paper}
+				/>
 				<div className={styles.topInfo}>
 					<PfpBorder
 						stateInitial={userStatus?.status as PresenceUpdateStatus}

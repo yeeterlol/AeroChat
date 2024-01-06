@@ -41,6 +41,7 @@
 	top: 1px;
 	right: 1px;
 	cursor: pointer;
+	z-index: 99999;
 }
 
 .divider {

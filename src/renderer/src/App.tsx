@@ -26,6 +26,7 @@ import Options from "./pages/Options";
 import { ErrorBoundary } from "@sentry/react";
 import CommandLink from "./components/CommandLink";
 import AddFriend from "./pages/AddFriend";
+import Customize from "./pages/Customize";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -231,6 +232,7 @@ function App(): JSX.Element {
 						<Route path="/contact-card" element={<ContactCard />} />
 						<Route path="/options" element={<Options />} />
 						<Route path="/add-friend" element={<AddFriend />} />
+						<Route path="/customize" element={<Customize />} />
 					</Routes>
 				</HashRouter>
 			</Context.Provider>

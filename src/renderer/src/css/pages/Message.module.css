@@ -464,7 +464,7 @@
 }
 
 .toolbarItem {
-	color: var(--color);
+	color: color-mix(in srgb, var(--color), transparent 15%);
 	width: fit-content;
 	height: 24px;
 	margin-bottom: 2px;

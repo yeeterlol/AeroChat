@@ -1041,7 +1041,7 @@ function MessagePage() {
 							)}
 							style={{
 								color: canSendChannel
-									? "color-mix(in srgb, var(--color), transparent 50%)"
+									? "color-mix(in srgb, var(--color), transparent 40%)"
 									: undefined,
 								// boxShadow: "none",
 								// background: "none",
@@ -1222,116 +1222,156 @@ function MessagePage() {
 						<div className={styles.channelsContainer}>
 							<img src={lilGuy} className={styles.lilGuy} />
 							<div className={styles.channels}>
-								{channels
-									.filter(
-										(c) => c.properties.type === ChannelType.GuildCategory,
-									)
-									.map((cat) => (
-										<Dropdown
-											key={cat.properties.id}
-											header={cat.properties.name
-												.toLowerCase()
-												.split(" ")
-												.map(
-													(word) =>
-														word.charAt(0).toUpperCase() + word.slice(1),
-												)
-												.join(" ")}
-										>
-											{channels
-												.filter(
-													(c) =>
-														(c.properties.type === ChannelType.GuildText ||
-															c.properties.type ===
-																ChannelType.GuildAnnouncement ||
-															c.properties.type === ChannelType.GuildVoice) &&
-														c.properties.parent_id === cat.properties.id,
-												)
-												.map((c) => (
-													<div
-														className={
-															c.properties.type === ChannelType.GuildVoice &&
-															voiceStates
-																.filter((v) => v.channel_id === c.properties.id)
-																.filter((v) => !!v.member && !!v.member.user)
-																.length > 0
-																? styles.voiceConnected
-																: ""
-														}
-													>
-														<div
-															onClick={() => {
-																if (
-																	c.properties.type === ChannelType.GuildVoice
-																) {
-																	joinVoiceChannel(
-																		"properties" in guild
-																			? guild.properties.id
-																			: guild.id,
-																		c.properties.id,
-																	);
-																} else setChannelId(c.properties.id);
-															}}
-															key={c.properties.id}
-															className={joinClasses(
-																styles.channel,
-																channelId === c.properties.id
-																	? styles.selected
-																	: "",
-															)}
-														>
-															{c.properties.type === ChannelType.GuildVoice ? (
+								{channels.map((cat) => {
+									switch (cat.properties.type) {
+										case ChannelType.GuildCategory:
+											return (
+												<Dropdown
+													key={cat.properties.id}
+													header={cat.properties.name
+														.toLowerCase()
+														.split(" ")
+														.map(
+															(word) =>
+																word.charAt(0).toUpperCase() + word.slice(1),
+														)
+														.join(" ")}
+												>
+													{channels
+														.filter(
+															(c) =>
+																(c.properties.type === ChannelType.GuildText ||
+																	c.properties.type ===
+																		ChannelType.GuildAnnouncement ||
+																	c.properties.type ===
+																		ChannelType.GuildVoice) &&
+																c.properties.parent_id === cat.properties.id,
+														)
+														.map((c) => (
+															<div
+																className={
+																	c.properties.type ===
+																		ChannelType.GuildVoice &&
+																	voiceStates
+																		.filter(
+																			(v) => v.channel_id === c.properties.id,
+																		)
+																		.filter(
+																			(v) => !!v.member && !!v.member.user,
+																		).length > 0
+																		? styles.voiceConnected
+																		: ""
+																}
+															>
 																<div
-																	style={{
-																		display: "flex",
-																		alignItems: "center",
+																	onClick={() => {
+																		if (
+																			c.properties.type ===
+																			ChannelType.GuildVoice
+																		) {
+																			joinVoiceChannel(
+																				"properties" in guild
+																					? guild.properties.id
+																					: guild.id,
+																				c.properties.id,
+																			);
+																		} else setChannelId(c.properties.id);
 																	}}
+																	key={c.properties.id}
+																	className={joinClasses(
+																		styles.channel,
+																		channelId === c.properties.id
+																			? styles.selected
+																			: "",
+																	)}
 																>
-																	<img
-																		style={{
-																			marginLeft: -10,
-																		}}
-																		width="12"
-																		src={musicalNote}
-																	/>
-																	<div
-																		style={{
-																			marginBottom: 1,
-																			marginLeft: 4,
-																		}}
-																	>
-																		{c.properties.name}
-																	</div>
-																</div>
-															) : (
-																`#${c.properties.name}`
-															)}
-														</div>
-														<div className={styles.voiceUsers}>
-															{c.properties.type === ChannelType.GuildVoice &&
-																voiceStates
-																	.filter(
-																		(v) => v.channel_id === c.properties.id,
-																	)
-																	.filter((v) => !!v.member && !!v.member.user)
-																	.map((v) => (
-																		<div className={styles.voiceUser}>
+																	{c.properties.type ===
+																	ChannelType.GuildVoice ? (
+																		<div
+																			style={{
+																				display: "flex",
+																				alignItems: "center",
+																			}}
+																		>
 																			<img
-																				src={getSmallIcon(v.member!.user!)}
+																				style={{
+																					marginLeft: -10,
+																				}}
+																				width="12"
+																				src={musicalNote}
 																			/>
-																			<span>
-																				{v.member?.nick ||
-																					v.member?.user?.global_name ||
-																					v.member?.user?.username ||
-																					"Unknown User"}
-																			</span>
+																			<div
+																				style={{
+																					marginBottom: 1,
+																					marginLeft: 4,
+																				}}
+																			>
+																				{c.properties.name}
+																			</div>
 																		</div>
-																	))}
-														</div>
+																	) : (
+																		`#${c.properties.name}`
+																	)}
+																</div>
+																<div className={styles.voiceUsers}>
+																	{c.properties.type ===
+																		ChannelType.GuildVoice &&
+																		voiceStates
+																			.filter(
+																				(v) => v.channel_id === c.properties.id,
+																			)
+																			.filter(
+																				(v) => !!v.member && !!v.member.user,
+																			)
+																			.map((v) => (
+																				<div className={styles.voiceUser}>
+																					<img
+																						src={getSmallIcon(v.member!.user!)}
+																					/>
+																					<span>
+																						{v.member?.nick ||
+																							v.member?.user?.global_name ||
+																							v.member?.user?.username ||
+																							"Unknown User"}
+																					</span>
+																				</div>
+																			))}
+																</div>
+															</div>
+														))}
+												</Dropdown>
+											);
+										case ChannelType.GuildText:
+											if (cat.properties.parent_id) return null;
+											return (
+												<div
+													style={{
+														width: "calc(100% - 34px)",
+														marginLeft: 12,
+													}}
+												>
+													<div
+														onClick={() => {
+															setChannelId(cat.properties.id);
+														}}
+														key={cat.properties.id}
+														className={joinClasses(
+															styles.channel,
+															channelId === cat.properties.id
+																? styles.selected
+																: "",
+														)}
+														style={{
+															paddingLeft: 8,
+														}}
+													>
+														{cat.properties.name}
 													</div>
-												))}
-										</Dropdown>
-									))}
+												</div>
+											);
+									}
+									return null;
+								})}
 							</div>
 						</div>
 					)}

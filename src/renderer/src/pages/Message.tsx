@@ -1040,7 +1040,9 @@ function MessagePage() {
 								canSendChannel ? styles.disabled : "",
 							)}
 							style={{
-								color: canSendChannel ? "rgba(255, 255, 255, 0.5)" : undefined,
+								color: canSendChannel
+									? "color-mix(in srgb, var(--color), transparent 50%)"
+									: undefined,
 								// boxShadow: "none",
 								// background: "none",
 								background: open ? "none" : undefined,

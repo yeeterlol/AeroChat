@@ -11,6 +11,7 @@ import { join } from "path";
 import { copyFileSync } from "fs";
 import { app } from "electron";
 import { WriteStream } from "tty";
+import { platform } from "os";
 
 class RTPTimeStamp {
 	private clockFrequency: number;
@@ -38,7 +39,7 @@ class RTPTimeStamp {
 	}
 }
 
-if (!is.dev) {
+if (!is.dev && platform().includes("win")) {
 	copyFileSync(
 		join(__dirname, "..", "..", "resources", "bin", "sox.exe"),
 		app.getPath("temp") + "\\sox.exe",

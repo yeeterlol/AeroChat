@@ -60,18 +60,35 @@
 
 .grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, 96px);
-	gap: 12px;
+	grid-template-columns: repeat(auto-fill, 108px);
 	width: calc(100% - 32px);
 	height: 279px;
 	overflow-y: auto;
+	gap: 1px;
 	margin-top: -4px;
 	box-sizing: border-box;
 	padding: 8px 0px;
-	margin-left: 29px;
+	margin-left: 20px;
+	padding-left: 1px;
+}
+
+.sceneContainer {
+	height: 48px;
+	padding: 3px 0px 7px 3px;
+	border-radius: 2px;
+}
+
+.sceneContainer:hover {
+	outline: solid thin #b9d7fc;
+}
+
+.sceneContainer.selected {
+	outline: solid thin #84acdd;
+	background-color: #d9ebff6a;
 }
 
 .scene {
+	-webkit-user-drag: none;
 	box-shadow: 2px 2px 4px 0px rgba(0, 0, 0, 0.4);
 }
 

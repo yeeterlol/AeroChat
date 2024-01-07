@@ -1,7 +1,7 @@
 import { Routes, Route, HashRouter } from "react-router-dom";
 import Login from "@renderer/pages/Login";
 import Home from "@renderer/pages/Home";
-import { Context } from "@renderer/util";
+import { Context, getSceneFromColor } from "@renderer/util";
 import { useEffect, useState } from "react";
 import { State, Status } from "../../shared/types/index";
 import {
@@ -218,6 +218,21 @@ function App(): JSX.Element {
 	}, []);
 	useEffect(() => {
 		DiscordUtil.updateState(reactState);
+		(async () => {
+			const thing = await getSceneFromColor(
+				reactState?.ready?.user?.accent_color?.toString(16) || "",
+			);
+			if (thing) {
+				document.body.style.setProperty(
+					"--accent",
+					`#${
+						reactState?.ready?.user?.accent_color?.toString(16) || "#3dafe4"
+					}`,
+				);
+			} else {
+				document.body.style.setProperty("--accent", `#3dafe4`);
+			}
+		})();
 	}, [reactState]);
 	return (
 		<ErrorBoundary fallback={<Error />}>

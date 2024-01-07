@@ -4,6 +4,7 @@ import {
 	Context,
 	apiReq,
 	getActivityText,
+	getSceneFromColor,
 	hasParentWithClass,
 	joinClasses,
 } from "@renderer/util";
@@ -628,6 +629,13 @@ function Home() {
 				if (mutState === state) return;
 				setState(mutState);
 			}),
+			addDispatchListener(GatewayDispatchEvents.UserUpdate, (d) => {
+				const mutState = { ...state };
+				const index = mutState.ready?.users?.findIndex((u) => u.id === d.id);
+				if (index === -1) return;
+				mutState.ready.users[index] = d;
+				setState(mutState);
+			}),
 		];
 		return () => {
 			ids.forEach((id) => removeGatewayListener(id));
@@ -817,6 +825,16 @@ function Home() {
 		input.placeholder = input.value ? "" : "Share a quick message";
 		input.style.width = `${calcWidth(input.value || input.placeholder)}px`;
 	}, [input]);
+	const [backgroundImage, setBackgroundImage] = useState<string | null>();
+	useEffect(() => {
+		(async () => {
+			const img = await getSceneFromColor(
+				state?.ready?.user?.accent_color?.toString(16) || "",
+			);
+			if (!img) setBackgroundImage(null);
+			setBackgroundImage(img);
+		})();
+	}, [state?.ready?.user]);
 	const [search, setSearch] = useState("");
 	const [contextMenuOpacity, setContextMenuOpacity] = useState("0");
 	useEffect(() => {
@@ -1123,6 +1141,11 @@ function Home() {
 					// 		? "linear-gradient(to bottom, #fff, #000)"
 					// 		: undefined,
 					// }}
+					style={{
+						backgroundImage: backgroundImage
+							? `url(${backgroundImage})`
+							: undefined,
+					}}
 				/>
 				<img
 					onClick={() => {

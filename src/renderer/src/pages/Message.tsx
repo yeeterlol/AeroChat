@@ -1,6 +1,11 @@
 import PfpBorder from "@renderer/components/PfpBorder";
 import styles from "@renderer/css/pages/Message.module.css";
-import { Context, apiReq, joinClasses } from "@renderer/util";
+import {
+	Context,
+	apiReq,
+	getSceneFromColor,
+	joinClasses,
+} from "@renderer/util";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import {
@@ -70,6 +75,7 @@ import onlineSmall from "@renderer/assets/message/active.png";
 import dndSmall from "@renderer/assets/message/dnd.png";
 import idleSmall from "@renderer/assets/message/idle.png";
 import offlineSmall from "@renderer/assets/message/invisible.png";
+import fontColorContrast from "font-color-contrast";
 
 function formatBytes(bytes: number, decimals: number = 2) {
 	if (!+bytes) return "0 Bytes";
@@ -115,7 +121,9 @@ function getPfp(
 		return `https://cdn.discordapp.com/avatars/${user.id}/${user.properties.icon}.png?size=256`;
 	}
 	if ("avatar" in user) {
-		return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`;
+		return user.avatar
+			? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`
+			: defaultPfp;
 	}
 	return defaultPfp;
 }
@@ -159,7 +167,7 @@ function useEmoji() {
 	>([]);
 	useEffect(() => {
 		(async () => {
-			const glob = import.meta.glob("../assets/emoji/**/*");
+			const glob = import.meta.glob("../assets/emoji/**/*", { eager: true });
 			const entries = Object.entries(glob);
 			console.log(entries);
 			// step 1: create an array of categories
@@ -178,10 +186,12 @@ function useEmoji() {
 			});
 			// step 2: add the emojis to the categories
 			const arr = await Promise.all(
-				entries.map(async ([name, grabImg]) => ({
-					name: name,
-					url: ((await grabImg()) as any).default as string,
-				})),
+				entries.map(async ([name, grabImg]) => {
+					return {
+						name: name,
+						url: (grabImg as any).default as string,
+					};
+				}),
 			);
 			arr.forEach((e) => {
 				const data = { ...e };
@@ -189,6 +199,7 @@ function useEmoji() {
 				const catName = e.name.split("/").at(-2)!;
 				categories.find((c) => c.catName === catName)?.emojis.push(data);
 			});
+			console.log(categories);
 			setEmoji(categories);
 		})();
 	}, []);
@@ -352,6 +363,8 @@ function generateTyping(...usernames: string[]): React.JSX.Element {
 }
 
 function MessagePage() {
+	const [bannerSrc, setBannerSrc] = useState<string | undefined>();
+	const [bannerAccent, setBannerAccent] = useState<string | undefined>();
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const [replyId, setReplyId] = useState<string | undefined>();
 	const [messageContainer, setMessageContainer] =
@@ -421,6 +434,21 @@ function MessagePage() {
 			ipcRenderer.off("voice-state-update", onVoice);
 		};
 	}, []);
+	const recepient =
+		channel?.type === ChannelType.DM
+			? {
+					user: state?.ready?.users.find(
+						(u) => u.id === channel?.recipients?.[0].id,
+					),
+					presence:
+						state?.ready?.merged_presences?.friends.find(
+							(f) => f.user_id === channel?.recipients?.[0].id,
+						) ||
+						state?.ready?.merged_presences?.guilds
+							?.flat()
+							?.find((p) => p.user_id === channel?.recipients?.[0].id),
+			  }
+			: undefined;
 	async function fetchMessages() {
 		if (!channelId) return;
 		const messages = (
@@ -438,6 +466,40 @@ function MessagePage() {
 	>([]);
 	const emoji = useEmoji();
 	const [guild, setGuild] = useState<APIGuild | IGuild | undefined>();
+	useEffect(() => {
+		(async () => {
+			if (guild) {
+				const scene = await getSceneFromColor(
+					state?.ready?.user?.accent_color?.toString(16) || "",
+				);
+				console.log(scene);
+				if (scene) {
+					setBannerSrc(scene);
+					setBannerAccent(state?.ready?.user?.accent_color?.toString(16));
+				} else {
+					setBannerSrc(undefined);
+					setBannerAccent("3dafe4");
+				}
+				return;
+			}
+			const user = await DiscordUtil.request<
+				never,
+				{ user_profile: { accent_color?: number } }
+			>(
+				`/users/${recepient?.user?.id}/profile?with_mutual_guilds=false&with_mutual_friends_count=false`,
+				"GET",
+			);
+			const accent = user.user_profile.accent_color?.toString(16);
+			const scene = await getSceneFromColor(accent || "");
+			if (scene) {
+				setBannerSrc(scene);
+				setBannerAccent(accent);
+			} else {
+				setBannerSrc(undefined);
+				setBannerAccent("3dafe4");
+			}
+		})();
+	}, [state?.ready?.users?.find((u) => u.id === recepient?.user?.id), guild]);
 	useEffect(() => {
 		const id = addDispatchListener(
 			GatewayDispatchEvents.GuildMembersChunk,
@@ -571,21 +633,6 @@ function MessagePage() {
 			});
 		setChannels(channels);
 	}, [guild]);
-	const recepient =
-		channel?.type === ChannelType.DM
-			? {
-					user: state?.ready?.users.find(
-						(u) => u.id === channel?.recipients?.[0].id,
-					),
-					presence:
-						state?.ready?.merged_presences?.friends.find(
-							(f) => f.user_id === channel?.recipients?.[0].id,
-						) ||
-						state?.ready?.merged_presences?.guilds
-							?.flat()
-							?.find((p) => p.user_id === channel?.recipients?.[0].id),
-			  }
-			: undefined;
 	useEffect(() => {
 		if (!guild || !("properties" in guild) || !channel) return;
 		const memberReady = DiscordUtil.getMembership(guild);
@@ -831,7 +878,18 @@ function MessagePage() {
 		.slice(0, 10);
 	if (!channel) return <></>;
 	return (
-		<div className={styles.window}>
+		<div
+			className={styles.window}
+			key={bannerAccent}
+			style={
+				{
+					"--accent": bannerAccent ? `#${bannerAccent}` : "#3dafe4",
+					"--color": fontColorContrast(
+						bannerAccent === "3dafe4" ? "#000000" : `#${bannerAccent}`,
+					),
+				} as React.CSSProperties
+			}
+		>
 			<div className={styles.content}>
 				<div className={styles.toolbarContainer}>
 					<div className={styles.toolbar}>
@@ -1276,7 +1334,12 @@ function MessagePage() {
 						</div>
 					)}
 					<div className={styles.messagingContainer}>
-						<div className={styles.username}>
+						<div
+							className={styles.username}
+							style={{
+								marginBottom: 20,
+							}}
+						>
 							{guild
 								? `#${channel.name || "unknown-channel"} - ${
 										"properties" in guild
@@ -1290,12 +1353,7 @@ function MessagePage() {
 								</div>
 							) : null}
 						</div>
-						<div
-							style={{
-								marginTop: !guild ? 4 : !(channel as any).topic ? -20 : 8,
-							}}
-							className={styles.divider}
-						/>
+						<div className={styles.divider} />
 						<div ref={setMessageContainer} className={styles.messagesContainer}>
 							{messages.length > 0 ? (
 								messages.map((m, i) => (
@@ -1592,6 +1650,31 @@ function MessagePage() {
 															},
 														},
 														{
+															pattern: /:(.*?):/gm,
+															replacement(matches) {
+																// grab emoji name
+																// use toShort to replace all unicode emojis with their shortcodes
+																const match = matches[1];
+																console.log(match);
+																const foundEmoji = emoji
+																	.map((e) => e.emojis)
+																	.flat()
+																	.find((e) => e.name === match);
+																if (!foundEmoji) return matches[0];
+																return (
+																	<span>
+																		<img
+																			style={{
+																				marginBottom: -4,
+																			}}
+																			src={foundEmoji.url}
+																			alt={foundEmoji.name}
+																		/>
+																	</span>
+																);
+															},
+														},
+														{
 															// Emoji_Presentation
 															pattern: /\p{Emoji_Presentation}/gu,
 															replacement(matches) {
@@ -1601,6 +1684,7 @@ function MessagePage() {
 																	":",
 																	"",
 																);
+																console.log(match);
 																const foundEmoji = emoji
 																	.map((e) => e.emojis)
 																	.flat()
@@ -1666,7 +1750,8 @@ function MessagePage() {
 								}}
 								disabled={canSendChannel ? true : false}
 								style={{
-									border: canSendChannel ? "solid thin #a9b6bb" : undefined,
+									borderColor:
+										bannerAccent === "3dafe4" ? "#bdd5df" : undefined,
 									fontStyle: canSendChannel ? "italic" : undefined,
 									fontSize: canSendChannel ? 12 : undefined,
 									paddingTop: canSendChannel ? 5 : undefined,
@@ -1841,7 +1926,13 @@ function MessagePage() {
 								className={styles.messageBox}
 							></textarea>
 
-							<div className={styles.inputToolbar}>
+							<div
+								className={styles.inputToolbar}
+								style={{
+									borderColor:
+										bannerAccent === "3dafe4" ? "#bdd5df" : undefined,
+								}}
+							>
 								<ImageButton
 									image={
 										emoji
@@ -1874,8 +1965,7 @@ function MessagePage() {
 															click() {
 																if (!inputRef.current) return;
 																inputRef.current.focus();
-																inputRef.current.value +=
-																	uEmojiParser.parseToUnicode(`:${e.name}:`);
+																inputRef.current.value += `:${e.name}:`;
 															},
 															icon: e.url,
 														})),
@@ -1952,7 +2042,12 @@ function MessagePage() {
 				</div>
 			</div>
 			<div className={styles.backgroundContainer}>
-				<div className={styles.backgroundImage} />
+				<div
+					style={{
+						backgroundImage: bannerSrc ? `url(${bannerSrc})` : undefined,
+					}}
+					className={styles.backgroundImage}
+				/>
 				<div className={styles.background} />
 			</div>
 		</div>

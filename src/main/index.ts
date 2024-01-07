@@ -349,7 +349,7 @@ function createWindow(): void {
 					case GatewayOpcodes.Hello: {
 						setInterval(() => {
 							sendOp(GatewayOpcodes.Heartbeat, null, socket!);
-						}, data.d.heartbeat_interval - 1000);
+						}, data.d.heartbeat_interval);
 						break;
 					}
 					case GatewayOpcodes.Dispatch: {

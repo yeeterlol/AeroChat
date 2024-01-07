@@ -1,4 +1,10 @@
 .window {
+	background: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--accent), #fff 80%),
+		rgba(255, 255, 255, 1) 50%,
+		color-mix(in srgb, var(--accent), #fff 75%) 100%
+	);
 	position: relative;
 	width: 100vw;
 	height: 100vh;
@@ -15,19 +21,17 @@
 }
 
 .backgroundImage {
-	height: 82px;
+	-webkit-mask-image: linear-gradient(
+		to bottom,
+		rgba(0, 0, 0, 1),
+		rgba(0, 0, 0, 0.5) 50%,
+		rgba(0, 0, 0, 0) 100%
+	);
+	height: 64px;
 	background: url("@renderer/assets/login/bg-top.png"), #3dafe4;
-	background-position: top left;
-	background-size:
-		100% 100%,
-		100% 100%;
+	background-size: cover;
+	background-position: center;
 	box-shadow: inset 0px 22px 5px -20px rgba(0, 0, 0, 0.438);
-}
-
-.background {
-	width: 100%;
-	height: 100%;
-	background: linear-gradient(180deg, #e0eff5 0%, #ffffff 50%, #cae7f3 100%);
 }
 
 .toolbar {
@@ -41,14 +45,21 @@
 	box-sizing: border-box;
 	padding: 0px 5px;
 	box-shadow: inset 0px 0px 0px 1px var(--aero-white);
-	background: linear-gradient(
+	/* background: linear-gradient(
 		180deg,
 		rgba(141, 210, 243, 1) 0%,
 		rgba(67, 181, 235, 1) 50%,
 		rgba(57, 171, 225, 1) 50%,
 		rgba(60, 178, 234, 1) 100%
+	); */
+	background: linear-gradient(
+		to bottom,
+		color-mix(in srgb, var(--accent), #fff 30%) 0%,
+		color-mix(in srgb, var(--accent), #fff 10%) 50%,
+		color-mix(in srgb, var(--accent), #000 5%) 50%,
+		color-mix(in srgb, var(--accent), #000 10%) 100%
 	);
-	border-bottom: solid thin #2c85af;
+	border-bottom: solid thin var(--accent);
 }
 
 .toolbarContainer {
@@ -103,6 +114,7 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	width: 100%;
+	min-height: 22px;
 	text-shadow:
 		0px 0px 3px rgb(255, 255, 255),
 		0px 0px 4px rgb(255, 255, 255),
@@ -119,6 +131,8 @@
 		rgba(255, 255, 255, 0) 100%
 	);
 	height: 1px;
+	min-height: 1px;
+	max-height: 1px;
 	width: 100%;
 	filter: drop-shadow(0px 2px 1px rgba(37, 91, 116, 0.459));
 	margin-bottom: 6px;
@@ -219,12 +233,17 @@
 
 .messageBox {
 	border-radius: 4px 4px 0px 0px;
-	border: solid thin #bdd5df;
+	border: solid thin;
+	border-color: color-mix(
+		in srgb,
+		color-mix(in srgb, var(--accent), black 60%),
+		white 60%
+	);
 	outline: none;
 	width: 100%;
 	height: 28px;
 	font-size: 10pt;
-	background-color: #f6fcff;
+	background-color: color-mix(in srgb, var(--accent), #fff 98%);
 	box-shadow: 0px 0px 0px 1px var(--aero-white);
 	resize: none;
 	box-sizing: border-box;
@@ -249,7 +268,12 @@
 	width: 100%;
 	height: 28px;
 	margin-top: -3px;
-	border: solid thin #bdd5df;
+	border: solid thin;
+	border-color: color-mix(
+		in srgb,
+		color-mix(in srgb, var(--accent), black 60%),
+		white 60%
+	);
 	border-top: none;
 	border-radius: 0px 0px 4px 4px;
 	box-shadow:
@@ -258,9 +282,11 @@
 	background: linear-gradient(
 		180deg,
 		rgba(255, 255, 255, 1) 0%,
-		rgba(226, 244, 251, 1) 40%,
-		rgba(216, 234, 241, 1) 60%,
-		rgba(219, 237, 244, 1) 100%
+		color-mix(in srgb, color-mix(in srgb, var(--accent), black 10%), white 80%)
+			40%,
+		color-mix(in srgb, color-mix(in srgb, var(--accent), black 30%), white 80%)
+			60%,
+		color-mix(in srgb, var(--accent), #fff 75%) 100%
 	);
 	display: flex;
 	flex-direction: row;
@@ -438,7 +464,7 @@
 }
 
 .toolbarItem {
-	color: rgba(255, 255, 255, 0.9);
+	color: var(--color);
 	width: fit-content;
 	height: 24px;
 	margin-bottom: 2px;

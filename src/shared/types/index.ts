@@ -451,6 +451,7 @@ export interface State {
 	token: string;
 	title: string;
 	ready: Ready;
+	scene?: string;
 	userSettings: PreloadedUserSettings;
 }
 

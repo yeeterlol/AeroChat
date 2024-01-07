@@ -12,7 +12,7 @@ import {
 	State,
 	PermissionOverwrite,
 } from "../../../shared/types";
-import { getState } from "@renderer/util/ipc";
+import { getState, setGatewayState } from "@renderer/util/ipc";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -22,8 +22,53 @@ const toIco = window.require("to-ico") as typeof import("to-ico");
 
 export class DiscordUtil {
 	static state: State = getState();
+	static async request<Req = any, Res = any>(
+		endpoint: string,
+		method: "GET" | "POST" | "PATCH" | "DELETE",
+		body?: Req,
+	): Promise<Res> {
+		return await (
+			await fetch(`https://discord.com/api/v9${endpoint}`, {
+				method,
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: this.state.token,
+				},
+				body: JSON.stringify(body),
+			})
+		).json();
+	}
 	static updateState(state: State) {
 		this.state = state;
+	}
+	static async setScene(color: string) {
+		const res = await this.request<Partial<APIUser>, Partial<APIUser>>(
+			"/users/@me/profile",
+			"PATCH",
+			{
+				accent_color: parseInt(color.replace("#", ""), 16),
+			},
+		);
+		setGatewayState({
+			...this.state,
+			ready: {
+				...this.state.ready,
+				user: {
+					...this.state.ready?.user,
+					accent_color: parseInt(color.replace("#", ""), 16),
+				},
+			},
+		});
+		return res;
+	}
+	static updateUserSettings(settings: APIUser) {
+		setGatewayState({
+			...this.state,
+			ready: {
+				...this.state.ready,
+				user: { ...this.state.ready?.user, ...settings },
+			},
+		});
 	}
 	static getMembership(guild: IGuild) {
 		return this.state.ready?.merged_members

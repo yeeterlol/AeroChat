@@ -218,4 +218,56 @@ export const keyMap: { [key: string]: React.ReactNode } = {
 	"?": "?",
 };
 
+export const imageMap: { [key: string]: string } = {
+	"0.png": "#3dafe4",
+	"1.png": "#faf7f8",
+	"2.png": "#96d99c",
+	"3.png": "#fcc965",
+	"4.png": "#f7a44a",
+	"5.png": "#8eb494",
+	"6.png": "#72a1d4",
+	"7.png": "#b36883",
+	"8.png": "#99d933",
+	"9.png": "#764e9b",
+	"10.png": "#f4ccc8",
+	"11.png": "#2a2627",
+	"12.png": "#83116c",
+	"13.png": "#d63b72",
+	"14.png": "#262d29",
+	"15.png": "#566d81",
+	"16.png": "#ceccc5",
+	"17.png": "#88c11f",
+	"18.png": "#dfa97b",
+	"19.png": "#745994",
+	"20.png": "#664444",
+	"21.png": "#842b29",
+	"22.png": "#5c5b5c",
+};
+
+export function getColorFromScene(src: string) {
+	const key = Object.keys(imageMap).find(
+		(k) => k.endsWith(`/${src}`) || src.endsWith(`/${k}`),
+	);
+	if (key) {
+		return imageMap[key];
+	}
+	return null;
+}
+
+export async function getSceneFromColor(color: string): Promise<string | null> {
+	const key = Object.keys(imageMap).find(
+		(k) => imageMap[k] === (color.startsWith("#") ? color : `#${color}`),
+	);
+	const images = import.meta.glob("../assets/scenes/*.png", {
+		eager: true,
+	});
+	for (const img of Object.keys(images)) {
+		const src = images[img];
+		if (img.endsWith(`/${key}`)) {
+			return (src as any).default;
+		}
+	}
+	return null;
+}
+
 export { ipc };

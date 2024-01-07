@@ -1379,7 +1379,13 @@ function MessagePage() {
 						<div
 							className={styles.username}
 							style={{
-								marginBottom: 20,
+								marginBottom:
+									channel.type === ChannelType.GuildText ||
+									channel.type === ChannelType.GuildAnnouncement
+										? (channel as APITextChannel).topic
+											? -4
+											: -20
+										: -16,
 							}}
 						>
 							{guild

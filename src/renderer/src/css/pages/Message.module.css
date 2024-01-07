@@ -109,12 +109,14 @@
 }
 
 .username {
+	min-height: fit-content;
+	flex-shrink: 0;
 	font-size: 18px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	width: 100%;
-	min-height: 22px;
+	height: fit-content;
 	text-shadow:
 		0px 0px 3px rgb(255, 255, 255),
 		0px 0px 4px rgb(255, 255, 255),

@@ -76,6 +76,9 @@ import dndSmall from "@renderer/assets/message/dnd.png";
 import idleSmall from "@renderer/assets/message/idle.png";
 import offlineSmall from "@renderer/assets/message/invisible.png";
 import fontColorContrast from "font-color-contrast";
+const Store = remote.require(
+	"electron-store",
+) as typeof import("electron-store");
 
 function formatBytes(bytes: number, decimals: number = 2) {
 	if (!+bytes) return "0 Bytes";
@@ -362,6 +365,8 @@ function generateTyping(...usernames: string[]): React.JSX.Element {
 	return <></>;
 }
 
+const store = new Store();
+
 function MessagePage() {
 	const [bannerSrc, setBannerSrc] = useState<string | undefined>();
 	const [bannerAccent, setBannerAccent] = useState<string | undefined>();
@@ -468,6 +473,9 @@ function MessagePage() {
 	const [guild, setGuild] = useState<APIGuild | IGuild | undefined>();
 	useEffect(() => {
 		(async () => {
+			const recepient = state?.ready?.users.find(
+				(u) => u.id === (channel as APIDMChannel)?.recipients?.[0].id,
+			);
 			if (guild) {
 				const scene = await getSceneFromColor(
 					state?.ready?.user?.accent_color?.toString(16) || "",
@@ -482,11 +490,43 @@ function MessagePage() {
 				}
 				return;
 			}
+			const cache = store.get("userCache") || {};
+			console.log(cache);
+			const cached = cache[recepient?.id || ""];
+			if (cached) {
+				const scene = await getSceneFromColor(
+					cached.accent_color.toString(16) || "",
+				);
+				if (scene) {
+					setBannerSrc(scene);
+					setBannerAccent(cached.accent_color.toString(16));
+				} else {
+					setBannerSrc(undefined);
+					setBannerAccent("3dafe4");
+				}
+				let userCache = store.get("userCache") || {};
+				const user = await DiscordUtil.request<
+					never,
+					{ user_profile: { accent_color?: number } }
+				>(
+					`/users/${recepient?.id}/profile?with_mutual_guilds=false&with_mutual_friends_count=false`,
+					"GET",
+				);
+				userCache = {
+					...userCache,
+					[recepient!.id]: {
+						...user.user_profile,
+						date: Date.now(),
+					},
+				};
+				store.set("userCache", userCache);
+				return;
+			}
 			const user = await DiscordUtil.request<
 				never,
 				{ user_profile: { accent_color?: number } }
 			>(
-				`/users/${recepient?.user?.id}/profile?with_mutual_guilds=false&with_mutual_friends_count=false`,
+				`/users/${recepient?.id}/profile?with_mutual_guilds=false&with_mutual_friends_count=false`,
 				"GET",
 			);
 			const accent = user.user_profile.accent_color?.toString(16);
@@ -499,7 +539,7 @@ function MessagePage() {
 				setBannerAccent("3dafe4");
 			}
 		})();
-	}, [state?.ready?.users?.find((u) => u.id === recepient?.user?.id), guild]);
+	}, [channel, guild]);
 	useEffect(() => {
 		const id = addDispatchListener(
 			GatewayDispatchEvents.GuildMembersChunk,
@@ -1385,7 +1425,7 @@ function MessagePage() {
 										? (channel as APITextChannel).topic
 											? -4
 											: -20
-										: -16,
+										: 8,
 							}}
 						>
 							{guild

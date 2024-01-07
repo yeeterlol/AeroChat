@@ -8,7 +8,7 @@ import Speaker from "speaker";
 import Microphone from "node-microphone";
 import { is } from "@electron-toolkit/utils";
 import { join } from "path";
-import { copyFileSync } from "fs";
+import { copyFileSync, existsSync } from "fs";
 import { app } from "electron";
 import { WriteStream } from "tty";
 import { platform } from "os";
@@ -39,11 +39,17 @@ class RTPTimeStamp {
 	}
 }
 
-if (!is.dev && platform().includes("win")) {
-	copyFileSync(
-		join(__dirname, "..", "..", "resources", "bin", "sox.exe"),
-		app.getPath("temp") + "\\sox.exe",
-	);
+if (
+	!is.dev &&
+	platform().includes("win") &&
+	!existsSync(app.getPath("temp") + "\\sox.exe")
+) {
+	try {
+		copyFileSync(
+			join(__dirname, "..", "..", "resources", "bin", "sox.exe"),
+			app.getPath("temp") + "\\sox.exe",
+		);
+	} catch {}
 }
 
 let stream: WriteStream | null;

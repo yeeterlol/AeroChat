@@ -493,6 +493,23 @@ function Home() {
 	}
 	async function doubleClick(data: APIUser | APIChannel) {
 		if ("avatar" in data) {
+			let userCache = store.get("userCache") || {};
+			const user = await DiscordUtil.request<
+				never,
+				{ user_profile: { accent_color?: number } }
+			>(
+				`/users/${data?.id}/profile?with_mutual_guilds=false&with_mutual_friends_count=false`,
+				"GET",
+			);
+			userCache = {
+				...userCache,
+				[data.id]: {
+					...user.user_profile,
+					date: Date.now(),
+				},
+			};
+			store.set("userCache", userCache);
+
 			let frequentUsers: { [key: string]: number } =
 				store.get("frequentUsers") || ({} as any);
 			frequentUsers = {

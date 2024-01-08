@@ -274,7 +274,7 @@ function createWindow(): void {
 	} else {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
-	let firstLoad: boolean = false;
+	let firstLoad: boolean = true;
 	ipcMain.on("start-gateway", (_e, newToken: string) => {
 		token = newToken;
 		function configureSocket() {
@@ -371,7 +371,7 @@ function createWindow(): void {
 								voice = new VoiceConnection(token, d.user.id, socket!);
 								// redirect the webcontents of win
 								if (firstLoad) {
-									firstLoad = true;
+									firstLoad = false;
 									win?.loadURL(pathToHash("/home"));
 								}
 								break;

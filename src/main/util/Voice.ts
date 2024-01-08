@@ -2,7 +2,6 @@ import WebSocket, { WebSocketServer } from "ws";
 import dgram from "dgram";
 import { exit } from "process";
 import _libsodium from "libsodium-wrappers";
-import { OpusEncoder } from "@discordjs/opus";
 import chalk from "chalk";
 import Speaker from "speaker";
 import Microphone from "node-microphone";
@@ -188,7 +187,12 @@ export class VoiceConnection {
 				// 		},
 				// 	})
 				// );
-				const encoder = new OpusEncoder(48000, 2);
+				let encoder: any;
+				try {
+					encoder = new (await import("@discordjs/opus")).OpusEncoder(48000, 2);
+				} catch (e) {
+					console.log(e); // we're on win 7 probably
+				}
 				function decodeVoicePacket(packet: Buffer) {
 					// ok so this took way too long to figure out
 

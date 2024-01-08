@@ -80,22 +80,26 @@ function ContextMenu() {
 		// });
 		const width = rect.width + 8;
 		const height = rect.height + 12;
-		win.setContentSize(width, height);
-		win.setSize(width, height);
-		win.setMinimumSize(width, height);
-		win.setShape([
-			{
-				x: 0,
-				y: 0,
-				width: width,
-				height: height,
-			},
-		]);
-		// win.setPosition(x, y);
-		win.setPosition(
-			horizontal === "left" ? x : x - width,
-			vertical === "top" ? y : y - height,
-		);
+		try {
+			win.setContentSize(width, height);
+			win.setSize(width, height);
+			win.setMinimumSize(width, height);
+			win.setShape([
+				{
+					x: 0,
+					y: 0,
+					width: width,
+					height: height,
+				},
+			]);
+			// win.setPosition(x, y);
+			win.setPosition(
+				horizontal === "left" ? x : x - width,
+				vertical === "top" ? y : y - height,
+			);
+		} catch (e) {
+			console.error(e);
+		}
 		win.setIgnoreMouseEvents(false);
 		win.show();
 	}, [items, x, y, horizontal, vertical, width, params]);

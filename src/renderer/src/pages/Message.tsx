@@ -495,11 +495,11 @@ function MessagePage() {
 			const cached = cache[recepient?.id || ""];
 			if (cached) {
 				const scene = await getSceneFromColor(
-					cached.accent_color.toString(16) || "",
+					cached.accent_color?.toString(16) || "",
 				);
 				if (scene) {
 					setBannerSrc(scene);
-					setBannerAccent(cached.accent_color.toString(16));
+					setBannerAccent(cached.accent_color?.toString(16));
 				} else {
 					setBannerSrc(undefined);
 					setBannerAccent("3dafe4");

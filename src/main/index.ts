@@ -111,15 +111,13 @@ async function showContextMenu(
 ) {
 	if (!ctxMenu) return;
 	if (interval) clearInterval(interval);
-	ctxMenu.webContents.setWindowOpenHandler(({ url }) => {
-		shell.openExternal(url);
-		return { action: "deny" };
-	});
+
 	ctxMenu.setOpacity(0);
 	const steps = 60;
 	const timeInMs = 150;
 	const time = timeInMs / steps;
 	const step = 1 / steps;
+
 	interval = setInterval(() => {
 		if (!ctxMenu) return;
 		const opacity = ctxMenu.getOpacity();
@@ -129,6 +127,7 @@ async function showContextMenu(
 	}, time);
 	setTimeout(() => {
 		if (!ctxMenu) return;
+
 		if (interval) clearInterval(interval);
 		ctxMenu.setOpacity(1);
 	}, timeInMs);
@@ -141,7 +140,9 @@ async function showContextMenu(
 			}&vertical=${vertical}&horizontal=${horizontal}`,
 		),
 	);
+
 	ctxMenu.reload();
+
 	// ctxMenu.webContents.openDevTools({
 	// 	mode: "detach",
 	// });
@@ -344,7 +345,7 @@ function createWindow(): void {
 						window.webContents.send(`${id}-data`, JSON.stringify(data));
 					});
 				});
-				console.log(data.op, data.t);
+
 				switch (data.op) {
 					case GatewayOpcodes.Hello: {
 						setInterval(() => {
@@ -486,48 +487,50 @@ function createWindow(): void {
 			vertical: "top" | "bottom" = "top",
 			horizontal: "left" | "right" = "left",
 		) => {
-			showContextMenu(id, menu, x, y, offsetWidth, style, vertical, horizontal);
-			ipcMain.once(`${id}-close`, (_, selectedId) => {
-				if (e.sender.isDestroyed()) return;
-				e.sender.send(`${id}-close`, selectedId);
-			});
-			e.sender.once("blur", () => {
+			const win = BrowserWindow.fromWebContents(e.sender);
+			function bwActions() {
 				ctxMenu?.setIgnoreMouseEvents(true);
 				ctxMenu?.setOpacity(0);
 				if (e.sender.isDestroyed()) return;
 				e.sender.send(`${id}-close`);
-			});
-			ipcMain.once("close-ctx", (_, href: string) => {
+				win?.removeListener("move", bwActions);
+				win?.removeListener("resize", bwActions);
+				win?.removeListener("minimize", bwActions);
+				win?.removeListener("maximize", bwActions);
+				e.sender.removeListener("blur", onClose);
+				ipcMain.removeListener("close-ctx", onClose);
+			}
+			function onClose(_, selectedId) {
+				if (e.sender.isDestroyed()) return;
+				e.sender.send(`${id}-close`, selectedId);
+				win?.removeListener("move", bwActions);
+				win?.removeListener("resize", bwActions);
+				win?.removeListener("minimize", bwActions);
+				win?.removeListener("maximize", bwActions);
+				e.sender.removeListener("blur", onClose);
+				ipcMain.removeListener("close-ctx", onClose);
+			}
+			function onCtxClose(_, href: string) {
 				if (href.includes("context-menu")) return;
 				ctxMenu?.setIgnoreMouseEvents(true);
 				ctxMenu?.setOpacity(0);
 				if (e.sender.isDestroyed()) return;
 				e.sender.send(`${id}-close`);
-			});
-			BrowserWindow.fromWebContents(e.sender)?.once("move", () => {
-				ctxMenu?.setIgnoreMouseEvents(true);
-				ctxMenu?.setOpacity(0);
-				if (e.sender.isDestroyed()) return;
-				e.sender.send(`${id}-close`);
-			});
-			BrowserWindow.fromWebContents(e.sender)?.once("resize", () => {
-				ctxMenu?.setIgnoreMouseEvents(true);
-				ctxMenu?.setOpacity(0);
-				if (e.sender.isDestroyed()) return;
-				e.sender.send(`${id}-close`);
-			});
-			BrowserWindow.fromWebContents(e.sender)?.once("minimize", () => {
-				ctxMenu?.setIgnoreMouseEvents(true);
-				ctxMenu?.setOpacity(0);
-				if (e.sender.isDestroyed()) return;
-				e.sender.send(`${id}-close`);
-			});
-			BrowserWindow.fromWebContents(e.sender)?.once("maximize", () => {
-				ctxMenu?.setIgnoreMouseEvents(true);
-				ctxMenu?.setOpacity(0);
-				if (e.sender.isDestroyed()) return;
-				e.sender.send(`${id}-close`);
-			});
+				win?.removeListener("move", bwActions);
+				win?.removeListener("resize", bwActions);
+				win?.removeListener("minimize", bwActions);
+				win?.removeListener("maximize", bwActions);
+				e.sender.removeListener("blur", onClose);
+				ipcMain.removeListener("close-ctx", onClose);
+			}
+			showContextMenu(id, menu, x, y, offsetWidth, style, vertical, horizontal);
+			ipcMain.once(`${id}-close`, onClose);
+			e.sender.once("blur", onClose);
+			ipcMain.once("close-ctx", onCtxClose);
+			win?.once("move", bwActions);
+			win?.once("resize", bwActions);
+			win?.once("minimize", bwActions);
+			win?.once("maximize", bwActions);
 		},
 	);
 
@@ -591,7 +594,7 @@ function createWindow(): void {
 		]),
 	);
 	global.trayIcon = trayIcon;
-	const menu = new BrowserWindow({
+	ctxMenu = new BrowserWindow({
 		minWidth: 0,
 		minHeight: 0,
 		width: 0,
@@ -609,11 +612,12 @@ function createWindow(): void {
 			contextIsolation: false,
 		},
 	});
-	enable(menu.webContents);
-	menu.setAlwaysOnTop(true, "status");
-	menu.setOpacity(0);
-	menu.show();
-	ctxMenu = menu;
+	enable(ctxMenu.webContents);
+	ctxMenu.setAlwaysOnTop(true, "screen-saver");
+	ctxMenu.setSkipTaskbar(true);
+	ctxMenu.setOpacity(0);
+	ctxMenu.show();
+	showContextMenu("", [], 1, -16, 1, ContextMenuStyle.Modern, "top", "left");
 	win = mainWindow;
 }
 

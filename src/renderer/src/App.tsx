@@ -85,7 +85,9 @@ function Error() {
 			<CommandLink
 				title="join the discord server"
 				description="does the same as above, but instead joins the nostalgia '09 discord server for assistance."
-				onClick={() => remote.shell.openExternal("https://discord.gg/9QZ2M2Y")}
+				onClick={() =>
+					remote.shell.openExternal("https://discord.gg/nP9SxVQGnu")
+				}
 			/>
 			<CommandLink
 				title="exit"

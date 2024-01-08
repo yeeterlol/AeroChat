@@ -435,7 +435,7 @@ function Login(): JSX.Element {
 				)}
 			</div>
 			<div className={styles.windowFooter}>
-				<a href="https://discord.gg/2KJhWjRV85" target="_blank">
+				<a href="https://discord.gg/nP9SxVQGnu" target="_blank">
 					Join our Discord server!
 				</a>
 				{" | "}

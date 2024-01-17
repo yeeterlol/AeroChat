@@ -3,17 +3,16 @@ import styles from "@renderer/css/pages/Home.module.css";
 import {
 	Context,
 	apiReq,
-	getActivityText,
+	calcWidth,
+	calculateCaretPosition,
+	generateRandBetween,
 	getSceneFromColor,
 	hasParentWithClass,
-	joinClasses,
 } from "@renderer/util";
 import PfpBorder from "@renderer/components/PfpBorder";
 import {
 	APIChannel,
 	APIDMChannel,
-	APIGuild,
-	APITextChannel,
 	APIUser,
 	ChannelType,
 	GatewayDispatchEvents,
@@ -23,21 +22,16 @@ import {
 } from "discord-api-types/v9";
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import { sendOp } from "../../../shared/gateway";
-// const { Menu, getCurrentWindow, nativeImage } =
-// 	require("@electron/remote") as typeof import("@electron/remote");
 import active from "@renderer/assets/home/context-menu/active.png";
 import idle from "@renderer/assets/home/context-menu/idle.png";
 import invisible from "@renderer/assets/home/context-menu/invisible.png";
 import dnd from "@renderer/assets/home/context-menu/dnd.png";
 import {
+	Banner,
 	ContextMenuItemType,
 	ContextMenuStyle,
-	// ContextMenuItemType,
-	// ContextMenuStyle,
-	Friend,
-	GuildPresence,
+	HomeNotification,
 	State,
-	// State,
 	Status,
 } from "../../../shared/types";
 import {
@@ -67,383 +61,17 @@ const Store = remote.require(
 ) as typeof import("electron-store");
 import receiveAudio from "@renderer/assets/audio/type.mp3";
 import semver from "semver";
-import sanitizeHtml from "sanitize-html";
 const { ipcRenderer } = window.require("electron");
 const store = new Store();
 import dropdown from "@renderer/assets/ui-elements/dropdown/point_down.png";
 import paperOpen from "@renderer/assets/home/ui/paper-open.png";
 import paperClose from "@renderer/assets/home/ui/paper-close.png";
-import paperStatic from "@renderer/assets/home/ui/paper-static.png";
-
-interface Banner {
-	expiresOn: number;
-	src: string;
-	href: string;
-}
-
-interface News {
-	date: number;
-	body: string;
-}
-
-var units = {
-	year: 24 * 60 * 60 * 1000 * 365,
-	month: (24 * 60 * 60 * 1000 * 365) / 12,
-	day: 24 * 60 * 60 * 1000,
-	hour: 60 * 60 * 1000,
-	minute: 60 * 1000,
-	second: 1000,
-};
-
-var rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-var getRelativeTime = (d1: number, d2 = new Date()) => {
-	var elapsed = d1 - d2.getTime();
-	for (var u in units)
-		if (Math.abs(elapsed) > units[u] || u == "second")
-			return rtf.format(Math.round(elapsed / units[u]), u as any);
-	return null;
-};
-
-function NewsWidget() {
-	const [news, setNews] = useState<News[]>([]);
-	const [index, setIndex] = useState(0);
-	const pRef = useRef<HTMLParagraphElement>(null);
-	const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-	function changeIndexBy(amount: number) {
-		setIndex((i) => {
-			let newIndex = i + amount;
-			if (newIndex < 0) newIndex = news.length - 1;
-			if (newIndex >= news.length) newIndex = 0;
-			setNews((news) => {
-				if (news[newIndex].body !== news[i]?.body) {
-					if (pRef.current) {
-						pRef.current.animate(
-							[
-								{
-									opacity: 0,
-								},
-								{
-									opacity: 0.6,
-								},
-							],
-							{
-								duration: 250,
-								fill: "forwards",
-								easing: "steps(4, end)",
-							},
-						);
-					}
-				}
-				return news;
-			});
-			return newIndex;
-		});
-
-		// Clear the existing interval and start a new one
-		if (intervalRef.current) {
-			clearInterval(intervalRef.current);
-		}
-		intervalRef.current = setInterval(() => {
-			changeIndexBy(1);
-		}, 1000 * 10);
-	}
-
-	useEffect(() => {
-		const fetchNews = async () => {
-			const res = await fetch(
-				`https://gist.github.com/not-nullptr/62b1fdeb4533c905b8145bc076af108e/raw?bust=${Date.now()}`,
-			);
-			const json = await res.json();
-			setNews(json);
-		};
-		fetchNews();
-		const interval = setInterval(fetchNews, 1000 * 15);
-		return () => {
-			clearInterval(interval);
-		};
-	}, []);
-
-	useEffect(() => {
-		intervalRef.current = setInterval(() => {
-			changeIndexBy(1);
-		}, 1000 * 10);
-		return () => {
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-			}
-		};
-	}, []);
-
-	return (
-		<div className={styles.newsWidget}>
-			<div className={styles.newsHeader}>
-				<h1>What's new</h1>
-				<div className={styles.newsButtons}>
-					<div
-						onClick={() => changeIndexBy(-1)}
-						className={`${styles.newsButton} ${styles.left}`}
-					/>
-					<div
-						onClick={() => changeIndexBy(1)}
-						className={`${styles.newsButton} ${styles.right}`}
-					/>
-				</div>
-			</div>
-			<div
-				ref={pRef}
-				style={{
-					opacity: 0.6,
-				}}
-			>
-				{news[index]?.date && (
-					<p className={styles.relativeTime}>
-						{getRelativeTime(news[index]?.date)}
-					</p>
-				)}
-				{news.length ? (
-					<p dangerouslySetInnerHTML={{ __html: news[index]?.body }} />
-				) : (
-					<p>Loading...</p>
-				)}
-			</div>
-		</div>
-	);
-}
-function ImageButton({
-	onClick,
-	className,
-	type,
-}: {
-	onClick?: () => void;
-	className?: string;
-	type: string;
-}) {
-	const [img, setImg] = useState("");
-	useEffect(() => {
-		(async () => {
-			const img = await import(`@renderer/assets/home/icons/${type}.png`);
-			setImg(img.default);
-		})();
-	}, [type]);
-	return (
-		<div
-			onClick={onClick}
-			className={`${styles.imageButton} ${className || ""}`}
-		>
-			<img src={img} />
-		</div>
-	);
-}
-
-function calcWidth(text: string, offset: number = 1): number {
-	const body = document.querySelector("body");
-	const el = document.createElement("div");
-	el.style.width = "fit-content";
-	el.innerText = text;
-	body?.appendChild(el);
-	const width = el.offsetWidth;
-	el.remove();
-	return offset ? width + offset : width;
-}
-
-function generateRandBetween(min: number, max: number, prev: number) {
-	let rand = Math.floor(Math.random() * (max - min + 1) + min);
-	if (rand === prev) rand = generateRandBetween(min, max, prev);
-	return rand;
-}
-
-function calculateCaretPosition(
-	element: Element,
-	mouseX: number,
-	text: string,
-) {
-	const { left } = element.getBoundingClientRect();
-	const computedStyle = window.getComputedStyle(element);
-	const paddingLeft = parseInt(computedStyle.paddingLeft, 10);
-	const paddingRight = parseInt(computedStyle.paddingRight, 10);
-	const mouseXRelative = mouseX - (left + paddingLeft + paddingRight);
-
-	let cumulativeWidth = 0;
-	let caretPos = 0;
-
-	for (let i = 0; i < text.length; i++) {
-		const charWidth = calcWidth(text[i], 0);
-		cumulativeWidth += charWidth;
-		if (cumulativeWidth >= mouseXRelative) {
-			caretPos = i;
-			break;
-		}
-	}
-
-	return caretPos + 1;
-}
-
-function Notification({
-	notifications,
-}: {
-	notifications: HomeNotification[];
-}) {
-	const [icons, setIcons] = useState<{ name: string; url: string }[]>([]);
-	const [seen, setSeen] = useState<number[]>(
-		Object.values(store.get("seenNotifications") || []),
-	);
-	useEffect(() => {
-		async function fetchIcons() {
-			// import meta glob the icons
-			const glob = import.meta.glob("../assets/home/notification/*.png");
-			// convert into {name: string; url: string;}[]
-			const icons = await Promise.all(
-				Object.entries(glob).map(async ([key, val]) => ({
-					name: key.split("/").at(-1)!.replace(".png", ""),
-					url: ((await val()) as any).default,
-				})),
-			);
-			setIcons(icons);
-		}
-		fetchIcons();
-	}, [notifications]);
-	useEffect(() => {
-		store.set("seenNotifications", seen);
-	}, [seen]);
-	const version = remote.app.getVersion();
-	const notification = notifications.find((n) => {
-		const satifies = n.targets ? semver.satisfies(version, n.targets) : true;
-		return satifies && !seen.includes(n.date);
-	});
-	return notification ? (
-		<div className={styles.notificationContainer}>
-			<div
-				className={joinClasses(styles.notification, styles[notification.type])}
-			>
-				<img
-					className={styles.icon}
-					src={icons.find((i) => i.name === notification.type)?.url}
-				/>
-				<span
-					className={styles.contentContainer}
-					dangerouslySetInnerHTML={{
-						__html: sanitizeHtml(notification.message),
-						// this is vulnerable to xss but im the only one who can edit the notifications
-					}}
-				/>
-				<div
-					onClick={() => setSeen((s) => [...s, notification.date])}
-					className={styles.close}
-				/>
-			</div>
-		</div>
-	) : null;
-}
-
-export function Dropdown({
-	color,
-	header,
-	children,
-	info,
-}: {
-	color?: string;
-	header: string;
-	children: React.ReactNode;
-	info?: string;
-}) {
-	const [open, setOpen] = useState(false);
-	return (
-		<div className={styles.dropdown}>
-			<div className={styles.dropdownHeader} onClick={() => setOpen(!open)}>
-				<div className={styles.dropdownArrow} data-toggled={open} />
-				<h1 style={{ color }}>
-					{header} <span className={styles.dropdownInfo}>{info}</span>
-				</h1>
-			</div>
-			<div className={styles.dropdownContent} data-toggled={open}>
-				{children}
-			</div>
-		</div>
-	);
-}
-
-export function Contact(
-	props: React.DetailedHTMLProps<
-		React.HTMLAttributes<HTMLDivElement>,
-		HTMLDivElement
-	> & {
-		format?: string;
-		user: APIUser;
-		status: Friend | GuildPresence;
-		guild?: boolean;
-		groupchat?: boolean;
-	},
-) {
-	const p = { ...props, user: undefined, status: undefined, guild: undefined };
-	return (
-		<div
-			{...p}
-			onMouseDown={(e) => {
-				const contact = e.currentTarget.closest(
-					`.${styles.contact}`,
-				) as HTMLDivElement;
-				document.querySelectorAll(`.${styles.contact}`).forEach((c) => {
-					c.classList.remove(styles.selected);
-				});
-				contact.classList.add(styles.selected);
-				props.onClick?.(e);
-			}}
-			className={`${styles.contact} ${props.className || ""}`}
-		>
-			<PfpBorder
-				pfp={
-					props?.user?.avatar
-						? `https://cdn.discordapp.com/${
-								props.guild
-									? "icons"
-									: props.groupchat
-									  ? "channel-icons"
-									  : "avatars"
-						  }/${props?.user?.id}/${props?.user?.avatar}${
-								props.format || ".png"
-						  }`
-						: defaultPfp
-				}
-				variant="small"
-				stateInitial={props?.status?.status as unknown as PresenceUpdateStatus}
-				guild={props.guild || props.groupchat}
-			/>
-			<div className={styles.contactInfo}>
-				<div className={styles.contactUsername}>
-					{props.user.global_name || props.user.username}
-				</div>
-				<div className={styles.contactStatus}>
-					{getActivityText(props.status.activities)}
-				</div>
-			</div>
-		</div>
-	);
-}
-
-/**
- * A notification to be displayed on the home page
- */
-interface HomeNotification {
-	/**
-	 * The type of notification
-	 */
-	type: "information" | "warning" | "error";
-	/**
-	 * The notification's contents
-	 */
-	message: string;
-	/**
-	 * The date the notification was sent
-	 */
-	date: number;
-	/**
-	 * The targeted version(s) which the notification is for
-	 * @example targets: ">=1.0.0-rc.2"
-	 */
-	targets?: string;
-}
+import speen from "@renderer/assets/login/speen.png";
+import Contact from "@renderer/components/Contact";
+import Dropdown from "@renderer/components/Dropdown";
+import ImageButton from "@renderer/components/home/ImageButton";
+import NewsWidget from "@renderer/components/home/NewsWidget";
+import Notification from "@renderer/components/home/HomeNotification";
 
 function Home() {
 	let isHovering = false;
@@ -518,15 +146,15 @@ function Home() {
 			};
 			store.set("frequentUsers", frequentUsers);
 		} else {
-			const guild = state?.ready?.guilds?.find((g) =>
-				g.channels.map((c) => c.id).includes(data.id),
+			const guild = state?.guilds?.find((g) =>
+				g.properties.channels.map((c) => c.id).includes(data.id),
 			);
 			if (!guild) return;
 			let frequentGuilds: { [key: string]: number } =
 				store.get("frequentGuilds") || ({} as any);
 			frequentGuilds = {
 				...frequentGuilds,
-				[guild.id]: (frequentGuilds[guild.id] || 0) + 1,
+				[guild.properties.id]: (frequentGuilds[guild.properties.id] || 0) + 1,
 			};
 			store.set("frequentGuilds", frequentGuilds);
 		}
@@ -579,7 +207,7 @@ function Home() {
 			const memberReady = DiscordUtil.getMembership(guild);
 			if (!memberReady) throw new Error("member not found??");
 			const member = new Member(memberReady);
-			const channels = guild.channels
+			const channels = guild.properties.channels
 				.filter((c) => c.type === ChannelType.GuildText)
 				.sort((a, b) => a.position - b.position)
 				.map((c) => new Channel(c as any));
@@ -749,11 +377,11 @@ function Home() {
 									);
 									return {
 										type: "task",
-										description: `Opens ${guild?.properties?.name}`,
+										description: `Opens ${guild?.properties?.properties?.name}`,
 										program: `aerochat://guild/${id}`,
 										iconPath: icon || "",
 										iconIndex: 0,
-										title: guild?.properties?.name || "Unknown",
+										title: guild?.properties?.properties?.name || "Unknown",
 									};
 								},
 							),
@@ -846,9 +474,8 @@ function Home() {
 	useEffect(() => {
 		(async () => {
 			const img = await getSceneFromColor(
-				state?.ready?.user?.accent_color?.toString(16) || "",
+				state?.user?.properties?.accent_color?.toString(16) || "",
 			);
-			if (!img) setBackgroundImage(null);
 			setBackgroundImage(img);
 		})();
 	}, [state?.ready?.user]);
@@ -882,9 +509,9 @@ function Home() {
 				(c) => c.id === d.channel_id,
 			);
 			const shouldOpen =
-				(!!d.mentions.find((m) => m.id === state?.ready?.user?.id) ||
+				(!!d.mentions.find((m) => m.id === state?.user?.properties?.id) ||
 					(privateChannel && privateChannel.type !== ChannelType.GroupDM)) &&
-				d.author.id !== state?.ready?.user?.id;
+				d.author.id !== state?.user?.properties?.id;
 			if (shouldOpen) {
 				const oldWin = getWindow(`/message?channelId=${d.channel_id}`);
 				const audio = new Audio(receiveAudio);
@@ -1035,7 +662,7 @@ function Home() {
 				.search(search)
 				.map((s) => s.item)
 		: dmsUnsearched;
-	// const channels = state?.ready?.guilds
+	// const channels = state?.guilds
 	// 	?.map((g) =>
 	// 		g.channels.map((c) => ({
 	// 			guild: g,
@@ -1043,7 +670,7 @@ function Home() {
 	// 		})),
 	// 	)
 	// 	.flat();
-	// const guilds = state?.ready?.guilds.sort((a, b) =>
+	// const guilds = state?.guilds.sort((a, b) =>
 	// 	a.properties?.name.localeCompare(b.properties?.name),
 	// );
 	// const noFolders =
@@ -1091,7 +718,7 @@ function Home() {
 		state.userSettings?.guildFolders?.folders
 			.map((folder) => {
 				const guilds = folder.guildIds.map(
-					(g) => state.ready?.guilds?.find((h) => h.id === g.toString())!,
+					(g) => state.guilds?.find((h) => h.properties.id === g.toString())!,
 				);
 				return {
 					folder: folder,
@@ -1105,19 +732,19 @@ function Home() {
 		{
 			folder: undefined as any,
 			isFolder: false,
-			guilds: state.ready?.guilds
+			guilds: state?.guilds
 				.filter(
 					(g) =>
 						!guilds
 							.map((g) => g.guilds)
 							.flat()
-							.map((g) => g.id)
-							.includes(g.id),
+							.map((g) => g.properties.id)
+							.includes(g.properties.id),
 					// sort by joined_at, which we need to parse into a number
 				)
 				.sort((a, b) => {
-					const aDate = new Date(a.joined_at || 0).getTime();
-					const bDate = new Date(b.joined_at || 0).getTime();
+					const aDate = new Date(a.properties.joined_at || 0).getTime();
+					const bDate = new Date(b.properties.joined_at || 0).getTime();
 					return aDate - bDate;
 				}),
 		},
@@ -1130,8 +757,7 @@ function Home() {
 	const navigate = useNavigate();
 	return !state.ready?.user?.id ? (
 		<>
-			error: user is undefined! contact me on my discord:{" "}
-			<code>notnullptr</code>
+			<img src={speen} />
 		</>
 	) : (
 		<div className={styles.window}>
@@ -1147,20 +773,20 @@ function Home() {
 				<div
 					className={styles.bgImage}
 					// style={{
-					// 	backgroundImage: state?.ready?.user?.banner
+					// 	backgroundImage: state?.user?.properties?.banner
 					// 		? `url(https://cdn.discordapp.com/banners/${state.ready.user.id}/${state.ready.user.banner}.png?size=480)`
 					// 		: undefined,
-					// 	opacity: state?.ready?.user?.banner ? "0.75" : undefined,
-					// 	WebkitMask: state?.ready?.user?.banner
+					// 	opacity: state?.user?.properties?.banner ? "0.75" : undefined,
+					// 	WebkitMask: state?.user?.properties?.banner
 					// 		? "linear-gradient(to bottom, #fff, #000)"
 					// 		: undefined,
-					// 	mask: state?.ready?.user?.banner
+					// 	mask: state?.user?.properties?.banner
 					// 		? "linear-gradient(to bottom, #fff, #000)"
 					// 		: undefined,
 					// }}
 					style={{
 						backgroundImage: backgroundImage
-							? `url(${backgroundImage})`
+							? `url("${backgroundImage}")`
 							: undefined,
 					}}
 				/>
@@ -1184,14 +810,38 @@ function Home() {
 					className={styles.paper}
 				/>
 				<div className={styles.topInfo}>
-					<PfpBorder
-						stateInitial={userStatus?.status as PresenceUpdateStatus}
-						pfp={
-							state?.ready?.user?.avatar
-								? `https://cdn.discordapp.com/avatars/${state?.ready?.user?.id}/${state?.ready?.user?.avatar}.png?size=256`
-								: defaultPfp
-						}
-					/>
+					<div
+						style={{
+							cursor: "pointer",
+						}}
+						onMouseDown={() => {
+							createWindow({
+								customProps: {
+									url: "/display-picture",
+								},
+								minWidth: 484,
+								minHeight: 578,
+								maxWidth: 484,
+								maxHeight: 578,
+								width: 484,
+								height: 578,
+							});
+						}}
+					>
+						<PfpBorder
+							stateInitial={userStatus?.status as PresenceUpdateStatus}
+							pfp={
+								state?.user?.properties?.avatar
+									? `https://cdn.discordapp.com/avatars/${state?.ready?.user
+											?.id}/${state?.user?.properties?.avatar}.${
+											state?.ready?.user?.avatar?.startsWith("a_")
+												? "gif"
+												: "webp"
+									  }?size=256`
+									: defaultPfp
+							}
+						/>
+					</div>
 					<div className={styles.userInfo}>
 						<div
 							onClick={() => {
@@ -1529,7 +1179,7 @@ function Home() {
 														if (!memberReady)
 															throw new Error("member not found??");
 														const member = new Member(memberReady);
-														const channels = c.channels
+														const channels = c.properties.channels
 															.filter((c) => c.type === ChannelType.GuildText)
 															.sort((a, b) => a.position - b.position)
 															.map((c) => new Channel(c as any));
@@ -1542,12 +1192,12 @@ function Home() {
 														if (!channel) return;
 														doubleClick(channel.properties);
 													}}
-													key={c.id}
+													key={c.properties.id}
 													user={
 														{
-															id: c.id,
-															avatar: c.properties?.icon,
-															global_name: c.properties?.name,
+															id: c.properties.id,
+															avatar: c.properties.properties?.icon,
+															global_name: c.properties.properties?.name,
 														} as any
 													}
 													status={PresenceUpdateStatus.Online as any}
@@ -1570,7 +1220,7 @@ function Home() {
 												const memberReady = DiscordUtil.getMembership(c);
 												if (!memberReady) throw new Error("member not found??");
 												const member = new Member(memberReady);
-												const channels = c.channels
+												const channels = c.properties.channels
 													.filter((c) => c.type === ChannelType.GuildText)
 													.sort((a, b) => a.position - b.position)
 													.map((c) => new Channel(c as any));
@@ -1583,12 +1233,12 @@ function Home() {
 												if (!channel) return;
 												doubleClick(channel.properties);
 											}}
-											key={c.id}
+											key={c.properties.id}
 											user={
 												{
-													id: c.id,
-													avatar: c.properties?.icon,
-													global_name: c.properties?.name,
+													id: c.properties.id,
+													avatar: c.properties.properties?.icon,
+													global_name: c.properties.properties?.name,
 												} as any
 											}
 											status={PresenceUpdateStatus.Online as any}

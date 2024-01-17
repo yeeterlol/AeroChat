@@ -7,6 +7,7 @@ import {
 	Menu,
 	Tray,
 	dialog,
+	session,
 } from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
@@ -94,9 +95,9 @@ let updateInterval: NodeJS.Timeout | null;
 
 function setVoiceStates(newVoiceStates: GatewayVoiceState[]) {
 	voiceStates = newVoiceStates;
-	BrowserWindow.getAllWindows().forEach((window) => {
-		window.webContents.send("voice-state-update", voiceStates);
-	});
+	// BrowserWindow.getAllWindows().forEach((window) => {
+	// 	window.webContents.send("voice-state-update", voiceStates);
+	// });
 }
 
 async function showContextMenu(
@@ -654,6 +655,13 @@ if (!gotTheLock) {
 }
 
 app.whenReady().then(() => {
+	session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+		details.requestHeaders["User-Agent"] =
+			"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9028 Chrome/108.0.5359.215 Electron/22.3.26 Safari/537.36";
+		details.requestHeaders["X-Super-Properties"] =
+			"eyJvcyI6IldpbmRvd3MiLCJicm93c2VyIjoiRGlzY29yZCBDbGllbnQiLCJyZWxlYXNlX2NoYW5uZWwiOiJzdGFibGUiLCJjbGllbnRfdmVyc2lvbiI6IjEuMC45MDI4Iiwib3NfdmVyc2lvbiI6IjEwLjAuMTgzNjMiLCJvc19hcmNoIjoieDY0IiwiYXBwX2FyY2giOiJpYTMyIiwic3lzdGVtX2xvY2FsZSI6ImVuLVVTIiwiYnJvd3Nlcl91c2VyX2FnZW50IjoiTW96aWxsYS81LjAgKFdpbmRvd3MgTlQgMTAuMDsgV09XNjQpIEFwcGxlV2ViS2l0LzUzNy4zNiAoS0hUTUwsIGxpa2UgR2Vja28pIGRpc2NvcmQvMS4wLjkwMjggQ2hyb21lLzEwOC4wLjUzNTkuMjE1IEVsZWN0cm9uLzIyLjMuMjYgU2FmYXJpLzUzNy4zNiIsImJyb3dzZXJfdmVyc2lvbiI6IjIyLjMuMjYiLCJjbGllbnRfYnVpbGRfbnVtYmVyIjoyNTgxMDQsIm5hdGl2ZV9idWlsZF9udW1iZXIiOjQxOTM2LCJjbGllbnRfZXZlbnRfc291cmNlIjpudWxsLCJkZXNpZ25faWQiOjB9";
+		callback({ cancel: false, requestHeaders: details.requestHeaders });
+	});
 	// Set app user model id for windows
 	electronApp.setAppUserModelId("com.electron");
 

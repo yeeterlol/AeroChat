@@ -57,8 +57,8 @@ import {
 	computePermissions,
 	Member,
 	Channel,
+	Guild,
 } from "@renderer/classes/DiscordUtil";
-import { Contact, Dropdown } from "./Home";
 import lilGuy from "@renderer/assets/message/buddies.png";
 const remote = window.require(
 	"@electron/remote",
@@ -76,6 +76,8 @@ import dndSmall from "@renderer/assets/message/dnd.png";
 import idleSmall from "@renderer/assets/message/idle.png";
 import offlineSmall from "@renderer/assets/message/invisible.png";
 import fontColorContrast from "font-color-contrast";
+import Contact from "@renderer/components/Contact";
+import Dropdown from "@renderer/components/Dropdown";
 const Store = remote.require(
 	"electron-store",
 ) as typeof import("electron-store");
@@ -125,7 +127,9 @@ function getPfp(
 	}
 	if ("avatar" in user) {
 		return user.avatar
-			? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`
+			? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${
+					user.avatar.startsWith("a_") ? "gif" : "webp"
+			  }?size=256`
 			: defaultPfp;
 	}
 	return defaultPfp;
@@ -243,7 +247,7 @@ function parseMessage(
 					<div className={styles.nudgeDivider} />
 				)}
 				<div>
-					{state?.ready?.user?.id
+					{state?.user?.properties.id
 						? state.ready.user.id !== message.author.id
 							? `${
 									message.author.global_name || message.author.username
@@ -394,7 +398,7 @@ function MessagePage() {
 	const { state } = useContext(Context);
 	function getSmallIcon(user: APIUser) {
 		const presence =
-			user.id === state?.ready?.user?.id
+			user.id === state?.user?.properties.id
 				? state?.ready?.sessions[0]
 				: state?.ready?.merged_presences?.friends.find(
 						(f) => f.user_id === user.id,
@@ -470,7 +474,7 @@ function MessagePage() {
 		}[]
 	>([]);
 	const emoji = useEmoji();
-	const [guild, setGuild] = useState<APIGuild | IGuild | undefined>();
+	const [guild, setGuild] = useState<Guild | undefined>();
 	useEffect(() => {
 		(async () => {
 			const recepient = state?.ready?.users.find(
@@ -478,12 +482,12 @@ function MessagePage() {
 			);
 			if (guild) {
 				const scene = await getSceneFromColor(
-					state?.ready?.user?.accent_color?.toString(16) || "",
+					state?.user?.properties.accent_color?.toString(16) || "",
 				);
 				console.log(scene);
 				if (scene) {
 					setBannerSrc(scene);
-					setBannerAccent(state?.ready?.user?.accent_color?.toString(16));
+					setBannerAccent(state?.user?.properties.accent_color?.toString(16));
 				} else {
 					setBannerSrc(undefined);
 					setBannerAccent("3dafe4");
@@ -504,22 +508,22 @@ function MessagePage() {
 					setBannerSrc(undefined);
 					setBannerAccent("3dafe4");
 				}
-				let userCache = store.get("userCache") || {};
-				const user = await DiscordUtil.request<
-					never,
-					{ user_profile: { accent_color?: number } }
-				>(
-					`/users/${recepient?.id}/profile?with_mutual_guilds=false&with_mutual_friends_count=false`,
-					"GET",
-				);
-				userCache = {
-					...userCache,
-					[recepient!.id]: {
-						...user.user_profile,
-						date: Date.now(),
-					},
-				};
-				store.set("userCache", userCache);
+				// let userCache = store.get("userCache") || {};
+				// const user = await DiscordUtil.request<
+				// 	never,
+				// 	{ user_profile: { accent_color?: number } }
+				// >(
+				// 	`/users/${recepient?.id}/profile?with_mutual_guilds=false&with_mutual_friends_count=false`,
+				// 	"GET",
+				// );
+				// userCache = {
+				// 	...userCache,
+				// 	[recepient!.id]: {
+				// 		...user.user_profile,
+				// 		date: Date.now(),
+				// 	},
+				// };
+				// store.set("userCache", userCache);
 				return;
 			}
 			const user = await DiscordUtil.request<
@@ -539,12 +543,12 @@ function MessagePage() {
 				setBannerAccent("3dafe4");
 			}
 		})();
-	}, [channel, guild]);
+	}, [channel, guild, state?.ready?.user]);
 	useEffect(() => {
 		const id = addDispatchListener(
 			GatewayDispatchEvents.GuildMembersChunk,
 			(d) => {
-				if (d.guild_id !== guild?.id) return;
+				if (d.guild_id !== guild?.properties.id) return;
 				if (d.presences) {
 					setPresences((p) => {
 						const mut = [...p];
@@ -596,7 +600,7 @@ function MessagePage() {
 			if (d.channel_id !== channelId) return;
 			let typingMut = [...typing];
 			const typingUser = typingMut.find((t) => t.id === d.user_id);
-			if (d.user_id === state?.ready?.user?.id) return;
+			if (d.user_id === state?.user?.properties.id) return;
 			const user = state?.ready?.users?.find((u) => u.id === d.user_id);
 			if (typingUser) {
 				clearTimeout(typingUser.timeout);
@@ -643,8 +647,8 @@ function MessagePage() {
 		if (!guild) return;
 		if ("properties" in guild) {
 			setChannel({
-				...(guild.channels.find((c) => c.id === channelId) as any),
-				guild_id: guild.id,
+				...(guild.properties.channels.find((c) => c.id === channelId) as any),
+				guild_id: guild.properties.id,
 			});
 			setMessages([]);
 			// setChannel(guild.channels.find((c) => c.id === channelId) as any);
@@ -657,7 +661,7 @@ function MessagePage() {
 		if (!memberReady) throw new Error("member not found??");
 		const member = new Member(memberReady);
 		// sort by position but push voice channels to the bottom
-		const channels = guild.channels
+		const channels = guild.properties.channels
 			.map((c) => new Channel(c as any))
 			.filter((c) =>
 				hasPermission(
@@ -718,9 +722,9 @@ function MessagePage() {
 			requestBody.message_reference = {
 				message_id: msg.id,
 				channel_id: msg.channel_id,
-				guild_id: state?.ready?.guilds.find((g) =>
-					g.channels.map((g) => g.id).includes(msg.channel_id),
-				)?.id,
+				guild_id: state?.guilds.find((g) =>
+					g.properties.channels.map((g) => g.id).includes(msg.channel_id),
+				)?.properties.id,
 			};
 			setReplyId(undefined);
 		}
@@ -789,7 +793,7 @@ function MessagePage() {
 						window.setPosition(windowPos[0], windowPos[1]);
 					}, 2000);
 				}
-				if (d.author.id === state?.ready?.user?.id && d.nonce) {
+				if (d.author.id === state?.user?.properties.id && d.nonce) {
 					setMessages((msgs) => {
 						let newMsgs = [...msgs];
 						newMsgs = newMsgs.filter((msg) => msg.nonce !== d.nonce);
@@ -804,7 +808,7 @@ function MessagePage() {
 					typingMut = typingMut.filter((t) => t.id !== d.author.id);
 				}
 				setTyping(typingMut);
-				if (d.author.id !== state?.ready?.user?.id)
+				if (d.author.id !== state?.user?.properties.id)
 					setMessages([...messages, d]);
 			}),
 			addDispatchListener(GatewayDispatchEvents.MessageUpdate, (d) => {
@@ -836,7 +840,9 @@ function MessagePage() {
 		if (!channel) return;
 		setGuild(
 			isGuildChannel(channel.type)
-				? state?.ready?.guilds.find((g) => g.id === (channel as any).guild_id)
+				? state?.guilds.find(
+						(g) => g.properties.id === (channel as any).guild_id,
+				  )
 				: undefined,
 		);
 	}, [channel, channelId]);
@@ -862,7 +868,7 @@ function MessagePage() {
 		];
 		if (users.length === 0) return;
 		sendOp(GatewayOpcodes.RequestGuildMembers, {
-			guild_id: guild?.id,
+			guild_id: guild?.properties.id,
 			user_ids: users,
 		});
 		console.log("op sent, maybe?");
@@ -891,9 +897,7 @@ function MessagePage() {
 				: `${recepient.user?.username}`;
 		} else if (guild && channel) {
 			if ("properties" in guild) {
-				document.title = `${channel.name}  <${guild.properties.name}>`;
-			} else {
-				document.title = `${channel.name}  <${guild.name}>`;
+				document.title = `${channel.name}  <${guild.properties.properties.name}>`;
 			}
 		} else if (channel?.type === ChannelType.GroupDM) {
 			document.title =
@@ -1107,7 +1111,7 @@ function MessagePage() {
 									{
 										query: val,
 										limit: 10,
-										guild_id: [guild?.id],
+										guild_id: [guild?.properties.id],
 										presences: true,
 									} as any,
 								);
@@ -1310,9 +1314,7 @@ function MessagePage() {
 																			ChannelType.GuildVoice
 																		) {
 																			joinVoiceChannel(
-																				"properties" in guild
-																					? guild.properties.id
-																					: guild.id,
+																				guild.properties.id,
 																				c.properties.id,
 																			);
 																		} else setChannelId(c.properties.id);
@@ -1430,9 +1432,7 @@ function MessagePage() {
 						>
 							{guild
 								? `#${channel.name || "unknown-channel"} - ${
-										"properties" in guild
-											? guild.properties.name
-											: guild.name || "Unknown Server"
+										guild.properties.properties.name
 								  }`
 								: recepient?.user?.global_name || recepient?.user?.username}
 							{guild ? (
@@ -1475,7 +1475,7 @@ function MessagePage() {
 														sendOp(
 															14 as any,
 															{
-																guild_id: guild.id,
+																guild_id: guild.properties.id,
 																members: [m.author.id],
 															} as any,
 														);
@@ -1493,9 +1493,9 @@ function MessagePage() {
 													color: guild
 														? "#" +
 																(() => {
-																	const roles = (guild.roles as APIRole[]).sort(
-																		(a, b) => b.position - a.position,
-																	);
+																	const roles = (
+																		guild.properties.roles as APIRole[]
+																	).sort((a, b) => b.position - a.position);
 																	const authorRoles = userRoles.find(
 																		(u) => u.id === m.author.id,
 																	)?.roles;
@@ -1520,7 +1520,7 @@ function MessagePage() {
 													style={{
 														fontWeight:
 															m.referenced_message.author.id ===
-															state?.ready?.user?.id
+															state?.user?.properties.id
 																? "bold"
 																: undefined,
 													}}
@@ -1651,7 +1651,7 @@ function MessagePage() {
 																				sendOp(
 																					14 as any,
 																					{
-																						guild_id: guild.id,
+																						guild_id: guild.properties.id,
 																						members: [user.id],
 																					} as any,
 																				);
@@ -2132,7 +2132,7 @@ function MessagePage() {
 			<div className={styles.backgroundContainer}>
 				<div
 					style={{
-						backgroundImage: bannerSrc ? `url(${bannerSrc})` : undefined,
+						backgroundImage: bannerSrc ? `url("${bannerSrc}")` : undefined,
 					}}
 					className={styles.backgroundImage}
 				/>

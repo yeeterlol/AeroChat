@@ -25,7 +25,15 @@ export function startGateway(token: string) {
 }
 
 export function getState(): State {
-	return ipcRenderer.sendSync("get-state");
+	return {
+		guilds: [],
+		ready: {},
+		token: "",
+		user: {},
+		users: [],
+		userSettings: {},
+		...ipcRenderer.sendSync("get-state"),
+	};
 }
 
 export function setGatewayState(newState: State) {

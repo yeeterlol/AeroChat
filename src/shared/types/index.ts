@@ -1,3 +1,4 @@
+import { Guild, User } from "../../renderer/src/classes/DiscordUtil";
 import { APIConnection, APIUser } from "discord-api-types/v9";
 import { PreloadedUserSettings } from "discord-protos";
 import { Presence } from "discord.js-selfbot-v13";
@@ -8,6 +9,40 @@ export interface Session {
 	client_info: ClientInfo;
 	activities: Activity[];
 	active?: boolean;
+}
+
+export interface Banner {
+	expiresOn: number;
+	src: string;
+	href: string;
+}
+
+export interface News {
+	date: number;
+	body: string;
+}
+
+/**
+ * A notification to be displayed on the home page
+ */
+export interface HomeNotification {
+	/**
+	 * The type of notification
+	 */
+	type: "information" | "warning" | "error";
+	/**
+	 * The notification's contents
+	 */
+	message: string;
+	/**
+	 * The date the notification was sent
+	 */
+	date: number;
+	/**
+	 * The targeted version(s) which the notification is for
+	 * @example targets: ">=1.0.0-rc.2"
+	 */
+	targets?: string;
 }
 
 export interface Activity {
@@ -449,9 +484,11 @@ export interface Ready {
 
 export interface State {
 	token: string;
-	title: string;
 	ready: Ready;
-	scene?: string;
+	user: Required<User>;
+	guilds: Guild[];
+	users: User[];
+
 	userSettings: PreloadedUserSettings;
 }
 

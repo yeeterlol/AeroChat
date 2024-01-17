@@ -12,7 +12,7 @@ import {
 	State,
 	PermissionOverwrite,
 } from "../../../shared/types";
-import { getState, setGatewayState } from "@renderer/util/ipc";
+import { getState, setGatewayState } from "../util/ipc";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -21,7 +21,7 @@ const fs = window.require("fs") as typeof import("fs");
 const toIco = window.require("to-ico") as typeof import("to-ico");
 
 export class DiscordUtil {
-	static state: State = getState();
+	static state: State = null as any;
 	static async request<Req = any, Res = any>(
 		endpoint: string,
 		method: "GET" | "POST" | "PATCH" | "DELETE",
@@ -46,7 +46,9 @@ export class DiscordUtil {
 			"/users/@me/profile",
 			"PATCH",
 			{
-				accent_color: parseInt(color.replace("#", ""), 16),
+				accent_color: color.includes("e9f1f5")
+					? undefined
+					: parseInt(color.replace("#", ""), 16),
 			},
 		);
 		setGatewayState({
@@ -55,7 +57,30 @@ export class DiscordUtil {
 				...this.state.ready,
 				user: {
 					...this.state.ready?.user,
-					accent_color: parseInt(color.replace("#", ""), 16),
+					accent_color: color.includes("e9f1f5")
+						? undefined
+						: parseInt(color.replace("#", ""), 16),
+				},
+			},
+		});
+		return res;
+	}
+	static async setProfilePicture(picture: string) {
+		const res = await this.request<Partial<APIUser>, Partial<APIUser>>(
+			"/users/@me",
+			"PATCH",
+			{
+				avatar: picture,
+			},
+		);
+		if (!res.avatar) return res;
+		setGatewayState({
+			...this.state,
+			ready: {
+				...this.state.ready,
+				user: {
+					...this.state.ready?.user,
+					avatar: res.avatar!,
 				},
 			},
 		});
@@ -70,10 +95,10 @@ export class DiscordUtil {
 			},
 		});
 	}
-	static getMembership(guild: IGuild) {
+	static getMembership(guild: Guild) {
 		return this.state.ready?.merged_members
 			.flat()
-			?.find((m) => m.joined_at === guild.joined_at);
+			?.find((m) => m.joined_at === guild.properties.joined_at);
 	}
 	static getChannelById(id: string) {
 		return this.state.ready?.guilds
@@ -99,7 +124,7 @@ export class DiscordUtil {
 		return this.state?.ready?.users.find((u) => u.id === id);
 	}
 	static getGuildById(id: string) {
-		return this.state?.ready?.guilds.find((g) => g.id === id);
+		return this.state?.guilds.find((g) => g.properties.id === id);
 	}
 	static async getAvatarPath(user: APIUser | APIGuild | undefined) {
 		if (!user) return;
@@ -147,6 +172,25 @@ export class Member {
 		this.userId = member.user_id;
 	}
 	userId: string;
+}
+
+export class User {
+	properties: APIUser;
+	getPfp(size: number = 64) {
+		return `https://cdn.discordapp.com/avatars/${this.properties.id}/${
+			this.properties.avatar
+		}.${
+			this.properties.avatar?.startsWith("a_") ? "gif" : "webp"
+		}?size=${size}`;
+	}
+	constructor(user: APIUser) {
+		this.properties = user;
+	}
+	get username() {
+		return this.properties.discriminator
+			? `${this.properties.username}#${this.properties.discriminator}`
+			: this.properties.global_name || this.properties.username;
+	}
 }
 
 export class Role {

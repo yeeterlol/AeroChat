@@ -105,7 +105,11 @@ function ContactCard() {
 				<PfpBorder
 					pfp={
 						profile.user.avatar
-							? `https://cdn.discordapp.com/avatars/${profile.user.id}/${profile.user.avatar}.webp?size=80`
+							? `https://cdn.discordapp.com/avatars/${profile.user.id}/${
+									profile.user.avatar
+							  }.${
+									profile.user.avatar?.startsWith("a_") ? "gif" : "webp"
+							  }?size=80`
 							: defaultPfp
 					}
 					stateInitial={status?.status || ("offline" as any)}

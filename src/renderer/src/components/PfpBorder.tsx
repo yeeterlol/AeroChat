@@ -24,6 +24,7 @@ export default function PfpBorder({
 	variant = "default",
 	guild,
 	style,
+	className,
 }: {
 	pfp: string;
 	win?: Window;
@@ -31,6 +32,7 @@ export default function PfpBorder({
 	variant?: "default" | "small" | "large";
 	guild?: boolean;
 	style?: React.CSSProperties;
+	className?: string;
 }) {
 	let state = getStateFromPresence(stateInitial);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -259,7 +261,7 @@ export default function PfpBorder({
 			<div
 				data-state={stateInitial}
 				ref={containerRef}
-				className={styles.pfpBorder}
+				className={`${styles.pfpBorder} ${className}`}
 			>
 				<img ref={borderRef} src={src.replace("/@fs", "")} id="border" />
 				<img style={getImageStyle()} src={pfp} className={styles.pfp} />
@@ -270,7 +272,7 @@ export default function PfpBorder({
 			<div
 				data-state={stateInitial}
 				ref={containerRef}
-				className={styles.pfpBorder}
+				className={`${styles.pfpBorder} ${className}`}
 				style={{
 					opacity:
 						stateInitial === PresenceUpdateStatus.Offline ||

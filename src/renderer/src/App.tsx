@@ -1,7 +1,7 @@
 import { Routes, Route, HashRouter } from "react-router-dom";
 import Login from "@renderer/pages/Login";
 import Home from "@renderer/pages/Home";
-import { Context, getSceneFromColor } from "@renderer/util";
+import { Context, getSceneFromColor, imageMap } from "@renderer/util";
 import { useEffect, useState } from "react";
 import { State, Status } from "../../shared/types/index";
 import {
@@ -20,13 +20,14 @@ const { ipcRenderer }: { ipcRenderer: any } = window.require("electron");
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import ContextMenu from "./pages/ContextMenu";
 import Message from "./pages/Message";
-import { DiscordUtil } from "./classes/DiscordUtil";
+import { DiscordUtil, Guild, User } from "./classes/DiscordUtil";
 import ContactCard from "./pages/ContactCard";
 import Options from "./pages/Options";
 import { ErrorBoundary } from "@sentry/react";
 import CommandLink from "./components/CommandLink";
 import AddFriend from "./pages/AddFriend";
 import Customize from "./pages/Customize";
+import DisplayPicture from "./pages/DisplayPicture";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -103,6 +104,15 @@ function App(): JSX.Element {
 	// on ctrl + shift + i
 	const store = new Store();
 	useEffect(() => {
+		store.onDidChange("imageMap", (map) => {
+			if (imageMap === map) return;
+			window.location.reload();
+		});
+		return () => {
+			store.events.removeAllListeners("change");
+		};
+	}, []);
+	useEffect(() => {
 		(async () => {
 			[
 				(await import("@renderer/assets/ui-elements/checkbox/check.png"))
@@ -170,7 +180,6 @@ function App(): JSX.Element {
 	useEffect(() => {
 		function keyDown(e: KeyboardEvent) {
 			const kbd = document.querySelector(`kbd[data-key="${e.key}"]`);
-			console.log(e.key, kbd);
 			if (!kbd) return;
 			kbd.classList.add("active");
 		}
@@ -206,13 +215,19 @@ function App(): JSX.Element {
 	}, []);
 	const initialState = getState();
 	const [reactState, setReactState] = useState<State>(initialState as State);
+	function setProxyState(newState: State) {
+		newState.user = new User(newState.ready?.user) || new User({} as any);
+		newState.guilds = newState.ready?.guilds?.map((g) => new Guild(g)) || [];
+		newState.users = newState.ready?.users?.map((u) => new User(u)) || [];
+		setReactState(newState);
+	}
 	function setState(newState: State) {
 		setGatewayState(newState);
-		setReactState(newState);
+		setProxyState(newState);
 	}
 	useEffect(() => {
 		ipcRenderer.on("set-state", (_, state) => {
-			setReactState(state);
+			setProxyState(state);
 		});
 		return () => {
 			ipcRenderer.removeAllListeners("set-state");
@@ -222,17 +237,17 @@ function App(): JSX.Element {
 		DiscordUtil.updateState(reactState);
 		(async () => {
 			const thing = await getSceneFromColor(
-				reactState?.ready?.user?.accent_color?.toString(16) || "",
+				reactState?.user?.properties?.accent_color?.toString(16) || "",
 			);
 			if (thing) {
 				document.body.style.setProperty(
 					"--accent",
 					`#${
-						reactState?.ready?.user?.accent_color?.toString(16) || "#3dafe4"
+						reactState?.ready?.user?.accent_color?.toString(16) || "#bae9ff"
 					}`,
 				);
 			} else {
-				document.body.style.setProperty("--accent", `#3dafe4`);
+				document.body.style.setProperty("--accent", `#bae9ff`);
 			}
 		})();
 	}, [reactState]);
@@ -250,6 +265,7 @@ function App(): JSX.Element {
 						<Route path="/options" element={<Options />} />
 						<Route path="/add-friend" element={<AddFriend />} />
 						<Route path="/customize" element={<Customize />} />
+						<Route path="/display-picture" element={<DisplayPicture />} />
 					</Routes>
 				</HashRouter>
 			</Context.Provider>

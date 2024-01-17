@@ -5,8 +5,75 @@ import hasEmoji from "has-emoji";
 import gameIcon from "@renderer/assets/home/statuses/game.png";
 import musicIcon from "@renderer/assets/home/statuses/music.png";
 import styles from "@renderer/css/pages/Home.module.css";
+const remote = window.require(
+	"@electron/remote",
+) as typeof import("@electron/remote");
+const Store = remote.require(
+	"electron-store",
+) as typeof import("electron-store");
 
-export const Context = createContext<IContext>({} as IContext);
+const store = new Store();
+
+async function calculateAverageColor(imagePath: string): Promise<string> {
+	console.log(imagePath);
+	return new Promise<string>((resolve, reject) => {
+		const img = new Image();
+		img.onload = () => {
+			const canvas = document.createElement("canvas");
+			canvas.width = img.width;
+			canvas.height = img.height;
+
+			const ctx = canvas.getContext("2d");
+			if (!ctx) {
+				reject("Canvas context unavailable");
+				return;
+			}
+
+			ctx.drawImage(img, 0, 0);
+
+			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+			const data = imageData.data;
+
+			let r = 0,
+				g = 0,
+				b = 0;
+
+			for (let i = 0; i < data.length; i += 4) {
+				r += data[i];
+				g += data[i + 1];
+				b += data[i + 2];
+			}
+
+			const pixelCount = data.length / 4;
+			r = Math.round(r / pixelCount);
+			g = Math.round(g / pixelCount);
+			b = Math.round(b / pixelCount);
+
+			const hexCode = `#${((1 << 24) + (r << 16) + (g << 8) + b)
+				.toString(16)
+				.slice(1)}`;
+			resolve(hexCode);
+			canvas.remove();
+		};
+
+		img.onerror = () => {
+			reject("Error loading image");
+		};
+
+		img.src = imagePath;
+	});
+}
+
+export const Context = createContext<IContext>({
+	state: {
+		guilds: [],
+		ready: {},
+		token: "",
+		user: {},
+		users: [],
+		userSettings: {},
+	} as any,
+} as IContext);
 
 export function joinClasses(...classes: string[]) {
 	return classes.join(" ");
@@ -218,56 +285,141 @@ export const keyMap: { [key: string]: React.ReactNode } = {
 	"?": "?",
 };
 
-export const imageMap: { [key: string]: string } = {
-	"Windows Live Messenger/0.png": "#3dafe4",
-	"Windows Live Messenger/1.png": "#faf7f8",
-	"Windows Live Messenger/2.png": "#96d99c",
-	"Windows Live Messenger/3.png": "#fcc965",
-	"Windows Live Messenger/4.png": "#f7a44a",
-	"Windows Live Messenger/5.png": "#8eb494",
-	"Windows Live Messenger/6.png": "#72a1d4",
-	"Windows Live Messenger/7.png": "#b36883",
-	"Windows Live Messenger/8.png": "#99d933",
-	"Windows Live Messenger/9.png": "#764e9b",
-	"Windows Live Messenger/10.png": "#f4ccc8",
-	"Windows Live Messenger/11.png": "#2a2627",
-	"Windows Live Messenger/12.png": "#83116c",
-	"Windows Live Messenger/13.png": "#d63b72",
-	"Windows Live Messenger/14.png": "#262d29",
-	"Windows Live Messenger/15.png": "#566d81",
-	"Windows Live Messenger/16.png": "#ceccc5",
-	"Windows Live Messenger/17.png": "#88c11f",
-	"Windows Live Messenger/18.png": "#dfa97b",
-	"Windows Live Messenger/19.png": "#745994",
-	"Windows Live Messenger/20.png": "#664444",
-	"Windows Live Messenger/21.png": "#842b29",
-	"Windows Live Messenger/22.png": "#5c5b5c",
-};
+// export const imageMap: { [key: string]: string } = {
+// 	"Windows Live Messenger/0.png": "#3dafe4",
+// 	"Windows Live Messenger/1.png": "#faf7f8",
+// 	"Windows Live Messenger/2.png": "#96d99c",
+// 	"Windows Live Messenger/3.png": "#fcc965",
+// 	"Windows Live Messenger/4.png": "#f7a44a",
+// 	"Windows Live Messenger/5.png": "#8eb494",
+// 	"Windows Live Messenger/6.png": "#72a1d4",
+// 	"Windows Live Messenger/7.png": "#b36883",
+// 	"Windows Live Messenger/8.png": "#99d933",
+// 	"Windows Live Messenger/9.png": "#764e9b",
+// 	"Windows Live Messenger/10.png": "#f4ccc8",
+// 	"Windows Live Messenger/11.png": "#2a2627",
+// 	"Windows Live Messenger/12.png": "#83116c",
+// 	"Windows Live Messenger/13.png": "#d63b72",
+// 	"Windows Live Messenger/14.png": "#262d29",
+// 	"Windows Live Messenger/15.png": "#566d81",
+// 	"Windows Live Messenger/16.png": "#ceccc5",
+// 	"Windows Live Messenger/17.png": "#88c11f",
+// 	"Windows Live Messenger/18.png": "#dfa97b",
+// 	"Windows Live Messenger/19.png": "#745994",
+// 	"Windows Live Messenger/20.png": "#664444",
+// 	"Windows Live Messenger/21.png": "#842b29",
+// 	"Windows Live Messenger/22.png": "#5c5b5c",
+// };
+
+function fixPath(path: string) {
+	// Split the path by '/'
+	const parts = path.split("/");
+
+	// Get the last two elements (last folder and file name)
+	const lastFolder = parts[parts.length - 2];
+	const fileName = parts[parts.length - 1];
+
+	return `${lastFolder}/${fileName}`;
+}
+
+export let imageMap: { [key: string]: string } =
+	store.get("imageMap") || ({} as any);
+
+export async function initializeImageMap() {
+	let asyncImageMap: { [key: string]: string } = {};
+	const glob = import.meta.glob("../assets/scenes/**/*.png", { eager: true });
+	const keys = Object.keys(glob).sort();
+	for await (const key of keys) {
+		const path: string = (glob[key] as any).default;
+		const color = await calculateAverageColor(path);
+		asyncImageMap[path] = color;
+	}
+	imageMap = asyncImageMap;
+	console.log(asyncImageMap);
+	return imageMap;
+}
 
 export function getColorFromScene(src: string) {
+	console.log(imageMap);
 	const key = Object.keys(imageMap).find(
-		(k) => k.endsWith(`/${src}`) || src.endsWith(`/${k}`),
+		(k) => k.endsWith(`/${src}`) || src.endsWith(`/${k}`) || k === src,
 	);
 	if (key) {
+		if (imageMap[key].includes("e9f1f5")) return;
 		return imageMap[key];
 	}
 	return null;
 }
 
-export async function getSceneFromColor(color: string): Promise<string | null> {
-	const key = Object.keys(imageMap).find(
-		(k) => imageMap[k] === (color.startsWith("#") ? color : `#${color}`),
-	);
-	const images = import.meta.glob("../assets/scenes/**/*.png", {
-		eager: true,
-	});
-	for (const img of Object.keys(images)) {
-		const src = images[img];
-		if (img.endsWith(`/${key}`)) {
-			return (src as any).default;
+export async function getSceneFromColor(
+	color: string,
+): Promise<string | undefined> {
+	if (color.includes("e9f1f5")) return;
+	const fixedColor = color.startsWith("#") ? color : `#${color}`;
+	const key = Object.keys(imageMap).find((k) => imageMap[k] === fixedColor);
+	return key;
+}
+
+var units = {
+	year: 24 * 60 * 60 * 1000 * 365,
+	month: (24 * 60 * 60 * 1000 * 365) / 12,
+	day: 24 * 60 * 60 * 1000,
+	hour: 60 * 60 * 1000,
+	minute: 60 * 1000,
+	second: 1000,
+};
+
+var rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+export var getRelativeTime = (d1: number, d2 = new Date()) => {
+	var elapsed = d1 - d2.getTime();
+	for (var u in units)
+		if (Math.abs(elapsed) > units[u] || u == "second")
+			return rtf.format(Math.round(elapsed / units[u]), u as any);
+	return null;
+};
+
+export function calcWidth(text: string, offset: number = 1): number {
+	const body = document.querySelector("body");
+	const el = document.createElement("div");
+	el.style.width = "fit-content";
+	el.innerText = text;
+	body?.appendChild(el);
+	const width = el.offsetWidth;
+	el.remove();
+	return offset ? width + offset : width;
+}
+
+export function generateRandBetween(min: number, max: number, prev: number) {
+	let rand = Math.floor(Math.random() * (max - min + 1) + min);
+	if (rand === prev) rand = generateRandBetween(min, max, prev);
+	return rand;
+}
+
+export function calculateCaretPosition(
+	element: Element,
+	mouseX: number,
+	text: string,
+) {
+	const { left } = element.getBoundingClientRect();
+	const computedStyle = window.getComputedStyle(element);
+	const paddingLeft = parseInt(computedStyle.paddingLeft, 10);
+	const paddingRight = parseInt(computedStyle.paddingRight, 10);
+	const mouseXRelative = mouseX - (left + paddingLeft + paddingRight);
+
+	let cumulativeWidth = 0;
+	let caretPos = 0;
+
+	for (let i = 0; i < text.length; i++) {
+		const charWidth = calcWidth(text[i], 0);
+		cumulativeWidth += charWidth;
+		if (cumulativeWidth >= mouseXRelative) {
+			caretPos = i;
+			break;
 		}
 	}
-	return null;
+
+	return caretPos + 1;
 }
 
 export { ipc };

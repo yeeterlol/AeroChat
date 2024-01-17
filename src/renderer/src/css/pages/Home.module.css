@@ -10,8 +10,8 @@
 .window {
 	background: linear-gradient(
 		180deg,
-		color-mix(in srgb, var(--accent), #fff 80%),
-		rgba(255, 255, 255, 1) 50%,
+		color-mix(in srgb, var(--accent), #fff 75%),
+		color-mix(in srgb, var(--accent), #fff 90%) 50%,
 		color-mix(in srgb, var(--accent), #fff 75%) 100%
 	);
 	width: 100vw;
@@ -26,12 +26,15 @@
 }
 
 .bgImage {
-	background: url(@renderer/assets/scenes/0.png), var(--accent);
+	image-rendering: optimizeQuality;
+	background: url("@renderer/assets/scenes/Windows Live Messenger Originals/0.png"),
+		var(--accent);
 	background-position: center center;
 	background-size: cover;
 	position: absolute;
 	width: 100%;
 	height: 100%;
+	filter: blur(0.6px);
 }
 
 .paper {

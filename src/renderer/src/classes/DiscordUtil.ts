@@ -20,6 +20,17 @@ const path = window.require("path") as typeof import("path");
 const fs = window.require("fs") as typeof import("fs");
 const toIco = window.require("to-ico") as typeof import("to-ico");
 
+export interface Profile {
+	bio: string;
+	accent_color: number;
+	pronouns: string;
+	profile_effect: null;
+	banner: null;
+	theme_colors: number[];
+	popout_animation_particle_type: null;
+	emoji: null;
+}
+
 export class DiscordUtil {
 	static state: State = null as any;
 	static async request<Req = any, Res = any>(
@@ -86,7 +97,21 @@ export class DiscordUtil {
 		});
 		return res;
 	}
-	static updateUserSettings(settings: APIUser) {
+	static updateUserSettings(settings: APIUser & { bio: string }) {
+		setGatewayState({
+			...this.state,
+			ready: {
+				...this.state.ready,
+				user: { ...this.state.ready?.user, ...settings },
+			},
+		});
+	}
+	static async patchProfile(settings: Partial<Profile> & { bio?: string }) {
+		await this.request<Partial<Profile>, Profile>(
+			"/users/@me/profile",
+			"PATCH",
+			settings,
+		);
 		setGatewayState({
 			...this.state,
 			ready: {

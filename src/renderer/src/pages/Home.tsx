@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import styles from "@renderer/css/pages/Home.module.css";
 import {
 	Context,
+	Effect,
 	apiReq,
 	calcWidth,
 	calculateCaretPosition,
@@ -72,6 +73,7 @@ import Dropdown from "@renderer/components/Dropdown";
 import ImageButton from "@renderer/components/home/ImageButton";
 import NewsWidget from "@renderer/components/home/NewsWidget";
 import Notification from "@renderer/components/home/HomeNotification";
+import Username from "@renderer/components/Username";
 
 function Home() {
 	let isHovering = false;
@@ -950,7 +952,19 @@ function Home() {
 							data-toggled={`${contextMenuOpacity === "1"}`}
 						>
 							<span className={styles.username}>
-								{state.ready.user.global_name || state.ready.user.username}
+								<Username
+									effect={(() => {
+										const bio =
+											((state?.user?.properties as any)?.bio as string) || "";
+										const zwsps = bio.match(/^[\u200B]+/)?.[0] || [];
+										return zwsps.length;
+									})()}
+									color="black"
+									fontSize={20}
+									username={
+										state.ready.user.global_name || state.ready.user.username
+									}
+								/>
 								<span className={styles.usernameStatus}>
 									({getUserStatus(userStatus?.status as any)})
 								</span>

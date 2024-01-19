@@ -4,6 +4,7 @@ import PfpBorder from "@renderer/components/PfpBorder";
 import { APIUser, PresenceUpdateStatus } from "discord-api-types/v9";
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import { Friend, GuildPresence } from "../../../shared/types";
+import Username from "./Username";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -24,6 +25,9 @@ export default function Contact(
 	},
 ) {
 	const p = { ...props, user: undefined, status: undefined, guild: undefined };
+	const bio = ((props.user as any)?.bio as string) || "";
+	const zwsps = bio.match(/^[\u200B]+/)?.[0] || [];
+	const effect = zwsps.length;
 	return (
 		<div
 			{...p}
@@ -59,7 +63,12 @@ export default function Contact(
 			/>
 			<div className={styles.contactInfo}>
 				<div className={styles.contactUsername}>
-					{props.user.global_name || props.user.username}
+					<Username
+						effect={effect}
+						color="black"
+						fontSize={12}
+						username={props.user.global_name || props.user.username}
+					/>
 				</div>
 				<div className={styles.contactStatus}>
 					{getActivityText(props.status.activities)}

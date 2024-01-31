@@ -213,6 +213,13 @@ export class Guild {
 		if (role) return new Role(role);
 		else return;
 	}
+	getIcon(size: number = 64) {
+		return `https://cdn.discordapp.com/icons/${this.properties.id}/${
+			this.properties.properties.icon
+		}.${
+			this.properties.properties.icon?.startsWith("a_") ? "gif" : "webp"
+		}?size=${size}`;
+	}
 }
 
 export class PermissionOverwrites {

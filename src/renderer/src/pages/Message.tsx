@@ -1722,23 +1722,9 @@ function MessagePage() {
 															},
 														},
 														{
-															pattern: /<(a|):.+?:\d+>/gm,
-															replacement(match) {
-																const { name, url } = parseEmoji(match[0]);
-																return (
-																	<img
-																		style={{
-																			width: 20,
-																			height: 20,
-																		}}
-																		src={url}
-																		alt={name}
-																	/>
-																);
-															},
-														},
-														{
-															pattern: /:(.*?):/gm,
+															// pattern: /:(.*?):/gm,
+															// the above, but only if it doesn't start with <
+															pattern: /(?<!<):(.*?):/gm,
 															replacement(matches) {
 																// grab emoji name
 																// use toShort to replace all unicode emojis with their shortcodes
@@ -1759,6 +1745,24 @@ function MessagePage() {
 																			alt={foundEmoji.name}
 																		/>
 																	</span>
+																);
+															},
+														},
+														{
+															// match <a:emoji-name:emoji-id>
+															pattern: /<:(.*?):(\d+?)>/gm,
+															replacement(match) {
+																console.log(match);
+																const { name, url } = parseEmoji(match[0]);
+																return (
+																	<img
+																		style={{
+																			width: 20,
+																			height: 20,
+																		}}
+																		src={url}
+																		alt={name}
+																	/>
 																);
 															},
 														},

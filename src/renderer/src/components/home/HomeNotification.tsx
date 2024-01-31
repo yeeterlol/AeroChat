@@ -24,9 +24,9 @@ export default function Notification({
 	);
 	useEffect(() => {
 		async function fetchIcons() {
-			// import meta glob the icons
-			const glob = import.meta.glob("../assets/home/notification/*.png");
+			const glob = import.meta.glob("../../assets/home/notification/*.png");
 			// convert into {name: string; url: string;}[]
+			console.log(glob);
 			const icons = await Promise.all(
 				Object.entries(glob).map(async ([key, val]) => ({
 					name: key.split("/").at(-1)!.replace(".png", ""),

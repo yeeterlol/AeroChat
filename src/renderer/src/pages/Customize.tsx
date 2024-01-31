@@ -2,7 +2,6 @@ import { DiscordUtil } from "@renderer/classes/DiscordUtil";
 import styles from "@renderer/css/pages/Customize.module.css";
 import {
 	Context,
-	Effect,
 	getColorFromScene,
 	getSceneFromColor,
 	joinClasses,
@@ -98,44 +97,6 @@ function Customize() {
 							</div>
 						</Dropdown>
 					))}
-				</div>
-				<div
-					style={{
-						display: "flex",
-						position: "absolute",
-						bottom: 48,
-						left: 4,
-						gap: 8,
-						alignItems: "center",
-					}}
-				>
-					<div>select username effect (will auto apply, dont spam!!)</div>
-					<select
-						onChange={(e) => {
-							const zwsp = "​"; // there is a zero width space here
-							const effect = Effect[e.target.value as keyof typeof Effect];
-							const zwsps = zwsp.repeat(effect);
-							let bio = (state?.user?.properties as any)?.bio as string;
-							console.log(state.user);
-							if (!bio) bio = "";
-							// remove all zwsp
-							bio = bio.replaceAll(zwsp, "");
-							// push zwsps to beginning of bio
-							bio = zwsps + bio;
-							// set bio
-							DiscordUtil.patchProfile({ bio });
-						}}
-						name="effect"
-						id="effect"
-					>
-						{Object.values(Effect)
-							.filter((e) => !Number.isSafeInteger(e))
-							.map((effect, i) => (
-								<option key={i} value={effect}>
-									{effect}
-								</option>
-							))}
-					</select>
 				</div>
 			</div>
 			<div className={styles.bottomContainer}>

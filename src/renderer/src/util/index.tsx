@@ -64,14 +64,6 @@ async function calculateAverageColor(imagePath: string): Promise<string> {
 	});
 }
 
-export enum Effect {
-	None,
-	Wave,
-	SquashStretch,
-	Rainbow,
-	Chrome,
-}
-
 export const Context = createContext<IContext>({
 	state: {
 		guilds: [],

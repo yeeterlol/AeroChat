@@ -78,7 +78,6 @@ import offlineSmall from "@renderer/assets/message/invisible.png";
 import fontColorContrast from "font-color-contrast";
 import Contact from "@renderer/components/Contact";
 import Dropdown from "@renderer/components/Dropdown";
-import Username from "@renderer/components/Username";
 const Store = remote.require(
 	"electron-store",
 ) as typeof import("electron-store");
@@ -373,7 +372,6 @@ function generateTyping(...usernames: string[]): React.JSX.Element {
 const store = new Store();
 
 function MessagePage() {
-	const [bio, setBio] = useState("");
 	const [bannerSrc, setBannerSrc] = useState<string | undefined>();
 	const [bannerAccent, setBannerAccent] = useState<string | undefined>();
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -530,12 +528,11 @@ function MessagePage() {
 			}
 			const user = await DiscordUtil.request<
 				never,
-				{ user_profile: { accent_color?: number; bio: string } }
+				{ user_profile: { accent_color?: number } }
 			>(
 				`/users/${recepient?.id}/profile?with_mutual_guilds=false&with_mutual_friends_count=false`,
 				"GET",
 			);
-			setBio(user.user_profile.bio);
 			const accent = user.user_profile.accent_color?.toString(16);
 			const scene = await getSceneFromColor(accent || "");
 			if (scene) {
@@ -547,8 +544,6 @@ function MessagePage() {
 			}
 		})();
 	}, [channel, guild, state?.ready?.user]);
-	const zwsps = bio.match(/^[\u200B]+/)?.[0] || [];
-	const effect = zwsps.length;
 	useEffect(() => {
 		const id = addDispatchListener(
 			GatewayDispatchEvents.GuildMembersChunk,
@@ -1435,19 +1430,11 @@ function MessagePage() {
 										: 8,
 							}}
 						>
-							<Username
-								username={
-									(guild
-										? `#${channel.name || "unknown-channel"} - ${
-												guild.properties.properties.name
-										  }`
-										: recepient?.user?.global_name ||
-										  recepient?.user?.username) || "unknown-user"
-								}
-								effect={effect}
-								fontSize={20}
-								color="black"
-							/>
+							{guild
+								? `#${channel.name || "unknown-channel"} - ${
+										guild.properties.properties.name
+								  }`
+								: recepient?.user?.global_name || recepient?.user?.username}
 							{guild ? (
 								<div className={styles.topic}>
 									{(channel as APITextChannel).topic}

@@ -465,6 +465,9 @@ function createWindow(): void {
 
 	ipcMain.on("set-state", (_e, newState) => {
 		setState(newState);
+		BrowserWindow.getAllWindows().forEach((window) => {
+			window.webContents.send("set-state", newState);
+		});
 	});
 
 	ipcMain.on("get-state", (_e) => {

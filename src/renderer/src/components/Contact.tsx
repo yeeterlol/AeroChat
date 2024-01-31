@@ -4,6 +4,7 @@ import PfpBorder from "@renderer/components/PfpBorder";
 import { APIUser, PresenceUpdateStatus } from "discord-api-types/v9";
 import defaultPfp from "@renderer/assets/login/sample-pfp.png";
 import { Friend, GuildPresence } from "../../../shared/types";
+import { User } from "@renderer/classes/DiscordUtil";
 const remote = window.require(
 	"@electron/remote",
 ) as typeof import("@electron/remote");
@@ -24,6 +25,7 @@ export default function Contact(
 	},
 ) {
 	const p = { ...props, user: undefined, status: undefined, guild: undefined };
+	const user = new User(props.user);
 	return (
 		<div
 			{...p}
@@ -40,27 +42,13 @@ export default function Contact(
 			className={`${styles.contact} ${props.className || ""}`}
 		>
 			<PfpBorder
-				pfp={
-					props?.user?.avatar
-						? `https://cdn.discordapp.com/${
-								props.guild
-									? "icons"
-									: props.groupchat
-									  ? "channel-icons"
-									  : "avatars"
-						  }/${props?.user?.id}/${props?.user?.avatar}${
-								props.format || ".png"
-						  }`
-						: defaultPfp
-				}
+				pfp={user.getPfp(32)}
 				variant="small"
 				stateInitial={props?.status?.status as unknown as PresenceUpdateStatus}
 				guild={props.guild || props.groupchat}
 			/>
 			<div className={styles.contactInfo}>
-				<div className={styles.contactUsername}>
-					{props.user.global_name || props.user.username}
-				</div>
+				<div className={styles.contactUsername}>{user.username}</div>
 				<div className={styles.contactStatus}>
 					{getActivityText(props.status.activities)}
 				</div>

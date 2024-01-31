@@ -240,14 +240,13 @@ function App(): JSX.Element {
 				reactState?.user?.properties?.accent_color?.toString(16) || "",
 			);
 			if (thing) {
+				const accent = reactState?.ready?.user?.accent_color?.toString(16);
 				document.body.style.setProperty(
 					"--accent",
-					`#${
-						reactState?.ready?.user?.accent_color?.toString(16) || "#bae9ff"
-					}`,
+					`#${accent === "bae9ff" ? "3eacde" : accent}`,
 				);
 			} else {
-				document.body.style.setProperty("--accent", `#bae9ff`);
+				document.body.style.setProperty("--accent", `#3eacde`);
 			}
 		})();
 	}, [reactState]);

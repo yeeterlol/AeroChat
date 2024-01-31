@@ -137,25 +137,7 @@ function Customize() {
 						console.log(selected);
 						const color = getColorFromScene(selected) || "#e9f1f5";
 						setApplying(true);
-
-						if (
-							!color?.includes(
-								state?.user?.properties.accent_color?.toString(16) || "",
-							) &&
-							color
-						) {
-							await DiscordUtil.setScene(color);
-						}
-						// if (pfp) {
-						// 	const res = await DiscordUtil.setProfilePicture(
-						// 		pfps?.[pfp] || "",
-						// 	);
-						// 	if ((res as any).code === 50035) {
-						// 		alert(
-						// 			"An error occurred while setting your profile picture. You may not have Nitro, or you may be setting it too frequently.",
-						// 		);
-						// 	}
-						// }
+						await DiscordUtil.setScene(color);
 						setApplying(false);
 						remote.dialog.showMessageBoxSync({
 							title: "Success",

@@ -73,6 +73,18 @@ import ImageButton from "@renderer/components/home/ImageButton";
 import NewsWidget from "@renderer/components/home/NewsWidget";
 import Notification from "@renderer/components/home/HomeNotification";
 
+function blackOrWhite(hex: string) {
+	// don't assume hex starts with #
+	// determine whether the text color on top of the background should be white or black
+	// https://stackoverflow.com/a/3943023
+	hex = hex.replace("#", "");
+	const r = parseInt(hex.substr(0, 2), 16);
+	const g = parseInt(hex.substr(2, 2), 16);
+	const b = parseInt(hex.substr(4, 2), 16);
+	const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+	return yiq >= 128 ? false : true;
+}
+
 function Home() {
 	let isHovering = false;
 	const [isAnimating, setIsAnimating] = useState(false);
@@ -119,6 +131,9 @@ function Home() {
 			-50,
 		);
 	}
+	const textColor = blackOrWhite(
+		state?.user?.properties?.accent_color?.toString(16) || "3eacde",
+	);
 	async function doubleClick(data: APIUser | APIChannel) {
 		if ("avatar" in data) {
 			let userCache = store.get("userCache") || {};
@@ -341,7 +356,7 @@ function Home() {
 							Object.entries(listOfDmedUsers).map(
 								async ([id, count]): Promise<Electron.JumpListItem> => {
 									const user = DiscordUtil.getUserById(id);
-									const avatar = await DiscordUtil.getAvatarPath(user);
+									// const avatar = await DiscordUtil.getAvatarPath(user);
 									return {
 										type: "task",
 										args: "",
@@ -349,7 +364,7 @@ function Home() {
 											?.username}`,
 
 										program: `aerochat://dm/${id}`,
-										iconPath: avatar || "",
+										// iconPath: avatar || "",
 										iconIndex: 0,
 										title: user?.global_name || user?.username || "Unknown",
 									};
@@ -372,14 +387,14 @@ function Home() {
 							Object.entries(listOfGuilds).map(
 								async ([id, count]): Promise<Electron.JumpListItem> => {
 									const guild = DiscordUtil.getGuildById(id);
-									const icon = await DiscordUtil.getAvatarPath(
-										guild?.properties as any,
-									);
+									// const icon = await DiscordUtil.getAvatarPath(
+									// 	guild?.properties as any,
+									// );
 									return {
 										type: "task",
 										description: `Opens ${guild?.properties?.properties?.name}`,
 										program: `aerochat://guild/${id}`,
-										iconPath: icon || "",
+										// iconPath: icon || "",
 										iconIndex: 0,
 										title: guild?.properties?.properties?.name || "Unknown",
 									};
@@ -949,7 +964,15 @@ function Home() {
 							className={styles.usernameContainer}
 							data-toggled={`${contextMenuOpacity === "1"}`}
 						>
-							<span className={styles.username}>
+							<span
+								className={styles.username}
+								style={
+									{
+										"--text-color": textColor ? "#ddd" : "black",
+										"--shadow-color": textColor ? "black" : "white",
+									} as any
+								}
+							>
 								{state.ready.user.global_name || state.ready.user.username}
 								<span className={styles.usernameStatus}>
 									({getUserStatus(userStatus?.status as any)})
@@ -962,6 +985,12 @@ function Home() {
 							style={{ display: "flex", alignItems: "center" }}
 						>
 							<input
+								style={
+									{
+										"--text-color": textColor ? "white" : "black",
+										"--shadow-color": textColor ? "black" : "white",
+									} as any
+								}
 								ref={setInput}
 								defaultValue={status?.state}
 								contentEditable={true}
